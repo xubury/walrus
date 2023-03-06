@@ -1,14 +1,31 @@
-# Webassembly project
+# Web Assembly project
 
-Project for learning Webassembly.
+Project for learning Web Assembly.
 
 ## Reference
 
-[C_to_wasm](https://developer.mozilla.org/en-US/docs/WebAssembly/C_to_wasm)
+-   [C to wasm](https://developer.mozilla.org/en-US/docs/WebAssembly/C_to_wasm)
+-   [how to wasm](https://github.com/ern0/howto-wasm-minimal/)
 
 ## Goals
 
 -   Run a webassembly demo.
+    -   run `configure.bat` and `build.bat` to build `demo` app
+    -   `run.bat` to run `demo`
+-   Debug wsm demo
 -   Handle input in webassembly
 -   OpenGL/Vulkan on webassembly
 -   Porting my engine to webassembly?
+
+## Build requirements
+
+-   CMake
+-   conan
+
+# Notes
+
+2023-03-06
+
+-   Currently the demo is built with `Emscripten`.
+    However, `LLVM` provide a `wasm-ld` that we can just use `clang` without `Emscripten`?
+    See [how to wasm](https://github.com/ern0/howto-wasm-minimal/)
