@@ -29,3 +29,5 @@ Project for learning Web Assembly.
 -   Currently the demo is built with `Emscripten`.
     However, `LLVM` provide a `wasm-ld` that we can just use `clang` without `Emscripten`?
     See [how to wasm](https://github.com/ern0/howto-wasm-minimal/)
+-   So, wasm code can be run by starting a http-server, `npm` install `http-server` and `assemblyscript`
+    then just run `npx http-server` in the folder containing the `html`, `js` and `wasm` file.
