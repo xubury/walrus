@@ -33,3 +33,4 @@
 *.wasm
 
 node_modules
+sysroot
