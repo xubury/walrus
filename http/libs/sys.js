@@ -1,32 +1,18 @@
-fetch(WA.filename)
-    .then((res) => res.arrayBuffer())
-    .then(main).catch(function (err)
-{
-	// On an exception, if the err is 'abort' the error was already processed in the abort function above
-	if (err !== 'abort') abort('BOOT', 'WASM instiantate error: ' + err + (err.stack ? "\n" + err.stack : ''));
-});;
-
-function main(wasmBytes) {
-    "use strict";
-    wasmBytes = new Uint8Array(wasmBytes);
-
 // Some global state variables and max heap definition
 var HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32;
 var WASM_MEMORY, WASM_HEAP, WASM_HEAP_MAX = 256*1024*1024; //max 256MB
 
-// Define print and error functions if not yet defined by the outer html file
-WA.print = WA.print || function (msg) { console.log(msg); };
-WA.error = WA.error || function (code, msg) { WA.print('[ERROR] ' + code + ': ' + msg + '\n'); };
+// Find the start point of the stack and the heap to calculate the initial memory requirements
+var wasmDataEnd = 64, wasmStackTop = 4096, wasmHeapBase = 65536;
 
 // A generic abort function that if called stops the execution of the program and shows an error
-function abort(code, msg)
-{
-	WA.error(code, msg);
-	throw 'abort';
+export function abort(code, msg) {
+    WA.error(code, msg);
+    throw "abort";
 }
 
 // Puts a string from javascript onto the wasm memory heap (encoded as UTF8) (max_length is optional)
-function WriteHeapString(str, ptr, max_length)
+export function WriteHeapString(str, ptr, max_length)
 {
 	for (var e=str,r=HEAPU8,f=ptr,i=(max_length?max_length:HEAPU8.length),a=f,t=f+i-1,b=0;b<e.length;++b)
 	{
@@ -42,7 +28,7 @@ function WriteHeapString(str, ptr, max_length)
 }
 
 // Reads a string from the wasm memory heap to javascript (decoded as UTF8)
-function ReadHeapString(ptr, length)
+export function ReadHeapString(ptr, length)
 {
 	if (length === 0 || !ptr) return '';
 	for (var hasUtf = 0, t, i = 0; !length || i != length; i++)
@@ -65,6 +51,130 @@ function ReadHeapString(ptr, length)
 		ret += String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + Math.min(length, 1024)));
 	return ret;
 }
+
+
+export function initSys(wasmBytes, libLoader)
+{
+    "use strict";
+    wasmBytes = new Uint8Array(wasmBytes);
+    console.log("[WASMJS] compile start");
+
+    // This code goes through the wasm file sections according the binary encoding description
+    //     https://webassembly.org/docs/binary-encoding/
+    for (let i = 8, sectionEnd, type, length; i < wasmBytes.length; i = sectionEnd)
+    {
+        // Get() gets the next single byte, GetLEB() gets a LEB128 variable-length number
+        function Get() { return wasmBytes[i++]; }
+        function GetLEB() { for (var s=i,r=0,n=128; n&128; i++) r|=((n=wasmBytes[i])&127)<<((i-s)*7); return r; }
+        type = GetLEB(), length = GetLEB(), sectionEnd = i + length;
+        if (type < 0 || type > 11 || length <= 0 || sectionEnd > wasmBytes.length) break;
+        if (type == 6)
+        {
+            //Section 6 'Globals', llvm places the heap base pointer into the first value here
+            let count = GetLEB(), gtype = Get(), mutable = Get(), opcode = GetLEB(), offset = GetLEB(), endcode = GetLEB();
+            wasmHeapBase = offset;
+        }
+        if (type == 11)
+        {
+            //Section 11 'Data', contains data segments which the end of the last entry will indicate the start of the stack area
+            for (let count = GetLEB(), j = 0; j != count && i < sectionEnd; j++)
+            {
+                let dindex = Get(), dopcode = GetLEB(), doffset = GetLEB(), dendcode = GetLEB(), dsize = GetLEB();
+                wasmDataEnd = (doffset + dsize);
+                wasmStackTop = (wasmDataEnd+15)>>4<<4;
+                i += dsize;
+            }
+        }
+    }
+    // Validate the queried pointers
+    if (wasmDataEnd <= 0 || wasmHeapBase <= wasmStackTop) abort('BOOT', 'Invalid memory layout (' + wasmDataEnd + '/' + wasmStackTop + '/' + wasmHeapBase + ')');
+
+    // Set the initial wasm memory size to [DATA] + [STACK] + [256KB HEAP] (can be grown with sbrk)
+    var wasmMemInitial = ((wasmHeapBase+65535)>>16<<16) + (256 * 1024);
+    WASM_HEAP = wasmHeapBase;
+    WASM_MEMORY = env.memory = new WebAssembly.Memory({initial: wasmMemInitial>>16, maximum: WASM_HEAP_MAX>>16 });
+
+    MemorySetBufferViews();
+
+    // Store the argument list with 1 entry at the far end of the stack to pass to main
+    const exe = 'wasm.exe';
+    const argc = 1, argv = wasmStackTop;
+
+    // Store the program name string after the argv list
+    WriteHeapString(exe, (argv + 8));
+    HEAPU32[(argv>>2) + 0] = (argv + 8)
+    HEAPU32[(argv>>2) + 1] = 0;
+
+    if (libLoader) {
+        libLoader(env);
+    }
+
+    WebAssembly.instantiate(wasmBytes, {
+        env: env,
+        wasi_unstable: wasi,
+        wasi_snapshot_preview1: wasi,
+        wasi: wasi,
+    }).then(function (output) {
+        console.log("[WASMJS] compile finish");
+        WA.wasm = output.instance.exports;
+
+
+        // C++ global ctor
+        if (WA.wasm.__wasm_call_ctors) WA.wasm.__wasm_call_ctors();
+
+        if (WA.wasm.wasm_main) {
+            WA.wasm.wasm_main(argc, argv);
+        }
+
+        console.log("[WASMJS] wasm exit");
+    })
+    .catch(function (err)
+    {
+        // On an exception, if the err is 'abort' the error was already processed in the abort function above
+        if (err !== 'abort') abort('BOOT', 'WASM instiantate error: ' + err + (err.stack ? "\n" + err.stack : ''));
+    });
+}
+
+
+// Set the array views of various data types used to read/write to the wasm memory from JavaScript
+function MemorySetBufferViews()
+{
+	var buf = WASM_MEMORY.buffer;
+	HEAP32 = new Int32Array(buf);
+	HEAPU8 = new Uint8Array(buf);
+	HEAPU16 = new Uint16Array(buf);
+	HEAPU32 = new Uint32Array(buf);
+	HEAPF32 = new Float32Array(buf);
+}
+
+// Set up the env and wasi objects that contains the functions passed to the wasm module
+var env =
+{
+	// sbrk gets called to increase the size of the memory heap by an increment
+	sbrk: function(increment)
+	{
+		var heapOld = WASM_HEAP, heapNew = heapOld + increment, heapGrow = heapNew - WASM_MEMORY.buffer.byteLength;
+		//console.log('[SBRK] Increment: ' + increment + ' - HEAP: ' + heapOld + ' -> ' + heapNew + (heapGrow > 0 ? ' - GROW BY ' + heapGrow + ' (' + (heapGrow>>16) + ' pages)' : ''));
+		if (heapNew > WASM_HEAP_MAX) abort('MEM', 'Out of memory');
+		if (heapGrow > 0) { WASM_MEMORY.grow((heapGrow+65535)>>16); MemorySetBufferViews(); }
+		WASM_HEAP = heapNew;
+		return heapOld|0;
+	},
+
+	// Functions querying the system time
+	time: function(ptr) { var ret = (Date.now()/1000)|0; if (ptr) HEAPU32[ptr>>2] = ret; return ret; },
+	gettimeofday: function(ptr) { var now = Date.now(); HEAPU32[ptr>>2]=(now/1000)|0; HEAPU32[(ptr+4)>>2]=((now % 1000)*1000)|0; },
+
+	// Various functions thet can be called from wasm that abort the program
+	__assert_fail:  function(condition, filename, line, func) { abort('CRASH', 'Assert ' + ReadHeapString(condition) + ', at: ' + (filename ? ReadHeapString(filename) : 'unknown filename'), line, (func ? ReadHeapString(func) : 'unknown function')); },
+	__cxa_uncaught_exception: function() { abort('CRASH', 'Uncaught exception!'); },
+	__cxa_pure_virtual: function() { abort('CRASH', 'pure virtual'); },
+	abort: function() { abort('CRASH', 'Abort called'); },
+	longjmp: function() { abort('CRASH', 'Unsupported longjmp called'); },
+}, wasi = {};
+
+// Extend the objects with the syscall IO emulation
+SYSCALLS_WASM_IMPORTS(env, wasi);
 
 // Defines syscall emulation functions in the env and wasi object that get passed to the wasm module
 function SYSCALLS_WASM_IMPORTS(env, wasi)
@@ -171,118 +281,4 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
 	{
 		return 0; // no error
 	};
-}
-
-// Set the array views of various data types used to read/write to the wasm memory from JavaScript
-function MemorySetBufferViews()
-{
-	var buf = WASM_MEMORY.buffer;
-	HEAP32 = new Int32Array(buf);
-	HEAPU8 = new Uint8Array(buf);
-	HEAPU16 = new Uint16Array(buf);
-	HEAPU32 = new Uint32Array(buf);
-	HEAPF32 = new Float32Array(buf);
-}
-
-// Set up the env and wasi objects that contains the functions passed to the wasm module
-var env =
-{
-	// sbrk gets called to increase the size of the memory heap by an increment
-	sbrk: function(increment)
-	{
-		var heapOld = WASM_HEAP, heapNew = heapOld + increment, heapGrow = heapNew - WASM_MEMORY.buffer.byteLength;
-		//console.log('[SBRK] Increment: ' + increment + ' - HEAP: ' + heapOld + ' -> ' + heapNew + (heapGrow > 0 ? ' - GROW BY ' + heapGrow + ' (' + (heapGrow>>16) + ' pages)' : ''));
-		if (heapNew > WASM_HEAP_MAX) abort('MEM', 'Out of memory');
-		if (heapGrow > 0) { WASM_MEMORY.grow((heapGrow+65535)>>16); MemorySetBufferViews(); }
-		WASM_HEAP = heapNew;
-		return heapOld|0;
-	},
-
-	// Functions querying the system time
-	time: function(ptr) { var ret = (Date.now()/1000)|0; if (ptr) HEAPU32[ptr>>2] = ret; return ret; },
-	gettimeofday: function(ptr) { var now = Date.now(); HEAPU32[ptr>>2]=(now/1000)|0; HEAPU32[(ptr+4)>>2]=((now % 1000)*1000)|0; },
-
-	// Various functions thet can be called from wasm that abort the program
-	__assert_fail:  function(condition, filename, line, func) { abort('CRASH', 'Assert ' + ReadHeapString(condition) + ', at: ' + (filename ? ReadHeapString(filename) : 'unknown filename'), line, (func ? ReadHeapString(func) : 'unknown function')); },
-	__cxa_uncaught_exception: function() { abort('CRASH', 'Uncaught exception!'); },
-	__cxa_pure_virtual: function() { abort('CRASH', 'pure virtual'); },
-	abort: function() { abort('CRASH', 'Abort called'); },
-	longjmp: function() { abort('CRASH', 'Unsupported longjmp called'); },
-}, wasi = {};
-
-// Extend the objects with the syscall IO emulation
-SYSCALLS_WASM_IMPORTS(env, wasi);
-
-// Find the start point of the stack and the heap to calculate the initial memory requirements
-var wasmDataEnd = 64, wasmStackTop = 4096, wasmHeapBase = 65536;
-// This code goes through the wasm file sections according the binary encoding description
-//     https://webassembly.org/docs/binary-encoding/
-for (let i = 8, sectionEnd, type, length; i < wasmBytes.length; i = sectionEnd)
-{
-	// Get() gets the next single byte, GetLEB() gets a LEB128 variable-length number
-	function Get() { return wasmBytes[i++]; }
-	function GetLEB() { for (var s=i,r=0,n=128; n&128; i++) r|=((n=wasmBytes[i])&127)<<((i-s)*7); return r; }
-	type = GetLEB(), length = GetLEB(), sectionEnd = i + length;
-	if (type < 0 || type > 11 || length <= 0 || sectionEnd > wasmBytes.length) break;
-	if (type == 6)
-	{
-		//Section 6 'Globals', llvm places the heap base pointer into the first value here
-		let count = GetLEB(), gtype = Get(), mutable = Get(), opcode = GetLEB(), offset = GetLEB(), endcode = GetLEB();
-		wasmHeapBase = offset;
-	}
-	if (type == 11)
-	{
-		//Section 11 'Data', contains data segments which the end of the last entry will indicate the start of the stack area
-		for (let count = GetLEB(), j = 0; j != count && i < sectionEnd; j++)
-		{
-			let dindex = Get(), dopcode = GetLEB(), doffset = GetLEB(), dendcode = GetLEB(), dsize = GetLEB();
-			wasmDataEnd = (doffset + dsize);
-			wasmStackTop = (wasmDataEnd+15)>>4<<4;
-			i += dsize;
-		}
-	}
-}
-
-// Validate the queried pointers
-if (wasmDataEnd <= 0 || wasmHeapBase <= wasmStackTop) abort('BOOT', 'Invalid memory layout (' + wasmDataEnd + '/' + wasmStackTop + '/' + wasmHeapBase + ')');
-
-// Set the initial wasm memory size to [DATA] + [STACK] + [256KB HEAP] (can be grown with sbrk)
-var wasmMemInitial = ((wasmHeapBase+65535)>>16<<16) + (256 * 1024);
-WASM_HEAP = wasmHeapBase;
-WASM_MEMORY = env.memory = new WebAssembly.Memory({initial: wasmMemInitial>>16, maximum: WASM_HEAP_MAX>>16 });
-MemorySetBufferViews();
-
-WebAssembly.instantiate(wasmBytes, {
-    env: env,
-    wasi_unstable: wasi,
-    wasi_snapshot_preview1: wasi,
-    wasi: wasi,
-}).then(function (output) {
-
-    console.log("[WASMJS] compile finish");
-    WA.wasm = output.instance.exports;
-
-    // C++ global ctor
-    if (WA.wasm.__wasm_call_ctors) WA.wasm.__wasm_call_ctors();
-
-    // Store the argument list with 1 entry at the far end of the stack to pass to main
-    var argc = 1, argv = wasmStackTop, exe = 'wasm.exe';
-    // Store the program name string after the argv list
-    WriteHeapString(exe, (argv + 8));
-    HEAPU32[(argv>>2) + 0] = (argv + 8)
-    HEAPU32[(argv>>2) + 1] = 0;
-
-    if (WA.wasm.wasm_main)
-    {
-        WA.wasm.wasm_main(argc, argv);
-    }
-
-    console.log("[WASMJS] wasm exit");
-})
-.catch(function (err)
-{
-	// On an exception, if the err is 'abort' the error was already processed in the abort function above
-	if (err !== 'abort') abort('BOOT', 'WASM instiantate error: ' + err + (err.stack ? "\n" + err.stack : ''));
-});
-
 }
