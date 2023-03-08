@@ -14,7 +14,7 @@ function(file_download path url)
 endfunction()
 
 
-set(WASI_VERSION 12)
+set(WASI_VERSION 14)
 set(WASI_VERSION_FULL ${WASI_VERSION}.0)
 
 set(wasi_root ${CMAKE_SOURCE_DIR}/wasi-sdk-${WASI_VERSION_FULL})
