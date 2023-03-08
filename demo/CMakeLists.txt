@@ -1,16 +1,14 @@
 add_executable(webasm_demo src/main.cpp)
 
-target_include_directories(webasm_demo PRIVATE ${CONAN_INCLUDE_DIRS})
-target_link_libraries(webasm_demo PRIVATE ${CONAN_LIBS})
-
-target_compile_options(
-  webasm_demo PUBLIC "--sysroot=${PROJECT_SOURCE_DIR}/sysroot")
+target_compile_definitions(webasm_demo PUBLIC __wasi__)
+target_compile_options(webasm_demo PUBLIC --sysroot=${sys_root} -target wasm32 -O0)
+# target_link_directories(webasm_demo PUBLIC ${sys_root}/lib/wasm32-wasi)
 
 set_target_properties(
   webasm_demo
   PROPERTIES
     LINK_FLAGS
-    "--strip-all --no-entry --export-all --lto-O3 --allow-undefined --import-memory -L${PROJECT_SOURCE_DIR}/sysroot/lib/wasm32-wasi -lc"
+    "--no-entry -export=malloc -export=free -export=main -allow-undefined --import-memory -L${sys_root}/lib/wasm32-wasi -lc"
 )
 
 add_custom_command(

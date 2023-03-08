@@ -11,8 +11,6 @@ Project for learning Web Assembly.
 ## Goals
 
 -   Run a webassembly demo.
-    -   run `configure.bat` and `build.bat` to build `demo` app
-    -   `run.bat` to run `demo`
 -   Debug wsm demo
 -   Handle input in webassembly
 -   OpenGL/Vulkan on webassembly
@@ -35,4 +33,10 @@ Project for learning Web Assembly.
 
 2023-03-07
 
--   To build wasm with `libc` and `libc++`, we need headers from [Emscripten](https://github.com/emscripten-core/emscripten/tree/main/system).
+-   To build wasm with `libc` and `libc++`, we need sysroot from [Emscripten](https://github.com/emscripten-core/emscripten/tree/main/system) or [wasi-libc](https://github.com/WebAssembly/wasi-libc/tree/main).
+
+2023-03-08
+
+-   Newer version of `wasi-libc` requires more implementation of `syscall` function, using the older one is fine.
+-   Currently, the `printf` is broken, I think there's something wrong with heap memory, or `ReadHeapString` and `fd_write`.
+-   `printf` bug is fixed now, I was using linux version of wasi-sdk smh..
