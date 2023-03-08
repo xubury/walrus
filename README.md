@@ -11,8 +11,12 @@ Project for learning Web Assembly.
 ## Goals
 
 -   Run a webassembly demo.
-    -- Define `wasm_main` entry, run cmake to `configure` and `build`, also edit `http/index.html` 's `filename` accordingly.
--   Debug wsm demo
+    -   Define `wasm_main` entry, run cmake to `configure` and `build`, also edit `http/index.html` 's `filename` accordingly.
+-   Debug wsm demo.
+
+    -   To debug wsm, add `-g` compile option (default by CMake `Debug` build type), install chrome extension [wasm-debugging-extension](goo.gle/wasm-debugging-extension).
+        In the DevTools, go to the Experiments panel, and tick `WebAssembly Debugging: Enable DWARF support`. After that, reboot the browser, there should be a new `file:\\` section in `Sources` where you can set breakpoints in `c/cpp` sources files.
+
 -   Handle input in webassembly
 -   OpenGL/Vulkan on webassembly
 -   Porting my engine to webassembly?
@@ -20,7 +24,6 @@ Project for learning Web Assembly.
 ## Build requirements
 
 -   CMake
--   conan
 
 # Notes
 
@@ -42,5 +45,5 @@ Project for learning Web Assembly.
 -   Currently, the `printf` is broken, I think there's something wrong with heap memory, or `ReadHeapString` and `fd_write`.
 -   `printf` bug is fixed now, I was using linux version of wasi-sdk smh..
 -   Can't define `main` as entry, don't know why. Probably linker flags is incorrect. Using `wasm_main` as substitute for now.
--   I think I should link crt1? 
-> `crt1.o` provides the `_start` symbol that the runtime linker, `ld.so.1`, jumps to in order to pass control to the executable.
+-   I think I should link crt1?
+    > `crt1.o` provides the `_start` symbol that the runtime linker, `ld.so.1`, jumps to in order to pass control to the executable.
