@@ -210,26 +210,6 @@ var env =
 	longjmp: function() { abort('CRASH', 'Unsupported longjmp called'); },
 }, wasi = {};
 
-// Functions that do nothing in this wasm context
-env.setjmp = env.__cxa_atexit = env.__lock = env.__unlock = function() {};
-
-// Math functions
-env.ceil = env.ceilf = Math.ceil;
-env.exp = env.expf = Math.exp;
-env.floor = env.floorf = Math.floor;
-env.log = env.logf = Math.log;
-env.pow = env.powf = Math.pow;
-env.cos = env.cosf = Math.cos;
-env.sin = env.sinf = Math.sin;
-env.tan = env.tanf = Math.tan;
-env.acos = env.acosf = Math.acos;
-env.asin = env.asinf = Math.asin;
-env.sqrt = env.sqrtf = Math.sqrt;
-env.atan = env.atanf = Math.atan;
-env.atan2 = env.atan2f = Math.atan2;
-env.fabs = env.fabsf = env.abs = Math.abs;
-env.round = env.roundf = env.rint = env.rintf = Math.round;
-
 // Extend the objects with the syscall IO emulation
 SYSCALLS_WASM_IMPORTS(env, wasi);
 
@@ -286,7 +266,7 @@ WebAssembly.instantiate(wasmBytes, {
     if (WA.wasm.__wasm_call_ctors) WA.wasm.__wasm_call_ctors();
 
     // Store the argument list with 1 entry at the far end of the stack to pass to main
-    var argc = 1, argv = wasmStackTop, exe = 'wasmexe';
+    var argc = 1, argv = wasmStackTop, exe = 'wasm.exe';
     // Store the program name string after the argv list
     WriteHeapString(exe, (argv + 8));
     HEAPU32[(argv>>2) + 0] = (argv + 8)

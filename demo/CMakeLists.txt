@@ -2,14 +2,14 @@ add_executable(webasm_demo src/main.cpp)
 
 target_compile_definitions(webasm_demo PUBLIC __wasi__)
 target_compile_options(webasm_demo PUBLIC -O0)
+target_link_libraries(webasm_demo PUBLIC c dl m rt util wasi-emulated-process-clocks)
 
 if(NOT WASI_COMPILER)
   set_target_properties(
     webasm_demo
     PROPERTIES
       LINK_FLAGS
-      "--no-entry -export=wasm_main -allow-undefined --import-memory -lc"
-  )
+      "--no-entry -export=wasm_main -allow-undefined --import-memory")
 endif()
 
 add_custom_command(

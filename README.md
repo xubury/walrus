@@ -42,3 +42,5 @@ Project for learning Web Assembly.
 -   Currently, the `printf` is broken, I think there's something wrong with heap memory, or `ReadHeapString` and `fd_write`.
 -   `printf` bug is fixed now, I was using linux version of wasi-sdk smh..
 -   Can't define `main` as entry, don't know why. Probably linker flags is incorrect. Using `wasm_main` as substitute for now.
+-   I think I should link crt1? 
+> `crt1.o` provides the `_start` symbol that the runtime linker, `ld.so.1`, jumps to in order to pass control to the executable.
