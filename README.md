@@ -11,6 +11,7 @@ Project for learning Web Assembly.
 ## Goals
 
 -   Run a webassembly demo.
+    -- Define `wasm_main` entry, run cmake to `configure` and `build`, also edit `http/index.html` 's `filename` accordingly.
 -   Debug wsm demo
 -   Handle input in webassembly
 -   OpenGL/Vulkan on webassembly
@@ -40,3 +41,4 @@ Project for learning Web Assembly.
 -   Newer version of `wasi-libc` requires more implementation of `syscall` function, using the older one is fine.
 -   Currently, the `printf` is broken, I think there's something wrong with heap memory, or `ReadHeapString` and `fd_write`.
 -   `printf` bug is fixed now, I was using linux version of wasi-sdk smh..
+-   Can't define `main` as entry, don't know why. Probably linker flags is incorrect. Using `wasm_main` as substitute for now.

@@ -96,6 +96,7 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
 		return 9; //return dummy file number
 	};
 
+    wasi.proc_exit = function() { }
 	// fd_read call to read from a file (reads from payload)
 	wasi.fd_read = function(fd, iov, iovcnt, pOutResult)
 	{
@@ -284,17 +285,18 @@ WebAssembly.instantiate(wasmBytes, {
     // C++ global ctor
     if (WA.wasm.__wasm_call_ctors) WA.wasm.__wasm_call_ctors();
 
-    if (WA.wasm.main)
-    {
-        // Store the argument list with 1 entry at the far end of the stack to pass to main
-        var argc = 1, argv = wasmStackTop, exe = 'wasmexe';
-        // Store the program name string after the argv list
-        WriteHeapString(exe, (argv + 8));
-        HEAPU32[(argv>>2) + 0] = (argv + 8)
-        HEAPU32[(argv>>2) + 1] = 0;
-        WA.wasm.main(argc, argv);
+    // Store the argument list with 1 entry at the far end of the stack to pass to main
+    var argc = 1, argv = wasmStackTop, exe = 'wasmexe';
+    // Store the program name string after the argv list
+    WriteHeapString(exe, (argv + 8));
+    HEAPU32[(argv>>2) + 0] = (argv + 8)
+    HEAPU32[(argv>>2) + 1] = 0;
 
+    if (WA.wasm.wasm_main)
+    {
+        WA.wasm.wasm_main(argc, argv);
     }
+
     console.log("[WASMJS] wasm exit");
 })
 .catch(function (err)
