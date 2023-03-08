@@ -109,7 +109,7 @@ export function initSys(wasmBytes, libLoader)
         libLoader(env);
     }
 
-    WebAssembly.instantiate(wasmBytes, {
+    return WebAssembly.instantiate(wasmBytes, {
         env: env,
         wasi_unstable: wasi,
         wasi_snapshot_preview1: wasi,
