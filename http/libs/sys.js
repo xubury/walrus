@@ -122,8 +122,8 @@ export function initSys(wasmBytes, libLoader)
         // C++ global ctor
         if (WA.wasm.__wasm_call_ctors) WA.wasm.__wasm_call_ctors();
 
-        if (WA.wasm.wasm_main) {
-            WA.wasm.wasm_main(argc, argv);
+        if (WA.wasm.__main_argc_argv) {
+            WA.wasm.__main_argc_argv(argc, argv);
         }
 
         console.log("[WASMJS] wasm exit");
@@ -206,7 +206,6 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
 		return 9; //return dummy file number
 	};
 
-    wasi.proc_exit = function() { }
 	// fd_read call to read from a file (reads from payload)
 	wasi.fd_read = function(fd, iov, iovcnt, pOutResult)
 	{

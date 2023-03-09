@@ -80,7 +80,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 set(CMAKE_C_COMPILER_WORKS 1)
 set(CMAKE_CXX_COMPILER_WORKS 1)
 
-add_compile_options(--sysroot=${WASI_SYS_ROOT} -target wasm32)
+add_compile_options(--sysroot=${WASI_SYS_ROOT} --target=wasm32-wasi)
 add_compile_definitions(__wasi__)
 link_directories(${WASI_SYS_ROOT}/lib/wasm32-wasi)
 

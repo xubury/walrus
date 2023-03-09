@@ -11,10 +11,12 @@ Project for learning Web Assembly.
 ## Goals
 
 -   Run a webassembly demo.
-    -   Define `wasm_main` entry, run cmake to `configure` and `build`, also edit `http/index.html` 's `filename` accordingly.
+    -   Run cmake to `configure` and `build`.
+    -   `cd` to `http` folder, edit `http/index.html` 's `filename` to the output `*.wasm` accordingly.
+    -   run `npx http-server`.
 -   Debug wsm demo.
 
-    -   To debug wsm, add `-g` compile option (default by CMake `Debug` build type), install chrome extension [wasm-debugging-extension](goo.gle/wasm-debugging-extension).
+    -   To debug wsm, add `-g` compile option (default by CMake `Debug` build type), install chrome extension [wasm-debugging-extension](https://goo.gle/wasm-debugging-extension).
         In the DevTools, go to the Experiments panel, and tick `WebAssembly Debugging: Enable DWARF support`. After that, reboot the browser, there should be a new `file:\\` section in `Sources` where you can set breakpoints in `c/cpp` sources files.
 
 -   Handle input in webassembly
@@ -24,6 +26,7 @@ Project for learning Web Assembly.
 ## Build requirements
 
 -   CMake
+-   Node.js
 
 # Notes
 
@@ -47,3 +50,8 @@ Project for learning Web Assembly.
 -   Can't define `main` as entry, don't know why. Probably linker flags is incorrect. Using `wasm_main` as substitute for now.
 -   I think I should link crt1?
     > `crt1.o` provides the `_start` symbol that the runtime linker, `ld.so.1`, jumps to in order to pass control to the executable.
+
+2023-03-09
+
+-   To use `main` properly, I have to export `__main_argc_argv`. `wasi-sdk` seems work this by linking `crt1.o` and `libclang_rt.builtins-wasm32.a`.
+    But I never work that out in `wasi-sdk`'s way.

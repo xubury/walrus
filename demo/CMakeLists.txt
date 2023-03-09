@@ -6,9 +6,8 @@ target_link_libraries(webasm_demo PUBLIC c)
 
 if(NOT WASI_COMPILER)
   set_target_properties(
-    webasm_demo
-    PROPERTIES LINK_FLAGS
-               "--no-entry -export=wasm_main -allow-undefined --import-memory")
+    webasm_demo PROPERTIES LINK_FLAGS
+                           "--no-entry -allow-undefined -export=__main_argc_argv --import-memory")
 endif()
 
 add_custom_command(
