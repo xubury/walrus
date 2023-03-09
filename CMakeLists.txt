@@ -19,6 +19,8 @@ set(WASI_VERSION_FULL ${WASI_VERSION}.0)
 set(WASI_SDK_PREFIX ${CMAKE_SOURCE_DIR}/wasi-sdk-${WASI_VERSION_FULL})
 set(WASI_SYS_ROOT ${WASI_SDK_PREFIX}/share/wasi-sysroot)
 
+set(WASM_RUNTIME_PATH ${CMAKE_SOURCE_DIR}/server/wasm)
+
 if(WIN32)
   set(BUILD_PLATFORM mingw)
 elseif(UNIX)

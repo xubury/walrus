@@ -23,7 +23,7 @@ app.get('/', function(req, res) {
 });
 
 app.get('/webasm_demo.wasm', function(req, res) {
-  res.sendFile(path.join(__dirname, '/webasm_demo.wasm'));
+  res.sendFile(path.join(__dirname, 'wasm/webasm_demo.wasm'));
 });
 
 app.get('/wasm.js', function(req, res) {
