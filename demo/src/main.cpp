@@ -3,6 +3,17 @@
 #include <stdio.h>
 #include <string.h>
 
+struct Foo {
+    Foo()
+    {
+        printf("Foo ctor\n");
+    }
+    ~Foo()
+    {
+        printf("Foo dtor\n");
+    }
+};
+
 extern "C" int main(int argc, char *argv[])
 {
     printf("This is a string\n");
@@ -12,8 +23,10 @@ extern "C" int main(int argc, char *argv[])
     ptr[1] = 123;
     ptr[2] = 124;
     printf("malloc:0x%lx\n", (intptr_t)ptr);
+    Foo foo;
     for (int i = 0; i < 3; ++i) {
         printf("ptr[%d]:%d ", i, ptr[i]);
     }
+    printf("\n");
     return 0;
 }

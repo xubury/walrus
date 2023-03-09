@@ -53,7 +53,7 @@ export function ReadHeapString(ptr, length)
 }
 
 
-export function initSys(wasmBytes, libLoader)
+export async function initSys(wasmBytes, libLoader)
 {
     "use strict";
     wasmBytes = new Uint8Array(wasmBytes);
@@ -109,32 +109,32 @@ export function initSys(wasmBytes, libLoader)
         libLoader(env);
     }
 
-    return WebAssembly.instantiate(wasmBytes, {
-        env: env,
-        wasi_unstable: wasi,
-        wasi_snapshot_preview1: wasi,
-        wasi: wasi,
-    }).then(function (output) {
+    try {
+        const output = await WebAssembly.instantiate(wasmBytes, {
+            env: env,
+            wasi_unstable: wasi,
+            wasi_snapshot_preview1: wasi,
+            wasi: wasi,
+        });
         console.log("[WASMJS] compile finish");
         WA.wasm = output.instance.exports;
 
 
         // C++ global ctor
-        if (WA.wasm.__wasm_call_ctors) WA.wasm.__wasm_call_ctors();
+        if (WA.wasm.__wasm_call_ctors)
+            WA.wasm.__wasm_call_ctors();
 
         if (WA.wasm.__main_argc_argv) {
             WA.wasm.__main_argc_argv(argc, argv);
         }
 
         console.log("[WASMJS] wasm exit");
-    })
-    .catch(function (err)
-    {
+    } catch (err) {
         // On an exception, if the err is 'abort' the error was already processed in the abort function above
-        if (err !== 'abort') abort('BOOT', 'WASM instiantate error: ' + err + (err.stack ? "\n" + err.stack : ''));
-    });
+        if (err !== 'abort')
+            abort('BOOT', 'WASM instiantate error: ' + err + (err.stack ? "\n" + err.stack : ''));
+    }
 }
-
 
 // Set the array views of various data types used to read/write to the wasm memory from JavaScript
 function MemorySetBufferViews()
