@@ -12,8 +12,8 @@ Project for learning Web Assembly.
 
 -   Run a webassembly demo.
     -   Run cmake to `configure` and `build`.
-    -   `cd` to `http` folder, edit `http/index.html` 's `filename` to the output `*.wasm` accordingly.
-    -   run `npx http-server`.
+    -  `cd` to `server` folder, edit `views/webasm_demo.html` 's `filename` to the output `*.wasm` accordingly.
+    -   run `npm run server`.
 -   Debug wsm demo.
 
     -   To debug wsm, add `-g` compile option (default by CMake `Debug` build type), install chrome extension [wasm-debugging-extension](https://goo.gle/wasm-debugging-extension).
@@ -55,3 +55,8 @@ Project for learning Web Assembly.
 
 -   To use `main` properly, I have to export `__main_argc_argv`. `wasi-sdk` seems work this by linking `crt1.o` and `libclang_rt.builtins-wasm32.a`.
     But I never work that out in `wasi-sdk`'s way.
+
+
+2023-03-10
+
+-- To use c++ std library, I should link `libc++` and `libc++abi` (The wasm size is drastically increased after linking).
