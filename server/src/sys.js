@@ -2,6 +2,12 @@
 var HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32;
 var WASM_MEMORY, WASM_HEAP, WASM_HEAP_MAX = 256*1024*1024; //max 256MB
 
+const __WASI_CLOCKID_MONOTONIC = 1;
+const __WASI_CLOCKID_PROCESS_CPUTIME_ID =  2;
+const __WASI_CLOCKID_REALTIME =  0;
+
+const ENOSYS = 38; // Function not implemented
+
 // Find the start point of the stack and the heap to calculate the initial memory requirements
 var wasmDataEnd = 64, wasmStackTop = 4096, wasmHeapBase = 65536;
 
@@ -280,4 +286,19 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
 	{
 		return 0; // no error
 	};
+
+	// Functions querying the system time
+    wasi.clock_time_get =  function(clk_id, pre, ptime) { 
+        var now
+        if (clk_id == __WASI_CLOCKID_REALTIME) {
+           now = Date.now();
+        } else {
+            return ENOSYS;
+        }
+        var nsec = Math.round(now * 1000 * 1000);
+        HEAP32[(ptime + 4)>>2] = (nsec / Math.pow(2, 32)) >>> 0;
+        HEAP32[(ptime + 0)>>2] = (nsec >>> 0);
+        return 0;
+    };
+
 }
