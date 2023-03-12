@@ -7,12 +7,13 @@ Project for learning Web Assembly.
 -   [C to wasm](https://developer.mozilla.org/en-US/docs/WebAssembly/C_to_wasm)
 -   [how to wasm](https://github.com/ern0/howto-wasm-minimal/)
 -   [clang wasm](https://schellcode.github.io/webassembly-without-emscripten)
+-   [React Electron build](https://weirenxue.github.io/2021/08/04/react_electron_build/)
 
 ## Goals
 
 -   Run a webassembly demo.
     -   Run cmake to `configure` and `build`.
-    -  `cd` to `server` folder, edit `views/webasm_demo.html` 's `filename` to the output `*.wasm` accordingly.
+    -   `cd` to `server` folder, edit `views/webasm_demo.html` 's `filename` to the output `*.wasm` accordingly.
     -   run `npm run server`.
 -   Debug wsm demo.
 
@@ -56,7 +57,10 @@ Project for learning Web Assembly.
 -   To use `main` properly, I have to export `__main_argc_argv`. `wasi-sdk` seems work this by linking `crt1.o` and `libclang_rt.builtins-wasm32.a`.
     But I never work that out in `wasi-sdk`'s way.
 
-
 2023-03-10
 
--- To use c++ std library, I should link `libc++` and `libc++abi` (The wasm size is drastically increased after linking).
+-   To use c++ std library, I should link `libc++` and `libc++abi` (The wasm size is drastically increased after linking).
+
+2023-03-12
+
+-   Plan to build app in `Electron` which provide `node.js` runtime, skipping `wasi` syscall emulation.

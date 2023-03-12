@@ -1,10 +1,11 @@
 // Some global state variables and max heap definition
-var HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32;
+export var HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32;
+export var ABORT = false; // program crash signal
 var WASM_MEMORY, WASM_HEAP, WASM_HEAP_MAX = 256*1024*1024; //max 256MB
 
-const __WASI_CLOCKID_MONOTONIC = 1;
-const __WASI_CLOCKID_PROCESS_CPUTIME_ID =  2;
 const __WASI_CLOCKID_REALTIME =  0;
+const __WASI_CLOCKID_MONOTONIC = 1;// Unimplemented
+const __WASI_CLOCKID_PROCESS_CPUTIME_ID =  2;// Unimplemented
 
 const ENOSYS = 38; // Function not implemented
 
@@ -13,6 +14,7 @@ var wasmDataEnd = 64, wasmStackTop = 4096, wasmHeapBase = 65536;
 
 // A generic abort function that if called stops the execution of the program and shows an error
 export function abort(code, msg) {
+    ABORT = true;
     WA.error(code, msg);
     throw "abort";
 }
@@ -63,7 +65,7 @@ export async function initSys(wasmBytes, libLoader)
 {
     "use strict";
     wasmBytes = new Uint8Array(wasmBytes);
-    console.log("[WASMJS] compile start");
+    console.log("[WAJS] compile start");
 
     // This code goes through the wasm file sections according the binary encoding description
     //     https://webassembly.org/docs/binary-encoding/
@@ -122,7 +124,7 @@ export async function initSys(wasmBytes, libLoader)
             wasi_snapshot_preview1: wasi,
             wasi: wasi,
         });
-        console.log("[WASMJS] compile finish");
+        console.log("[WAJS] compile finish");
         WA.wasm = output.instance.exports;
 
 
@@ -131,10 +133,11 @@ export async function initSys(wasmBytes, libLoader)
             WA.wasm.__wasm_call_ctors();
 
         if (WA.wasm.__main_argc_argv) {
+            console.log("[WAJS] wasm main start");
             WA.wasm.__main_argc_argv(argc, argv);
+            console.log("[WAJS] wasm main exit");
         }
 
-        console.log("[WASMJS] wasm exit");
     } catch (err) {
         // On an exception, if the err is 'abort' the error was already processed in the abort function above
         if (err !== 'abort')

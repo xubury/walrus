@@ -4,10 +4,18 @@
         <title>WebAssembly Demo</title>
     </head>
     <body>
+        <canvas
+            id="wa_canvas"
+            style="display: inline; margin: 0 auto 10px"
+            oncontextmenu="event.preventDefault()"
+            width="0"
+            height="0"
+        ></canvas>
         <div id="wa_log"></div>
         <script type="text/javascript">
             var WA = {
                 filename: "webasm_demo.wasm",
+                canvas: document.getElementById("wa_canvas"),
                 print: function (text) {
                     console.log(text);
                     document.getElementById("wa_log").innerHTML += text.replace(

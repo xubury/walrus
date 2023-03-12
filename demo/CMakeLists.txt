@@ -2,15 +2,12 @@ add_executable(webasm_demo src/main.cpp)
 
 target_compile_options(webasm_demo PUBLIC -O0)
 
-target_link_libraries(webasm_demo PUBLIC c)
+target_link_libraries(webasm_demo PUBLIC c wajsGl)
 
-if(NOT WASI_COMPILER)
-  set_target_properties(
-    webasm_demo
-    PROPERTIES
-      LINK_FLAGS
-      "--no-entry -allow-undefined -export=__main_argc_argv --import-memory")
-endif()
+target_link_options(webasm_demo PUBLIC --no-entry -allow-undefined -export=__main_argc_argv --import-memory)
+
+# clean up
+target_include_directories(webasm_demo PUBLIC ${PROJECT_SOURCE_DIR})
 
 add_custom_command(
   TARGET webasm_demo

@@ -16,7 +16,8 @@ endfunction()
 set(WASI_VERSION 14)
 set(WASI_VERSION_FULL ${WASI_VERSION}.0)
 
-set(WASI_SDK_PREFIX ${CMAKE_SOURCE_DIR}/wasi-sdk-${WASI_VERSION_FULL})
+set(THIRD_PARTY_LIBS_DIR ${CMAKE_SOURCE_DIR}/libs)
+set(WASI_SDK_PREFIX ${THIRD_PARTY_LIBS_DIR}/wasi-sdk-${WASI_VERSION_FULL})
 set(WASI_SYS_ROOT ${WASI_SDK_PREFIX}/share/wasi-sysroot)
 
 set(WASM_RUNTIME_PATH ${CMAKE_SOURCE_DIR}/server/wasm)
@@ -85,6 +86,7 @@ set(CMAKE_CXX_COMPILER_WORKS 1)
 add_compile_options(--sysroot=${WASI_SYS_ROOT} --target=wasm32-wasi)
 add_compile_definitions(__wasi__)
 link_directories(${WASI_SYS_ROOT}/lib/wasm32-wasi)
+include_directories(${THIRD_PARTY_LIBS_DIR})
 
 cmake_minimum_required(VERSION 3.20.0)
 project(webasm VERSION 0.1.0)
@@ -108,3 +110,4 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
 
 add_subdirectory(demo)
+add_subdirectory(libs/wajsGl)
