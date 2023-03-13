@@ -24,7 +24,9 @@ function getSource(count, string, length) {
                     sys.HEAP32[(string + i * 4) >> 2],
                     len
                 );
-        } else frag = sys.ReadHeapString(sys.HEAP32[(string + i * 4) >> 2]);
+        } else {
+            frag = sys.ReadHeapString(sys.HEAP32[(string + i * 4) >> 2]);
+        }
         source += frag;
     }
     return source;
