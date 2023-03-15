@@ -13,4 +13,4 @@ add_custom_command(
   TARGET webasm_demo
   POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:webasm_demo>
-          ${WASM_RUNTIME_PATH}/webasm_demo.wasm)
+          ${WASM_RUNTIME_ENTRY})

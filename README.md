@@ -22,6 +22,7 @@ Project for learning Web Assembly.
 
 -   Handle input in webassembly
 -   OpenGL/Vulkan on webassembly
+-   Packaging the web project using Webpack, adding hot reload feature.
 -   Porting my engine to webassembly?
 
 ## Build requirements
@@ -64,3 +65,7 @@ Project for learning Web Assembly.
 2023-03-12
 
 -   Plan to build app in `Electron` which provide `node.js` runtime, skipping `wasi` syscall emulation.
+
+2023-03-14
+
+-   Using electron runtime is not good, can't run on browser. Using a server to deal with node and render to html.

@@ -58,8 +58,8 @@ function setupGlContext(canvas, attr) {
 }
 
 // Init gl interface
-export function initGl(env) {
-    console.log("InitGl()");
+export function importGl(env) {
+    console.log("importGl()");
 
     Object.assign(env, {
         wajsSetupGlCanvas: function (width, height) {

@@ -1,11 +1,11 @@
 import { initSys } from "/sys.js";
-import { initGl as importGlLibrary } from "/gl.js";
+import { importGl } from "/gl.js";
 
-var res = await fetch(WA.filename);
+var res = await fetch("/wasm");
 var wasmBytes = await res.arrayBuffer();
 await initSys(wasmBytes, loadLibraries);
 
 function loadLibraries(env) {
     console.log("[WASMJS] loadLibraies");
-    importGlLibrary(env);
+    importGl(env);
 }

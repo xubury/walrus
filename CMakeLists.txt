@@ -20,7 +20,7 @@ set(THIRD_PARTY_LIBS_DIR ${CMAKE_SOURCE_DIR}/libs)
 set(WASI_SDK_PREFIX ${THIRD_PARTY_LIBS_DIR}/wasi-sdk-${WASI_VERSION_FULL})
 set(WASI_SYS_ROOT ${WASI_SDK_PREFIX}/share/wasi-sysroot)
 
-set(WASM_RUNTIME_PATH ${CMAKE_SOURCE_DIR}/server/wasm)
+set(WASM_RUNTIME_ENTRY ${CMAKE_SOURCE_DIR}/web/res/main.wasm)
 
 if(WIN32)
   set(BUILD_PLATFORM mingw)
@@ -36,16 +36,14 @@ set(WASI_HOST_URL
 set(WASI_PACKAGE_NAME wasi-sdk-${WASI_VERSION_FULL}-${BUILD_PLATFORM}.tar.gz)
 set(WASI_URL ${WASI_HOST_URL}/${WASI_PACKAGE_NAME})
 
-# FIXME: should validate MD5 here?
-if(NOT EXISTS ${CMAKE_SOURCE_DIR}/${WASI_PACKAGE})
-  file_download(${CMAKE_SOURCE_DIR}/${WASI_PACKAGE} ${WASI_URL})
-endif()
-
 if(NOT EXISTS ${WASI_SDK_PREFIX})
+  if(NOT EXISTS ${CMAKE_SOURCE_DIR}/${WASI_PACKAGE})
+    file_download(${CMAKE_SOURCE_DIR}/${WASI_PACKAGE} ${WASI_URL})
+  endif()
   message("extracting ${WASI_PACKAGE_NAME}")
   file(ARCHIVE_EXTRACT INPUT ${CMAKE_SOURCE_DIR}/${WASI_PACKAGE_NAME}
        DESTINATION ${THIRD_PARTY_LIBS_DIR})
-  # TODO: remove wasi package
+  file(REMOVE ${WASI_PACKAGE_NAME})
 endif()
 
 if(WIN32)
