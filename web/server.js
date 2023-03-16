@@ -4,6 +4,12 @@ var path = require("path");
 const app = express();
 const port = process.env.PORT || 8080;
 
+// TODO:filesystem emu
+app.get("/file/:name", function(req, res) {
+    // console.log(req.params.name);
+    res.send("world");
+})
+
 app.get("/", function (req, res) {
     res.sendFile(path.join(__dirname, "res/index.html"));
 });

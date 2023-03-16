@@ -1,9 +1,9 @@
-#include "wajsGl.h"
+#include <wajs_gl.h>
 
 #include <stddef.h>
 #include <time.h>
 
-static WajsRenderCallback wajsRenderCallback = NULL;
+static WajsRenderCallback s_WajsRenderCallback = NULL;
 
 static float unixTimeNanoseconds()
 {
@@ -14,23 +14,23 @@ static float unixTimeNanoseconds()
 
 static float unixTimeMiliseconds()
 {
-    return unixTimeNanoseconds() / (1000.f * 1000.f);
+    return unixTimeNanoseconds() / (1.0e6);
 }
 
 static float unixTimeSeoncds()
 {
-    return unixTimeNanoseconds() / (1000.f * 1000.f * 1000.f);
+    return unixTimeNanoseconds() / (1.0e9);
 }
 
 void wajsSetGlRenderCallback(WajsRenderCallback callback)
 {
-    wajsRenderCallback = callback;
+    s_WajsRenderCallback = callback;
 }
 
 void __wajsGlDraw()
 {
-    if (wajsRenderCallback != NULL) {
-        wajsRenderCallback();
+    if (s_WajsRenderCallback != NULL) {
+        s_WajsRenderCallback();
     }
 }
 

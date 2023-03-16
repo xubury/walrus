@@ -170,10 +170,6 @@ var env =
 		return heapOld|0;
 	},
 
-	// Functions querying the system time
-	time: function(ptr) { var ret = (Date.now()/1000)|0; if (ptr) HEAPU32[ptr>>2] = ret; return ret; },
-	gettimeofday: function(ptr) { var now = Date.now(); HEAPU32[ptr>>2]=(now/1000)|0; HEAPU32[(ptr+4)>>2]=((now % 1000)*1000)|0; },
-
 	// Various functions thet can be called from wasm that abort the program
 	__assert_fail:  function(condition, filename, line, func) { abort('CRASH', 'Assert ' + ReadHeapString(condition) + ', at: ' + (filename ? ReadHeapString(filename) : 'unknown filename'), line, (func ? ReadHeapString(func) : 'unknown function')); },
 	__cxa_uncaught_exception: function() { abort('CRASH', 'Uncaught exception!'); },

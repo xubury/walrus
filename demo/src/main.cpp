@@ -4,32 +4,45 @@
 #include <string.h>
 #include <time.h>
 
-#include <wajsGl.h>
+#include <wajs_gl.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 const char *vsSource = R"(#version 300 es
 const vec2 triVert[] = vec2[](vec2(-0.5f, -0.5f), vec2(0.0f, 0.5f), vec2(0.5f, -0.5f));
+const vec2 quadVert[] = vec2[](vec2(-1.0f, 1.0f), vec2(-1.0f, -1.0f), vec2(1.0f, 1.0f), vec2(1.0f, -1.0f));
+
+out vec2 v_pos;
+
 void main() { 
-     gl_Position = vec4(triVert[gl_VertexID], 0.0, 1.0);
+    gl_Position = vec4(quadVert[gl_VertexID], 0.0, 1.0);
+    v_pos = quadVert[gl_VertexID];
 }
 
 )";
 
 const char *fsSource = R"(#version 300 es
 precision highp float;
+
 out vec4 FragColor;
+
+in vec2 v_pos;
+
 void main() { 
-    FragColor = vec4(1, 0, 0, 1);
+    FragColor = vec4(v_pos, 0, 1);
 })";
 
-GLuint prog = 0;
+static GLuint glProg = 0;
+const static int canvasWidth = 640;
+const static int canvasHeight = 480;
 
 void glRender()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glClearColor(0.1, 0.2, 0.3, 1);
-    glUseProgram(prog);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-
+    glUseProgram(glProg);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     // printf("dt:%f\n", wajsGetFrameTime());
 }
 
@@ -41,32 +54,56 @@ GLuint compileShader(GLenum type, const char *source)
 
     GLint succ;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &succ);
-
     if (!succ) {
         GLint logSize;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logSize);
 
-        char *buffer = (char *)malloc(logSize);
-        glGetShaderInfoLog(shader, 255, nullptr, buffer);
-        printf("shader compile error: %s\n", buffer);
-        free(buffer);
+        char *infoLog = (char *)malloc(logSize);
+        infoLog[logSize] = 0;
+        glGetShaderInfoLog(shader, 255, nullptr, infoLog);
+        printf("Shader compile error: %s\n", infoLog);
+        free(infoLog);
     }
     return shader;
 }
 
-void glSetup()
+GLuint linkProgram(GLuint vs, GLuint fs)
 {
-    wajsSetupGlCanvas(640, 480);
-    wajsSetGlRenderCallback(glRender);
-
-    glViewport(0, 0, 640, 480);
-
-    GLuint vs = compileShader(GL_VERTEX_SHADER, vsSource);
-    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fsSource);
+    GLuint prog;
     prog = glCreateProgram();
     glAttachShader(prog, vs);
     glAttachShader(prog, fs);
     glLinkProgram(prog);
+
+    GLint succ;
+    glGetProgramiv(prog, GL_LINK_STATUS, &succ);
+    if (!succ) {
+        GLint logSize = 0;
+        glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &logSize);
+
+        char *infoLog = (char *)malloc(logSize);
+        infoLog[logSize] = 0;
+        glGetProgramInfoLog(prog, logSize, nullptr, infoLog);
+        printf("Failed to link shader program: %s\n", infoLog);
+        free(infoLog);
+    }
+    return prog;
+}
+
+void glSetup()
+{
+    wajsSetupGlCanvas(canvasWidth, canvasHeight);
+    wajsSetGlRenderCallback(glRender);
+    glViewport(0, 0, canvasWidth, canvasHeight);
+
+    GLuint vs = compileShader(GL_VERTEX_SHADER, vsSource);
+    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fsSource);
+    glProg = linkProgram(vs, fs);
+
+    GLuint texture;
+    glGenTextures(1, &texture);
+    printf("texture: %d\n", texture);
+    glDeleteTextures(1, &texture);
 }
 
 void printUnixTime()

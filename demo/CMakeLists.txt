@@ -1,8 +1,9 @@
+find_package(stb REQUIRED)
 add_executable(webasm_demo src/main.cpp)
 
 target_compile_options(webasm_demo PUBLIC -O0)
 
-target_link_libraries(webasm_demo PUBLIC c wajsGl)
+target_link_libraries(webasm_demo PUBLIC c wajs_gl stb::stb)
 
 target_link_options(webasm_demo PUBLIC --no-entry -allow-undefined -export=__main_argc_argv --import-memory)
 
