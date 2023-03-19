@@ -1,5 +1,5 @@
 find_package(stb REQUIRED)
-add_executable(webasm_demo src/main.cpp)
+add_executable(webasm_demo src/main.c)
 
 target_compile_options(webasm_demo PUBLIC -O0)
 

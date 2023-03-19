@@ -3,11 +3,13 @@
 #include <stddef.h>
 #include <time.h>
 
+typedef struct timespec timespec;
+
 static WajsRenderCallback s_WajsRenderCallback = NULL;
 
 static float unixTimeNanoseconds()
 {
-    struct timespec nw;
+    timespec nw;
     clock_gettime(CLOCK_REALTIME, &nw);
     return nw.tv_nsec;
 }

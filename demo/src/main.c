@@ -1,6 +1,8 @@
 #include <math.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -9,29 +11,40 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-const char *vsSource = R"(#version 300 es
-const vec2 triVert[] = vec2[](vec2(-0.5f, -0.5f), vec2(0.0f, 0.5f), vec2(0.5f, -0.5f));
-const vec2 quadVert[] = vec2[](vec2(-1.0f, 1.0f), vec2(-1.0f, -1.0f), vec2(1.0f, 1.0f), vec2(1.0f, -1.0f));
+typedef float    f32;
+typedef double   f64;
+typedef uint8_t  u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+typedef int8_t   i8;
+typedef int16_t  i16;
+typedef int32_t  i32;
+typedef int64_t  i64;
+typedef size_t   usize;
+typedef ssize_t  isize;
 
-out vec2 v_pos;
+#include <assert.h>
+#define ASSERT(e, ...) if(!(e)){assert(false);fprintf(stderr, __VA_ARGS__);}
 
-void main() { 
-    gl_Position = vec4(quadVert[gl_VertexID], 0.0, 1.0);
-    v_pos = quadVert[gl_VertexID];
-}
+const char *vsSource =
+    "#version 300 es\n"
+    "const vec2 triVert[] = vec2[](vec2(-0.5f, -0.5f), vec2(0.0f, 0.5f), vec2(0.5f, -0.5f));"
+    "const vec2 quadVert[] = vec2[](vec2(-1.0f, 1.0f), vec2(-1.0f, -1.0f), vec2(1.0f, 1.0f), vec2(1.0f, -1.0f));"
+    "out vec2 v_pos;"
+    "void main() { "
+    "    gl_Position = vec4(quadVert[gl_VertexID], 0.0, 1.0);"
+    "    v_pos = quadVert[gl_VertexID];"
+    "}";
 
-)";
-
-const char *fsSource = R"(#version 300 es
-precision highp float;
-
-out vec4 FragColor;
-
-in vec2 v_pos;
-
-void main() { 
-    FragColor = vec4(v_pos, 0, 1);
-})";
+const char *fsSource =
+    "#version 300 es\n"
+    "precision highp float;"
+    "out vec4 FragColor;"
+    "in vec2 v_pos;"
+    "void main() { "
+    "    FragColor = vec4(v_pos, 0, 1);"
+    "}";
 
 static GLuint glProg = 0;
 const static int canvasWidth = 640;
@@ -49,7 +62,7 @@ void glRender()
 GLuint compileShader(GLenum type, const char *source)
 {
     GLuint shader = glCreateShader(type);
-    glShaderSource(shader, 1, &source, nullptr);
+    glShaderSource(shader, 1, &source, NULL);
     glCompileShader(shader);
 
     GLint succ;
@@ -60,7 +73,7 @@ GLuint compileShader(GLenum type, const char *source)
 
         char *infoLog = (char *)malloc(logSize);
         infoLog[logSize] = 0;
-        glGetShaderInfoLog(shader, 255, nullptr, infoLog);
+        glGetShaderInfoLog(shader, 255, NULL, infoLog);
         printf("Shader compile error: %s\n", infoLog);
         free(infoLog);
     }
@@ -83,7 +96,7 @@ GLuint linkProgram(GLuint vs, GLuint fs)
 
         char *infoLog = (char *)malloc(logSize);
         infoLog[logSize] = 0;
-        glGetProgramInfoLog(prog, logSize, nullptr, infoLog);
+        glGetProgramInfoLog(prog, logSize, NULL, infoLog);
         printf("Failed to link shader program: %s\n", infoLog);
         free(infoLog);
     }
@@ -108,6 +121,7 @@ void glSetup()
 
 void printUnixTime()
 {
+    typedef struct timespec timespec;
     timespec spec;
     clock_gettime(CLOCK_REALTIME, &spec);
     time_t s = spec.tv_sec;
