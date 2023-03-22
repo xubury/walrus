@@ -1,10 +1,6 @@
 import { initSys } from "/sys.js";
 import { importGl } from "/gl.js";
 
-var res = await fetch("/wasm");
-var wasmBytes = await res.arrayBuffer();
-await initSys(wasmBytes, loadLibraries);
-
 async function fd_open(filename) {
     // open a file, return a fd
     const res = await fetch(
@@ -14,7 +10,7 @@ async function fd_open(filename) {
     const fd = body.fd;
     const err = body.error;
     if (fd == null) {
-        console.log(err)
+        console.log(err);
         fd = 0;
     }
     return fd;
@@ -44,16 +40,9 @@ async function fd_seek(fd, offset, whence) {
     );
 }
 
-const SEEK_SET = 0;
-const SEEK_CUR = 1;
-const SEEK_END = 2;
-
-var fd = await fd_open("favicon.ico");
-if (fd != null) {
-    await fd_read(fd, 21, 10);
-    await fd_seek(fd, 10, SEEK_SET);
-    await fd_close(fd);
-}
+const res = await fetch("/wasm");
+const wasmBytes = await res.arrayBuffer();
+await initSys(wasmBytes, loadLibraries);
 
 function loadLibraries(env) {
     console.log("[WAJS] loadLibraies");

@@ -9,6 +9,8 @@ const port = process.env.PORT || 8080;
 // create application/json parser
 app.use(bodyParser.json());
 
+const dir = fs.openSync(path.join(__dirname, "files"))
+
 var fd_cursors = [];
 var fd_payloads = [];
 app.get("/fd_open", function (req, res) {

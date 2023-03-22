@@ -25,7 +25,11 @@ typedef size_t   usize;
 typedef ssize_t  isize;
 
 #include <assert.h>
-#define ASSERT(e, ...) if(!(e)){assert(false);fprintf(stderr, __VA_ARGS__);}
+#define ASSERT(e, ...)                \
+    if (!(e)) {                       \
+        assert(false);                \
+        fprintf(stderr, __VA_ARGS__); \
+    }
 
 const char *vsSource =
     "#version 300 es\n"
@@ -149,6 +153,12 @@ int main(int argc, char *argv[])
         printf("ptr[%d]:%d ", i, ptr[i]);
     }
     printf("\n");
+
+    FILE *fd = fopen("favicon.ico", "r");
+    printf("fd:%p\n", fd);
+    if (fd != NULL) {
+        fclose(fd);
+    }
 
     return 0;
 }

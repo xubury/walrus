@@ -43,7 +43,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_VERSION 1)
 set(CMAKE_SYSTEM_PROCESSOR wasm)
-set(triple wasm32)
+set(triple wasm32-wasi)
 set(CMAKE_C_COMPILER_TARGET ${triple})
 set(CMAKE_CXX_COMPILER_TARGET ${triple})
 

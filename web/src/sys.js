@@ -7,8 +7,11 @@ const __WASI_CLOCKID_REALTIME =  0;
 const __WASI_CLOCKID_MONOTONIC = 1;// Unimplemented
 const __WASI_CLOCKID_PROCESS_CPUTIME_ID =  2;// Unimplemented
 
-const ENOSYS = 38; // Function not implemented
-
+const WASI_ESUCCESS = 0;
+const WASI_EBADF = 8;
+const WASI_EINVAL = 28;
+const WASI_EIO = 29;
+const WASI_ENOSYS = 52;
 // Find the start point of the stack and the heap to calculate the initial memory requirements
 var wasmDataEnd = 64, wasmStackTop = 4096, wasmHeapBase = 65536;
 
@@ -145,6 +148,10 @@ export async function initSys(wasmBytes, libLoader)
     }
 }
 
+function stringBuffer(string) {
+	return new TextEncoder().encode(string);
+}
+
 // Set the array views of various data types used to read/write to the wasm memory from JavaScript
 function MemorySetBufferViews()
 {
@@ -233,7 +240,7 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
 		// Write the amount of data actually read to the result pointer
 		HEAPU32[pOutResult>>2] = ret;
 		//console.log('fd_read -     ret: ' + ret);
-		return 0; // no error
+		return WASI_ESUCCESS; // no error
 	};
 
 	// fd_seek call to seek in a file (seeks in payload)
@@ -250,7 +257,7 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
 		HEAPU32[(pOutResult+0)>>2] = PAYLOAD_CURSOR;
 		HEAPU32[(pOutResult+4)>>2] = 0;
 		//console.log('fd_seek - fd: ' + fd + ' - offset_high: ' + offset_high + ' - offset_low: ' + offset_low + ' - pOutResult: ' + pOutResult + ' - whence: ' +whence + ' - seek to: ' + PAYLOAD_CURSOR);
-		return 0; // no error
+		return WASI_ESUCCESS; // no error
 	};
 
 	// fd_write call to write to a file/pipe (can only be used to write to stdout here)
@@ -270,21 +277,73 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
 		// Print the passed string and write the number of bytes read to the result pointer
 		WA.print(str);
 		HEAPU32[pOutResult>>2] = ret;
-		return 0; // no error
+		return WASI_ESUCCESS; // no error
 	};
 
 	// fd_close to close a file (no real file system emulation, so this does nothing)
-	wasi.fd_close = function(fd)
+	wasi.fd_close = async function(fd)
 	{
-		//console.log('fd_close - fd: ' + fd);
-		return 0; // no error
+        console.log("fd_close: " + fd);
+        await fetch("/fd_close?" + new URLSearchParams({ fd: fd }));
+		return WASI_ESUCCESS; // no error
 	};
 
-	// sys_fcntl64 and sys_ioctl set file and IO modes/flags which are not emulated here
-	wasi.fd_fdstat_get = env.__sys_fcntl64 = env.__sys_ioctl = function(fd, param)
-	{
-		return 0; // no error
-	};
+    wasi.fd_fdstat_get = function(fd, bufPtr) {
+        return WASI_ESUCCESS;
+    };
+
+    wasi.fd_fdstat_set_flags = function(fd, flags) 
+    {
+        return 8;
+    };
+
+    wasi.fd_prestat_get = function(fd, ptr)
+    {
+        if (fd == 3) {
+            // var path_buf = stringBuffer('/');
+            // HEAPU8[ptr] = 0;
+            // HEAPU32[(ptr + 4) >> 2] = path_buf.length;
+            return WASI_ESUCCESS;
+        }
+        return WASI_EBADF;
+    };
+
+    wasi.fd_prestat_dir_name = function(fd, param1, param2)
+    {
+        return WASI_EINVAL;
+    };
+
+    wasi.path_open = async function(parent_fd, dirflags, path, path_len, oflags, fs_rights_base, fs_rights_inheriting, fdflags, opened_fd)
+    {
+        const filename = ReadHeapString(path, path_len);
+        console.log("[WAJS] path_open dirfd: " + parent_fd + " filename:" + filename);
+
+        // open a file, return a fd
+        const res = await fetch(
+            "/fd_open?" + new URLSearchParams({ filename: filename })
+        );
+        const body = await res.json();
+        const fd = body.fd;
+        if (fd == null) {
+            WA.error(body.error);
+            return WASI_EIO;
+        }
+        console.log("open fd: " + fd + " opened_fd: " + opened_fd.toString(16));
+        HEAP32[(opened_fd) >> 2] = fd;
+
+        wasi.fd_close(fd); // TODO: remove this
+        return WASI_ESUCCESS;
+    };
+
+    wasi.proc_exit = function(code)
+    {
+        abort(code, ":proc_exit");
+    };
+
+    wasi.fd_prestat_dir_name = function(fd)
+    {
+        return WASI_ESUCCESS;
+    };
 
 	// Functions querying the system time
     wasi.clock_time_get =  function(clk_id, pre, ptime) { 
@@ -292,12 +351,12 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
         if (clk_id == __WASI_CLOCKID_REALTIME) {
            now = Date.now();
         } else {
-            return ENOSYS;
+            return WASI_ENOSYS;
         }
         var nsec = Math.round(now * 1000 * 1000);
         HEAP32[(ptime + 4)>>2] = (nsec / Math.pow(2, 32)) >>> 0;
         HEAP32[(ptime + 0)>>2] = (nsec >>> 0);
-        return 0;
+        return WASI_ESUCCESS;
     };
 
 }
