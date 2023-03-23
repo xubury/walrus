@@ -1,5 +1,5 @@
 // Some global state variables and max heap definition
-export var HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32;
+var HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32;
 export var ABORT = false; // program crash signal
 var WASM_MEMORY, WASM_HEAP, WASM_HEAP_MAX = 256*1024*1024; //max 256MB
 
@@ -15,11 +15,26 @@ const WASI_ENOSYS = 52;
 // Find the start point of the stack and the heap to calculate the initial memory requirements
 var wasmDataEnd = 64, wasmStackTop = 4096, wasmHeapBase = 65536;
 
+async function fileFetch(filename) {
+    // open a file, return a fd
+    const res = await fetch(
+        "/file_read?" + new URLSearchParams({ filename: filename })
+    );
+    const json = await res.json();
+    const data = json.payload.data;
+    return data;
+}
+
 // A generic abort function that if called stops the execution of the program and shows an error
 export function abort(code, msg) {
     ABORT = true;
     WA.error(code, msg);
     throw "abort";
+}
+
+export function getHeap()
+{
+    return new DataView(WASM_MEMORY.buffer);
 }
 
 // Puts a string from javascript onto the wasm memory heap (encoded as UTF8) (max_length is optional)
@@ -208,39 +223,44 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
 	var PAYLOAD = (WA.payload ? Base64Decode(WA.payload) : new Uint8Array(0));
 	delete WA.payload;
 
-	// sys_open call to open a file (can only be used to open payload here)
-	env.__sys_open = function(pPath, flags, pMode) 
-	{
-		// Opening just resets the seek cursor to 0
-		PAYLOAD_CURSOR = 0;
-		//var pathname = ReadHeapString(pPath); //read the file name passed to open
-		//console.log('__sys_open open - path: ' + pathname + ' - flags: ' + flags + ' - mode: ' + HEAPU32[pMode>>2]);
-		return 9; //return dummy file number
-	};
+    // filesystem
+    const preopen_dir = '/'
+    var fds = [];
+    function nextFd() {
+        for (var i = 1; ; ++i) {
+            if (fds[i] === undefined) {
+                return i;
+            }
+        };
+    }
 
 	// fd_read call to read from a file (reads from payload)
-	wasi.fd_read = function(fd, iov, iovcnt, pOutResult)
+	wasi.fd_read = async function(fd, iov, iovcnt, pOutResult)
 	{
+        WA.print("[WAJS] fd_read on: %d", fd);
+        var file = fds[fd] 
+        var heap = getHeap();
+        if (file.data == null) {
+            return 112; // EAGAIN;
+        }
+        var buffer = new Uint8Array(await file.data);
 		for (var ret = 0, i = 0; i < iovcnt; i++)
 		{
 			// Process list of IO commands
-			var ptr = HEAPU32[((iov)+(i*8))>>2];
-			var len = HEAPU32[((iov)+(i*8 + 4))>>2];
-			var curr = Math.min(len, PAYLOAD.length - PAYLOAD_CURSOR);
-			//console.log('fd_read - fd: ' + fd + ' - iov: ' + iov + ' - iovcnt: ' + iovcnt + ' - ptr: ' + ptr + ' - len: ' + len + ' - reading: ' + curr + ' (from ' + PAYLOAD_CURSOR + ' to ' + (PAYLOAD_CURSOR + curr) + ')');
-
+    		var ptr = heap.getUint32(iov + 8 * i + 0, true);
+			var len = heap.getUint32(iov + 8 * i + 4, true);
+			var read = Math.min(len, buffer.length - file.pos);
 			// Write the requested data onto the heap and advance the seek cursor
-			HEAPU8.set(PAYLOAD.subarray(PAYLOAD_CURSOR, PAYLOAD_CURSOR + curr), ptr);
-			PAYLOAD_CURSOR += curr;
+            var sub = buffer.subarray(file.pos, file.pos + read)
+			heap.setUint8(sub, ptr);
 
-			ret += curr;
-			if (curr < len) break; // nothing more to read
+			file.pos += read;
+			ret += read;
 		}
 
 		// Write the amount of data actually read to the result pointer
-		HEAPU32[pOutResult>>2] = ret;
-		//console.log('fd_read -     ret: ' + ret);
-		return WASI_ESUCCESS; // no error
+        heap.setUint32(pOutResult, ret, true);
+		return WASI_ESUCCESS;
 	};
 
 	// fd_seek call to seek in a file (seeks in payload)
@@ -280,58 +300,73 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
 		return WASI_ESUCCESS; // no error
 	};
 
-	// fd_close to close a file (no real file system emulation, so this does nothing)
-	wasi.fd_close = async function(fd)
+	wasi.fd_close = function(fd)
 	{
-        console.log("fd_close: " + fd);
-        await fetch("/fd_close?" + new URLSearchParams({ fd: fd }));
+        WA.print("[WAJS] fd_close: " + fd);
+        if (fds[fd] == null) {
+            return WASI_EBADF;
+        }
+        // fds[fd] = null;
 		return WASI_ESUCCESS; // no error
 	};
 
-    wasi.fd_fdstat_get = function(fd, bufPtr) {
+    wasi.fd_fdstat_get = function(fd, stat)
+    {
+        if (fds[fd]) {
+            WA.print("[WAJS] fd_fdstat_get fd:%d filename:%s", fd, fds[fd].filename);
+        }
+        var heap = getHeap();
+        // heap.setUint8(stat + 0, fds[fd] != null && fds[fd].data != null ? 3 : 4);
+        heap.setUint16(stat + 2, 0, true);
+        heap.setUint32(stat + 8, 0, true);
+        heap.setUint32(stat + 12, 0, true);
+        heap.setUint32(stat + 16, 0, true);
+        heap.setUint32(stat + 20, 0, true);
         return WASI_ESUCCESS;
     };
 
     wasi.fd_fdstat_set_flags = function(fd, flags) 
     {
-        return 8;
+        return WASI_ENOSYS;
     };
 
     wasi.fd_prestat_get = function(fd, ptr)
     {
+        // WA.print("[WAJS] fd_prestat_get fd:%d ptr:%d", fd, ptr);
         if (fd == 3) {
-            // var path_buf = stringBuffer('/');
-            // HEAPU8[ptr] = 0;
-            // HEAPU32[(ptr + 4) >> 2] = path_buf.length;
+            var heap = getHeap();
+            heap.setUint8(ptr, 0);
+            heap.setUint32(ptr + 4, preopen_dir.length, true);
             return WASI_ESUCCESS;
         }
         return WASI_EBADF;
     };
 
-    wasi.fd_prestat_dir_name = function(fd, param1, param2)
+    wasi.fd_prestat_dir_name = function(fd, pathptr, pathlen)
     {
-        return WASI_EINVAL;
+        // WA.print("[WAJS] fd_prestat_dir_name fd: %d pathptr: %d pathlen: %d", fd, pathptr, pathlen);
+        if (preopen_dir.length != pathlen) {
+            return WASI_EINVAL;
+        }
+        WriteHeapString(preopen_dir, pathptr)
+        return WASI_ESUCCESS;
     };
 
-    wasi.path_open = async function(parent_fd, dirflags, path, path_len, oflags, fs_rights_base, fs_rights_inheriting, fdflags, opened_fd)
+
+    wasi.path_open = function(parent_fd, dirflags, path, path_len, oflags, fs_rights_base, fs_rights_inheriting, fdflags, opened_fd)
     {
         const filename = ReadHeapString(path, path_len);
-        console.log("[WAJS] path_open dirfd: " + parent_fd + " filename:" + filename);
+        console.log("[WAJS] path_open dirfd: %d filename: %s", parent_fd, filename);
 
-        // open a file, return a fd
-        const res = await fetch(
-            "/fd_open?" + new URLSearchParams({ filename: filename })
-        );
-        const body = await res.json();
-        const fd = body.fd;
-        if (fd == null) {
-            WA.error(body.error);
-            return WASI_EIO;
-        }
-        console.log("open fd: " + fd + " opened_fd: " + opened_fd.toString(16));
-        HEAP32[(opened_fd) >> 2] = fd;
+        const fd = nextFd();
+        console.log("[WAJS] fd: %d opened_fd: %s", fd, opened_fd);
+        var heap = getHeap()
+        heap.setUint32(opened_fd, fd, true);
 
-        wasi.fd_close(fd); // TODO: remove this
+        fds[fd] = {};
+        fds[fd].filename = filename;
+        fds[fd].pos = 0;
+        fds[fd].data = fileFetch(filename);
         return WASI_ESUCCESS;
     };
 
@@ -340,13 +375,9 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
         abort(code, ":proc_exit");
     };
 
-    wasi.fd_prestat_dir_name = function(fd)
-    {
-        return WASI_ESUCCESS;
-    };
-
 	// Functions querying the system time
-    wasi.clock_time_get =  function(clk_id, pre, ptime) { 
+    wasi.clock_time_get =  function(clk_id, pre, ptime)
+    { 
         var now
         if (clk_id == __WASI_CLOCKID_REALTIME) {
            now = Date.now();
@@ -354,8 +385,9 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
             return WASI_ENOSYS;
         }
         var nsec = Math.round(now * 1000 * 1000);
-        HEAP32[(ptime + 4)>>2] = (nsec / Math.pow(2, 32)) >>> 0;
-        HEAP32[(ptime + 0)>>2] = (nsec >>> 0);
+        var heap = getHeap();
+        heap.setInt32(ptime + 4, (nsec / Math.pow(2, 32)) >>> 0, true);
+        heap.setInt32(ptime + 0, (nsec >>> 0), true);
         return WASI_ESUCCESS;
     };
 

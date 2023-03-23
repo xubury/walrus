@@ -9,7 +9,7 @@ const port = process.env.PORT || 8080;
 // create application/json parser
 app.use(bodyParser.json());
 
-const dir = fs.openSync(path.join(__dirname, "files"))
+fs.openSync(path.join(__dirname, "files"));
 
 var fd_cursors = [];
 var fd_payloads = [];
@@ -39,7 +39,14 @@ app.get("/fd_read", function (req, res) {
     var read = Math.min(length, payload.length - cursor);
     payload = payload.subarray(cursor, cursor + read);
     fd_cursors[fd] += read;
-    res.send(JSON.stringify({payload:payload}));
+    res.send(JSON.stringify({ payload: payload }));
+});
+
+app.get("/file_read", function (req, res) {
+    const filename = path.join(__dirname, "files", req.query.filename);
+    fs.readFile(filename, function (err, data) {
+        res.send(JSON.stringify({ error: err, payload: data }));
+    });
 });
 
 app.get("/fd_close", function (req, res) {

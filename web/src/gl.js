@@ -15,6 +15,7 @@ function getNewId(table) {
 }
 
 function genObjects(n, buffers, createFunction, table) {
+    var heap = sys.getHeap()
     for (var i = 0; i < n; ++i) {
         var buffer = glCtx[createFunction]();
         var id = buffer && getNewId(table);
@@ -27,13 +28,14 @@ function genObjects(n, buffers, createFunction, table) {
                 "Fail to create gl object, gl context may be lost!"
             );
         }
-        sys.HEAP32[(buffers + i * 4) >> 2] = id;
+        heap.setInt32(buffers + i * 4, id, true);
     }
 }
 
 function deleteObjects(n, buffers, destroyFunction, table) {
+    var heap = sys.getHeap()
     for (var i = 0; i < n; ++i) {
-        var id = sys.HEAP32[(buffers + i * 4) >> 2];
+        var id = heap.getInt32(buffers + i * 4, true);
         var object = table[id];
         if (!object) continue;
         glCtx[destroyFunction](object);
@@ -43,19 +45,20 @@ function deleteObjects(n, buffers, destroyFunction, table) {
 
 function getSource(count, string, length) {
     var source = "";
+    var heap = sys.getHeap()
     for (var i = 0; i < count; ++i) {
         var frag;
         if (length) {
-            var len = sys.HEAP32[(length + i * 4) >> 2];
+            var len = heap.getInt32(length + i  * 4);
             if (len < 0)
-                frag = sys.ReadHeapString(sys.HEAP32[(string + i * 4) >> 2]);
+                frag = sys.ReadHeapString(heap.getInt32(string + i * 4, true));
             else
                 frag = sys.ReadHeapString(
-                    sys.HEAP32[(string + i * 4) >> 2],
+                    heap.getInt32(string + i * 4, true),
                     len
                 );
         } else {
-            frag = sys.ReadHeapString(sys.HEAP32[(string + i * 4) >> 2]);
+            frag = sys.ReadHeapString(heap.getInt32(string + i * 4, true));
         }
         source += frag;
     }
@@ -160,13 +163,15 @@ export function importGl(env) {
             } else {
                 ret = glCtx.getShaderParameter(glShaders[shader], param);
             }
-            sys.HEAP32[ptr >> 2] = ret;
+            var heap = sys.getHeap()
+            heap.setInt32(ptr, ret, true);
         },
 
         glGetShaderInfoLog: function (shader, bufSize, logSize, ptr) {
             var log = glCtx.getShaderInfoLog(glShaders[shader]);
             if (logSize) {
-                sys.HEAP32[logSize >> 2] = log.length;
+                var heap = sys.getHeap()
+                heap.setInt32(logSize, log.length, true);
             }
             sys.WriteHeapString(log, ptr, bufSize);
         },
@@ -178,13 +183,16 @@ export function importGl(env) {
             } else {
                 ret = glCtx.getProgramParameter(glPrograms[program], param);
             }
-            sys.HEAP32[ptr >> 2] = ret;
+
+            var heap = sys.getHeap();
+            heap.setInt32(ptr, ret, true);
         },
 
         glGetProgramInfoLog: function (program, bufSize, logSize, ptr) {
             var log = glCtx.getProgramInfoLog(glPrograms[program]);
             if (logSize) {
-                sys.HEAP32[logSize >> 2] = log.length;
+                var heap = sys.getHeap()
+                heap.setInt32(logSize, log.length, true);
             }
             sys.WriteHeapString(log, ptr, bufSize);
         },

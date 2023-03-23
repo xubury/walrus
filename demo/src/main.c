@@ -11,18 +11,18 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-typedef float    f32;
-typedef double   f64;
-typedef uint8_t  u8;
+typedef float f32;
+typedef double f64;
+typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
-typedef int8_t   i8;
-typedef int16_t  i16;
-typedef int32_t  i32;
-typedef int64_t  i64;
-typedef size_t   usize;
-typedef ssize_t  isize;
+typedef int8_t i8;
+typedef int16_t i16;
+typedef int32_t i32;
+typedef int64_t i64;
+typedef size_t usize;
+typedef ssize_t isize;
 
 #include <assert.h>
 #define ASSERT(e, ...)                \
@@ -117,10 +117,12 @@ void glSetup()
     GLuint fs = compileShader(GL_FRAGMENT_SHADER, fsSource);
     glProg = linkProgram(vs, fs);
 
-    GLuint texture;
-    glGenTextures(1, &texture);
-    printf("texture: %d\n", texture);
-    glDeleteTextures(1, &texture);
+    GLuint textures[2];
+    glGenTextures(2, textures);
+    for (int i = 0; i < 2; ++i) {
+        printf("texture: %d\n", textures[i]);
+    }
+    glDeleteTextures(2, textures);
 }
 
 void printUnixTime()
@@ -140,6 +142,7 @@ void printUnixTime()
 
 int main(int argc, char *argv[])
 {
+    printf("argc: %d, argv: %p\n", argc, argv);
     glSetup();
 
     printUnixTime();
@@ -154,10 +157,16 @@ int main(int argc, char *argv[])
     }
     printf("\n");
 
-    FILE *fd = fopen("favicon.ico", "r");
-    printf("fd:%p\n", fd);
-    if (fd != NULL) {
-        fclose(fd);
+    FILE *file = fopen("favicon.ico", "r");
+    printf("file:%p, fd:%d\n", file, fileno(file));
+    if (file != NULL) {
+        char buffer = 1;
+        int read = fread(&buffer, 1, 1, file);
+        printf("fread bytes: %d buffer: %d\n", read, buffer);
+        printf("fclose on file: %p, fd: %d\n", file, fileno(file));
+        if (fclose(file) == EOF) {
+            printf("error closing file\n");
+        }
     }
 
     return 0;

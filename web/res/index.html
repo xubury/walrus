@@ -21,8 +21,8 @@
         <script type="text/javascript">
             var WA = {
                 canvas: document.getElementById("wa_canvas"),
-                print: function (text) {
-                    console.log(text);
+                print: function (text, ...params) {
+                    console.log(text, ...params);
                 },
                 error: function (code, msg) {
                     console.error(code + msg);
