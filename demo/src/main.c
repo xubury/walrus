@@ -160,9 +160,9 @@ int main(int argc, char *argv[])
     FILE *file = fopen("favicon.ico", "r");
     printf("file:%p, fd:%d\n", file, fileno(file));
     if (file != NULL) {
-        char buffer = 1;
-        int read = fread(&buffer, 1, 1, file);
-        printf("fread bytes: %d buffer: %d\n", read, buffer);
+        char buffer[4];
+        int read = fread(buffer, 1, 4, file);
+        printf("fread bytes: %d buffer: %d %d %d %d\n", read, buffer[0], buffer[1], buffer[2], buffer[3]);
         printf("fclose on file: %p, fd: %d\n", file, fileno(file));
         if (fclose(file) == EOF) {
             printf("error closing file\n");

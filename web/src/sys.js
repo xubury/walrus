@@ -15,14 +15,7 @@ const WASI_ENOSYS = 52;
 // Find the start point of the stack and the heap to calculate the initial memory requirements
 var wasmDataEnd = 64, wasmStackTop = 4096, wasmHeapBase = 65536;
 
-async function fileFetch(filename) {
-    // open a file, return a fd
-    const res = await fetch(
-        "/file_read?" + new URLSearchParams({ filename: filename })
-    );
-    const json = await res.json();
-    const data = json.payload.data;
-    return data;
+function fileFetch(filename) {
 }
 
 // A generic abort function that if called stops the execution of the program and shows an error
@@ -233,26 +226,51 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
             }
         };
     }
+    function readFile(filename) 
+    {
+        var ret
+        // open a file, return a fd
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', "/file_read?" + new URLSearchParams({filename : filename}), false);
+        xhr.onload = function() {
+            var data = JSON.parse(xhr.response).payload.data;
+            ret = data;
+            console.log(data)
+        };
+        xhr.onerror = function() {
+              WA.print(`[WAJS] Network Error`);
+        };
+        xhr.send();
+        return ret;
+    }
 
 	// fd_read call to read from a file (reads from payload)
-	wasi.fd_read = async function(fd, iov, iovcnt, pOutResult)
+	wasi.fd_read = function(fd, iov, iovcnt, pOutResult)
 	{
         WA.print("[WAJS] fd_read on: %d", fd);
         var file = fds[fd] 
-        var heap = getHeap();
-        if (file.data == null) {
-            return 112; // EAGAIN;
+        if (file == null || file.filename == null) {
+            return WASI_EBADF;
         }
-        var buffer = new Uint8Array(await file.data);
+
+        var heap = getHeap();
+
+        var data = readFile(file.filename)
+        if (data == null) {
+            return WASI_EBADF;
+        }
+
+        var buffer = new Uint8Array(data);
 		for (var ret = 0, i = 0; i < iovcnt; i++)
 		{
 			// Process list of IO commands
     		var ptr = heap.getUint32(iov + 8 * i + 0, true);
 			var len = heap.getUint32(iov + 8 * i + 4, true);
 			var read = Math.min(len, buffer.length - file.pos);
+
 			// Write the requested data onto the heap and advance the seek cursor
             var sub = buffer.subarray(file.pos, file.pos + read)
-			heap.setUint8(sub, ptr);
+            HEAPU8.set(sub, ptr);
 
 			file.pos += read;
 			ret += read;
@@ -356,17 +374,16 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
     wasi.path_open = function(parent_fd, dirflags, path, path_len, oflags, fs_rights_base, fs_rights_inheriting, fdflags, opened_fd)
     {
         const filename = ReadHeapString(path, path_len);
-        console.log("[WAJS] path_open dirfd: %d filename: %s", parent_fd, filename);
-
-        const fd = nextFd();
-        console.log("[WAJS] fd: %d opened_fd: %s", fd, opened_fd);
         var heap = getHeap()
-        heap.setUint32(opened_fd, fd, true);
+        const fd = nextFd();
 
         fds[fd] = {};
         fds[fd].filename = filename;
         fds[fd].pos = 0;
-        fds[fd].data = fileFetch(filename);
+
+
+        console.log("[WAJS] fd: %d opened_fd: %s", fd, opened_fd);
+        heap.setUint32(opened_fd, fd, true);
         return WASI_ESUCCESS;
     };
 
