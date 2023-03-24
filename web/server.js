@@ -11,11 +11,32 @@ app.use(bodyParser.json());
 
 fs.openSync(path.join(__dirname, "files"));
 
-app.get("/file_read", function (req, res) {
+app.get("/fd_open", function (req, res) {
     const filename = path.join(__dirname, "files", req.query.filename);
-    fs.readFile(filename, function (err, data) {
-        res.send(JSON.stringify({ error: err, payload: data }));
+    try {
+        const fd = fs.openSync(filename);
+        console.log("[TRACE] fd_open on fd:" + fd);
+        res.send(JSON.stringify({ fd: fd }));
+    } catch (error) {
+        console.log(error);
+        res.status(500).send(JSON.stringify({ error: error }));
+    }
+});
+
+
+app.get("/fd_read", function (req, res) {
+    const fd = Number(req.query.fd);
+    console.log("[TRACE] fd_read on fd: " + fd);
+
+    fs.read(fd, function(err, bytesRead, buffer){
+        res.send(JSON.stringify({ error: err, payload: buffer }));
     });
+});
+
+app.get("/fd_close", function (req, res) {
+    const fd = Number(req.query.fd);
+    console.log("[TRACE] fd_close on fd: " + fd);
+    fs.closeSync(fd);
 });
 
 app.get("/", function (req, res) {

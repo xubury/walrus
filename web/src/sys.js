@@ -15,9 +15,6 @@ const WASI_ENOSYS = 52;
 // Find the start point of the stack and the heap to calculate the initial memory requirements
 var wasmDataEnd = 64, wasmStackTop = 4096, wasmHeapBase = 65536;
 
-function fileFetch(filename) {
-}
-
 // A generic abort function that if called stops the execution of the program and shows an error
 export function abort(code, msg) {
     ABORT = true;
@@ -217,34 +214,9 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
 	delete WA.payload;
 
     // filesystem
-    const preopen_dir = '/'
+    const rootDir = '/'
     var fds = [];
-    function nextFd() {
-        for (var i = 1; ; ++i) {
-            if (fds[i] === undefined) {
-                return i;
-            }
-        };
-    }
-    function readFile(filename) 
-    {
-        var ret
-        // open a file, return a fd
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', "/file_read?" + new URLSearchParams({filename : filename}), false);
-        xhr.onload = function() {
-            var data = JSON.parse(xhr.response).payload.data;
-            ret = data;
-            console.log(data)
-        };
-        xhr.onerror = function() {
-              WA.print(`[WAJS] Network Error`);
-        };
-        xhr.send();
-        return ret;
-    }
 
-	// fd_read call to read from a file (reads from payload)
 	wasi.fd_read = function(fd, iov, iovcnt, pOutResult)
 	{
         WA.print("[WAJS] fd_read on: %d", fd);
@@ -255,12 +227,11 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
 
         var heap = getHeap();
 
-        var data = readFile(file.filename)
-        if (data == null) {
-            return WASI_EBADF;
+        if (file.data == null) {
+            file.read();
         }
 
-        var buffer = new Uint8Array(data);
+        var buffer = new Uint8Array(file.data);
 		for (var ret = 0, i = 0; i < iovcnt; i++)
 		{
 			// Process list of IO commands
@@ -324,7 +295,8 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
         if (fds[fd] == null) {
             return WASI_EBADF;
         }
-        // fds[fd] = null;
+        fds[fd].close();
+        fds[fd] = null;
 		return WASI_ESUCCESS; // no error
 	};
 
@@ -334,7 +306,7 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
             WA.print("[WAJS] fd_fdstat_get fd:%d filename:%s", fd, fds[fd].filename);
         }
         var heap = getHeap();
-        // heap.setUint8(stat + 0, fds[fd] != null && fds[fd].data != null ? 3 : 4);
+        heap.setUint8(stat + 0, fds[fd] != null ? 3 : 4);
         heap.setUint16(stat + 2, 0, true);
         heap.setUint32(stat + 8, 0, true);
         heap.setUint32(stat + 12, 0, true);
@@ -354,7 +326,7 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
         if (fd == 3) {
             var heap = getHeap();
             heap.setUint8(ptr, 0);
-            heap.setUint32(ptr + 4, preopen_dir.length, true);
+            heap.setUint32(ptr + 4, rootDir.length, true);
             return WASI_ESUCCESS;
         }
         return WASI_EBADF;
@@ -363,27 +335,62 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
     wasi.fd_prestat_dir_name = function(fd, pathptr, pathlen)
     {
         // WA.print("[WAJS] fd_prestat_dir_name fd: %d pathptr: %d pathlen: %d", fd, pathptr, pathlen);
-        if (preopen_dir.length != pathlen) {
+        if (rootDir.length != pathlen) {
             return WASI_EINVAL;
         }
-        WriteHeapString(preopen_dir, pathptr)
+        WriteHeapString(rootDir, pathptr)
         return WASI_ESUCCESS;
     };
+
 
 
     wasi.path_open = function(parent_fd, dirflags, path, path_len, oflags, fs_rights_base, fs_rights_inheriting, fdflags, opened_fd)
     {
         const filename = ReadHeapString(path, path_len);
         var heap = getHeap()
-        const fd = nextFd();
 
-        fds[fd] = {};
-        fds[fd].filename = filename;
-        fds[fd].pos = 0;
+        var file = {};
+        file.read = function read() 
+        {
+            if (this.fd == null) return;
 
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', "/fd_read?" + new URLSearchParams({fd : this.fd}), false);
+            xhr.onload = function() {
+                file.data = JSON.parse(xhr.response).payload.data;
+                console.log(file.data)
+            };
+            xhr.onerror = function() {
+                  WA.print(`[WAJS] Network Error`);
+            };
+            xhr.send();
+        };
+        file.close = function close()
+        {
+            if (this.fd == null) return;
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', "/fd_close?" + new URLSearchParams({fd : this.fd}));
+            xhr.send();
+        };
 
-        console.log("[WAJS] fd: %d opened_fd: %s", fd, opened_fd);
-        heap.setUint32(opened_fd, fd, true);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', "/fd_open?" + new URLSearchParams({filename : filename}), false);
+        xhr.onload = function() {
+            const fd = JSON.parse(xhr.response).fd;
+            file.fd = fd;
+            file.filename = filename;
+            file.pos = 0;
+            file.data = null;
+            fds[fd] = file;
+
+            console.log("[WAJS] fd: %d opened_fd: %s", fd, opened_fd);
+            heap.setUint32(opened_fd, fd, true);
+        };
+        xhr.onerror = function() {
+              WA.print(`[WAJS] Network Error`);
+        };
+        xhr.send();
+
         return WASI_ESUCCESS;
     };
 
