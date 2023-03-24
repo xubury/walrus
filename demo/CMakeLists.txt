@@ -5,10 +5,7 @@ target_compile_options(webasm_demo PUBLIC -O0)
 
 target_link_libraries(webasm_demo PUBLIC c wajs_gl stb::stb)
 
-target_link_options(webasm_demo PUBLIC --no-entry -allow-undefined -export=__main_argc_argv --import-memory)
-
-# clean up
-target_include_directories(webasm_demo PUBLIC ${PROJECT_SOURCE_DIR})
+target_link_options(webasm_demo PUBLIC -Wl,--no-entry -Wl,-allow-undefined -Wl,--import-memory)
 
 add_custom_command(
   TARGET webasm_demo

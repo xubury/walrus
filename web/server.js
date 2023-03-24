@@ -14,23 +14,28 @@ fs.openSync(path.join(__dirname, "files"));
 app.get("/fd_open", function (req, res) {
     const filename = path.join(__dirname, "files", req.query.filename);
     try {
-        const fd = fs.openSync(filename);
-        console.log("[TRACE] fd_open on fd:" + fd);
-        res.send(JSON.stringify({ fd: fd }));
+        fs.open(filename, 'r', function(err, fd) {
+            console.log("[TRACE] fd_open on fd:" + fd);
+            if (err) {
+                throw err;
+            }
+            fs.fstat(fd, function(err, stats) {
+                if (err) {
+                    throw err;
+                }
+                var buffer = Buffer.alloc(stats.size);
+                fs.read(fd, buffer, 0, buffer.length, 0, function(err, bytesRead){
+                    if (err) {
+                        throw err;
+                    }
+                    res.send(JSON.stringify({ fd :fd, payload: buffer }));
+                });
+            });
+        });
     } catch (error) {
         console.log(error);
         res.status(500).send(JSON.stringify({ error: error }));
     }
-});
-
-
-app.get("/fd_read", function (req, res) {
-    const fd = Number(req.query.fd);
-    console.log("[TRACE] fd_read on fd: " + fd);
-
-    fs.read(fd, function(err, bytesRead, buffer){
-        res.send(JSON.stringify({ error: err, payload: buffer }));
-    });
 });
 
 app.get("/fd_close", function (req, res) {

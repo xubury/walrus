@@ -24,8 +24,8 @@
                 print: function (text, ...params) {
                     console.log(text, ...params);
                 },
-                error: function (code, msg) {
-                    console.error(code + msg);
+                error: function (code, text, ...params) {
+                    console.error("CODE:%d " + text, code, ...params);
                 },
             };
         </script>

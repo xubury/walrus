@@ -1,5 +1,4 @@
 // Some global state variables and max heap definition
-var HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32;
 export var ABORT = false; // program crash signal
 var WASM_MEMORY, WASM_HEAP, WASM_HEAP_MAX = 256*1024*1024; //max 256MB
 
@@ -30,6 +29,7 @@ export function getHeap()
 // Puts a string from javascript onto the wasm memory heap (encoded as UTF8) (max_length is optional)
 export function WriteHeapString(str, ptr, max_length)
 {
+    var HEAPU8 = new Uint8Array(WASM_MEMORY.buffer);
 	for (var e=str,r=HEAPU8,f=ptr,i=(max_length?max_length:HEAPU8.length),a=f,t=f+i-1,b=0;b<e.length;++b)
 	{
 		var k=e.charCodeAt(b);
@@ -46,6 +46,7 @@ export function WriteHeapString(str, ptr, max_length)
 // Reads a string from the wasm memory heap to javascript (decoded as UTF8)
 export function ReadHeapString(ptr, length)
 {
+    var HEAPU8 = new Uint8Array(WASM_MEMORY.buffer);
 	if (length === 0 || !ptr) return '';
 	for (var hasUtf = 0, t, i = 0; !length || i != length; i++)
 	{
@@ -110,17 +111,6 @@ export async function initSys(wasmBytes, libLoader)
     WASM_HEAP = wasmHeapBase;
     WASM_MEMORY = env.memory = new WebAssembly.Memory({initial: wasmMemInitial>>16, maximum: WASM_HEAP_MAX>>16 });
 
-    MemorySetBufferViews();
-
-    // Store the argument list with 1 entry at the far end of the stack to pass to main
-    const exe = 'wasm.exe';
-    const argc = 1, argv = wasmStackTop;
-
-    // Store the program name string after the argv list
-    WriteHeapString(exe, (argv + 8));
-    HEAPU32[(argv>>2) + 0] = (argv + 8)
-    HEAPU32[(argv>>2) + 1] = 0;
-
     if (libLoader) {
         libLoader(env);
     }
@@ -140,9 +130,9 @@ export async function initSys(wasmBytes, libLoader)
         if (WA.wasm.__wasm_call_ctors)
             WA.wasm.__wasm_call_ctors();
 
-        if (WA.wasm.__main_argc_argv) {
+        if (WA.wasm._start) {
             console.log("[WAJS] wasm main start");
-            WA.wasm.__main_argc_argv(argc, argv);
+            WA.wasm._start();
             console.log("[WAJS] wasm main exit");
         }
 
@@ -151,21 +141,6 @@ export async function initSys(wasmBytes, libLoader)
         if (err !== 'abort')
             abort('BOOT', 'WASM instiantate error: ' + err + (err.stack ? "\n" + err.stack : ''));
     }
-}
-
-function stringBuffer(string) {
-	return new TextEncoder().encode(string);
-}
-
-// Set the array views of various data types used to read/write to the wasm memory from JavaScript
-function MemorySetBufferViews()
-{
-	var buf = WASM_MEMORY.buffer;
-	HEAP32 = new Int32Array(buf);
-	HEAPU8 = new Uint8Array(buf);
-	HEAPU16 = new Uint16Array(buf);
-	HEAPU32 = new Uint32Array(buf);
-	HEAPF32 = new Float32Array(buf);
 }
 
 // Set up the env and wasi objects that contains the functions passed to the wasm module
@@ -177,7 +152,7 @@ var env =
 		var heapOld = WASM_HEAP, heapNew = heapOld + increment, heapGrow = heapNew - WASM_MEMORY.buffer.byteLength;
 		//console.log('[SBRK] Increment: ' + increment + ' - HEAP: ' + heapOld + ' -> ' + heapNew + (heapGrow > 0 ? ' - GROW BY ' + heapGrow + ' (' + (heapGrow>>16) + ' pages)' : ''));
 		if (heapNew > WASM_HEAP_MAX) abort('MEM', 'Out of memory');
-		if (heapGrow > 0) { WASM_MEMORY.grow((heapGrow+65535)>>16); MemorySetBufferViews(); }
+		if (heapGrow > 0) { WASM_MEMORY.grow((heapGrow+65535)>>16); }
 		WASM_HEAP = heapNew;
 		return heapOld|0;
 	},
@@ -213,85 +188,105 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
 	var PAYLOAD = (WA.payload ? Base64Decode(WA.payload) : new Uint8Array(0));
 	delete WA.payload;
 
+    const argvs = ['wasm.exe', 'hello'];
+
+    wasi.args_get = function(argv, argv_buf) {
+        var heap = getHeap();
+        for (const arg of argvs) {
+            heap.setUint32(argv, argv_buf, true)
+            argv_buf += WriteHeapString(arg, argv_buf)
+            heap.setUint8(argv_buf, 0, true)
+            argv_buf += 1;
+            argv += 4;
+        }
+        heap.setUint32(argv, 0, true)
+        return WASI_ESUCCESS;
+    };
+
+    wasi.args_sizes_get = function(argc, argvBufSize) {
+        var heap = getHeap();
+        heap.setUint32(argc, argvs.length, true)
+        var length = 0;
+        for (const arg of argvs) {
+            length += arg.length;
+        }
+        heap.setUint32(argvBufSize, length, true)
+        return WASI_ESUCCESS;
+    };
+
     // filesystem
     const rootDir = '/'
     var fds = [];
 
 	wasi.fd_read = function(fd, iov, iovcnt, pOutResult)
 	{
-        WA.print("[WAJS] fd_read on: %d", fd);
-        var file = fds[fd] 
-        if (file == null || file.filename == null) {
+        if (fds[fd] == null || fds[fd].data == null || fds[fd].filename == null) {
             return WASI_EBADF;
         }
-
         var heap = getHeap();
 
-        if (file.data == null) {
-            file.read();
+        for (var ret = 0, i = 0; i < iovcnt; i++)
+        {
+            // Process list of IO commands
+            var ptr = heap.getUint32(iov + 8 * i + 0, true);
+            var len = heap.getUint32(iov + 8 * i + 4, true);
+            var read = Math.min(len, fds[fd].data.length - fds[fd].pos);
+
+            // Write the requested data onto the heap and advance the seek cursor
+            var sub = fds[fd].data.subarray(fds[fd].pos, fds[fd].pos + read);
+            new Uint8Array(WASM_MEMORY.buffer).set(sub, ptr);
+
+            fds[fd].pos += read;
+            ret += read;
         }
 
-        var buffer = new Uint8Array(file.data);
-		for (var ret = 0, i = 0; i < iovcnt; i++)
-		{
-			// Process list of IO commands
-    		var ptr = heap.getUint32(iov + 8 * i + 0, true);
-			var len = heap.getUint32(iov + 8 * i + 4, true);
-			var read = Math.min(len, buffer.length - file.pos);
-
-			// Write the requested data onto the heap and advance the seek cursor
-            var sub = buffer.subarray(file.pos, file.pos + read)
-            HEAPU8.set(sub, ptr);
-
-			file.pos += read;
-			ret += read;
-		}
-
-		// Write the amount of data actually read to the result pointer
+        // Write the amount of data actually read to the result pointer
         heap.setUint32(pOutResult, ret, true);
-		return WASI_ESUCCESS;
+        return WASI_ESUCCESS;
 	};
 
-	// fd_seek call to seek in a file (seeks in payload)
-	wasi.fd_seek = function(fd, offset_low, offset_high, whence, pOutResult)
-	{
-		// Move seek cursor according to fseek behavior
-		if (whence == 0) PAYLOAD_CURSOR = offset_low; //set
-		if (whence == 1) PAYLOAD_CURSOR += offset_low; //cur
-		if (whence == 2) PAYLOAD_CURSOR = PAYLOAD.length - offset_low; //end
-		if (PAYLOAD_CURSOR < 0) PAYLOAD_CURSOR = 0;
-		if (PAYLOAD_CURSOR > PAYLOAD.length) PAYLOAD_CURSOR = PAYLOAD.length;
+    wasi.fd_seek = function(fd, offset_low, offset_high, whence, pOutResult)
+    {
+        if (fds[fd] == null || fds[fd].data == null) {
+            return WASI_EBADF;
+        }
+        var heap = getHeap();
+        // Move seek cursor according to fseek behavior
+        if (whence == 0) fds[fd].pos = offset_low; //set
+        if (whence == 1) fds[fd].pos += offset_low; //cur
+        if (whence == 2) fds[fd].pos = fds[fd].data.length - offset_low; //end
+        if (fds[fd].pos < 0) fds[fd].pos = 0;
+        if (fds[fd].pos > fds[fd].data.length) fds[fd].pos = fds[fd].data.length;
 
-		// Write the result back (write only lower 32-bit of 64-bit number)
-		HEAPU32[(pOutResult+0)>>2] = PAYLOAD_CURSOR;
-		HEAPU32[(pOutResult+4)>>2] = 0;
-		//console.log('fd_seek - fd: ' + fd + ' - offset_high: ' + offset_high + ' - offset_low: ' + offset_low + ' - pOutResult: ' + pOutResult + ' - whence: ' +whence + ' - seek to: ' + PAYLOAD_CURSOR);
-		return WASI_ESUCCESS; // no error
-	};
+        // Write the result back (write only lower 32-bit of 64-bit number)
+        heap.setUint32(pOutResult, fds[fd].pos, true);
+        heap.setUint32(pOutResult + 4, 0, true);
+        return WASI_ESUCCESS; // no error
+    };
 
 	// fd_write call to write to a file/pipe (can only be used to write to stdout here)
-	wasi.fd_write = function(fd, iov, iovcnt, pOutResult)
-	{
-		for (var ret = 0, str = '', i = 0; i < iovcnt; i++)
-		{
-			// Process list of IO commands, read passed strings from heap
-			var ptr = HEAPU32[((iov)+(i*8))>>2];
-			var len = HEAPU32[((iov)+(i*8 + 4))>>2];
-			if (len < 0) return -1;
-			ret += len;
+    wasi.fd_write = function(fd, iov, iovcnt, pOutResult)
+    {
+        var heap = getHeap();
+        for (var ret = 0, str = '', i = 0; i < iovcnt; i++)
+        {
+            // Process list of IO commands, read passed strings from heap
+            var ptr = heap.getUint32(iov + 8 * i + 0, true);
+            var len = heap.getUint32(iov + 8 * i + 4, true);
+            if (len < 0) return -1;
+            ret += len;
             str += ReadHeapString(ptr, len);
-			//console.log('fd_write - fd: ' + fd + ' - ['+i+'][len:'+len+']: ' + ReadHeapString(ptr, len).replace(/\n/g, '\\n'));
-		}
+            //console.log('fd_write - fd: ' + fd + ' - ['+i+'][len:'+len+']: ' + ReadHeapString(ptr, len).replace(/\n/g, '\\n'));
+        }
 
-		// Print the passed string and write the number of bytes read to the result pointer
-		WA.print(str);
-		HEAPU32[pOutResult>>2] = ret;
-		return WASI_ESUCCESS; // no error
-	};
+        // Print the passed string and write the number of bytes read to the result pointer
+        WA.print(str);
+        heap.setUint32(pOutResult, ret, true);
+        return WASI_ESUCCESS; // no error
+    };
 
 	wasi.fd_close = function(fd)
 	{
-        WA.print("[WAJS] fd_close: " + fd);
         if (fds[fd] == null) {
             return WASI_EBADF;
         }
@@ -349,41 +344,25 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
         const filename = ReadHeapString(path, path_len);
         var heap = getHeap()
 
-        var file = {};
-        file.read = function read() 
-        {
-            if (this.fd == null) return;
-
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', "/fd_read?" + new URLSearchParams({fd : this.fd}), false);
-            xhr.onload = function() {
-                file.data = JSON.parse(xhr.response).payload.data;
-                console.log(file.data)
-            };
-            xhr.onerror = function() {
-                  WA.print(`[WAJS] Network Error`);
-            };
-            xhr.send();
-        };
-        file.close = function close()
-        {
-            if (this.fd == null) return;
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', "/fd_close?" + new URLSearchParams({fd : this.fd}));
-            xhr.send();
-        };
-
         var xhr = new XMLHttpRequest();
         xhr.open('GET', "/fd_open?" + new URLSearchParams({filename : filename}), false);
         xhr.onload = function() {
-            const fd = JSON.parse(xhr.response).fd;
+            const json = JSON.parse(xhr.response);
+            const fd = json.fd;
+            var file = {};
+            file.close = function close()
+            {
+                if (this.fd == null) return;
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', "/fd_close?" + new URLSearchParams({fd : this.fd}));
+                xhr.send();
+            };
             file.fd = fd;
             file.filename = filename;
             file.pos = 0;
-            file.data = null;
+            file.data = new Uint8Array(json.payload.data);
             fds[fd] = file;
 
-            console.log("[WAJS] fd: %d opened_fd: %s", fd, opened_fd);
             heap.setUint32(opened_fd, fd, true);
         };
         xhr.onerror = function() {
@@ -399,7 +378,7 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
         abort(code, ":proc_exit");
     };
 
-	// Functions querying the system time
+    // Functions querying the system time
     wasi.clock_time_get =  function(clk_id, pre, ptime)
     { 
         var now

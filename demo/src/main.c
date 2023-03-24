@@ -122,6 +122,18 @@ void glSetup()
     for (int i = 0; i < 2; ++i) {
         printf("texture: %d\n", textures[i]);
     }
+    i32 x, y, c;
+    u8 *img = stbi_load("test.png", &x, &y, &c, 4);
+    if (img != NULL) {
+        printf("load image width: %d height: %d channel: %d\n", x, y, c);
+        glBindTexture(GL_TEXTURE_2D, textures[0]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, img);
+        stbi_image_free(img);
+    }
+    else {
+        printf("fail to load image: %s\n", stbi_failure_reason());
+    }
+
     glDeleteTextures(2, textures);
 }
 
@@ -131,43 +143,36 @@ void printUnixTime()
     timespec spec;
     clock_gettime(CLOCK_REALTIME, &spec);
     time_t s = spec.tv_sec;
-    long ms = round(spec.tv_nsec / 1.0e6);  // Convert nanoseconds to milliseconds
+    u64 ms = round(spec.tv_nsec / 1.0e6);  // Convert nanoseconds to milliseconds
     if (ms > 999) {
         s++;
         ms = 0;
     }
 
-    printf("Current time: %lld.%ld seconds since the Epoch\n", s, ms);
+    printf("Current time: %lld.%lld seconds since the Epoch\n", s, ms);
 }
 
 int main(int argc, char *argv[])
 {
-    printf("argc: %d, argv: %p\n", argc, argv);
+    printf("argc: %d\n", argc);
+    for (i32 i = 0; i < argc; ++i) {
+        printf("argv[%d]: %s ", i, argv[i]);
+    }
+    printf("\n");
+
     glSetup();
 
     printUnixTime();
     printf("sinf:%f\n", sinf(1.0));
-    char *ptr = (char *)malloc(100);
+    u8 *ptr = (u8 *)malloc(100);
     ptr[0] = 122;
     ptr[1] = 123;
     ptr[2] = 124;
     printf("malloc:0x%lx\n", (intptr_t)ptr);
-    for (int i = 0; i < 3; ++i) {
+    for (i32 i = 0; i < 3; ++i) {
         printf("ptr[%d]:%d ", i, ptr[i]);
     }
     printf("\n");
-
-    FILE *file = fopen("favicon.ico", "r");
-    printf("file:%p, fd:%d\n", file, fileno(file));
-    if (file != NULL) {
-        char buffer[4];
-        int read = fread(buffer, 1, 4, file);
-        printf("fread bytes: %d buffer: %d %d %d %d\n", read, buffer[0], buffer[1], buffer[2], buffer[3]);
-        printf("fclose on file: %p, fd: %d\n", file, fileno(file));
-        if (fclose(file) == EOF) {
-            printf("error closing file\n");
-        }
-    }
 
     return 0;
 }
