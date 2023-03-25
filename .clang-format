@@ -1,9 +1,15 @@
 # Run manually to reformat a file:
 # clang-format -i --style=file <file>
-Language:        Cpp
-BasedOnStyle:  Google
-IndentWidth:   4
+Language: Cpp
+BasedOnStyle: Google
+IndentWidth: 4
 SortIncludes: false
 BreakBeforeBraces: Stroustrup
-ColumnLimit:     120
+ColumnLimit: 120
 AllowShortFunctionsOnASingleLine: false
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignConsecutiveMacros:
+    Enabled: true
+    AcrossEmptyLines: false
+    AcrossComments: false

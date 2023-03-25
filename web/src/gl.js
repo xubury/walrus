@@ -3,6 +3,8 @@ import * as sys from "./sys.js";
 var glCtx;
 var glCounter = 1;
 var glPrograms = [];
+var glProgramInfos = [];
+var glUniforms = [];
 var glShaders = [];
 var glTextures = [];
 
@@ -134,6 +136,45 @@ function webGlGetTexPixelData(type, format, width, height, pixels, internalForma
     }
 }
 
+function populateUniformTable(program)
+{
+    var p = glPrograms[program];
+    glProgramInfos[program] = {
+        uniforms : {},
+        maxUniformLength: 0,
+        maxUniformBlockNameLength : 0,
+    };
+
+    var ptable = glProgramInfos[program];
+    var utable = ptable.uniforms;
+
+    var numUniforms = glCtx.getProgramParameter(p, glCtx.ACTIVE_UNIFORMS);
+    for (var i = 0; i < numUniforms; ++i) {
+        var u = glCtx.getActiveUniform(p, i);
+        var name = u.name;
+        ptable.maxUniformLength = Math.max(ptable.maxUniformLength, name.length + 1);
+
+        // strip off array specifier
+        if (name.indexOf(']',name.length - 1) !== -1) {
+            var ls = name.lastIndexOf('[');
+            name = name.slice(0, ls);
+        }
+
+        var loc = glCtx.getUniformLocation(p, name);
+        if (loc != null) {
+            var id = getNewId(glUniforms);
+            utable[name] = [u.size, id];
+            glUniforms[id] = loc;
+            for (var j = 1; j < u.size; ++j) {
+                var n = name + '[' + j + ']';
+                loc = glCtx.getUniformLocation(p, n);
+                id = getNewId(glUniforms);
+                glUniforms[id] = loc;
+            }
+        }
+    }
+}
+
 // Init gl interface
 export function importGl(env) 
 {
@@ -249,12 +290,43 @@ export function importGl(env)
         glLinkProgram: function (program) {
             glCtx.linkProgram(glPrograms[program]);
             // TODO: uniforms
-            // GLprogramInfos[program] = null; // uniforms no longer keep the same names after linking
-            // populateUniformTable(program);
+            glProgramInfos[program] = null; // uniforms no longer keep the same names after linking
+            populateUniformTable(program);
         },
+
         glUseProgram: function (program) {
             glCtx.useProgram(program ? glPrograms[program] : null);
         },
+
+        glGetUniformLocation : function(program, name) {
+            name = sys.ReadHeapString(name);
+
+            var arrayOffset = 0;
+            if (name.indexOf(']', name.length - 1) !== -1) {
+                var ls = name.lastIndexOf('[');
+                var arrayIdx = name.slice(ls + 1, -1);
+                if (arrayIdx.length > 0) {
+                    arrayOffset = parseInt(arrayIdx);
+                    if (arrayOffset < 0) return -1;
+                }
+                name = name.slice(0, ls);
+            }
+
+            var ptable = glProgramInfos[program];
+            if (!ptable) return -1;
+
+            var utable = ptable.uniforms;
+            var uniformInfo = utable[name];
+            if (uniformInfo && arrayOffset < uniformInfo[0]) {
+                return uniformInfo[1] + arrayOffset;
+            }
+            return -1;
+        },
+
+        glUniform1f : function(loc, v0) { glCtx.uniform1f(glUniforms[loc], v0); },
+        glUniform1i : function(loc, v0) { glCtx.uniform1i(glUniforms[loc], v0); },
+        glUniform2f : function(loc, v0, v1) { glCtx.uniform2f(glUniforms[loc], v0, v1); },
+        glUniform3f : function(loc, v0, v1, v2) { glCtx.uniform3f(glUniforms[loc], v0, v1, v2); },
 
         glDrawArrays: function (mode, first, count) {
             glCtx.drawArrays(mode, first, count);
@@ -272,12 +344,20 @@ export function importGl(env)
             glCtx.bindTexture(target, glTextures[texture]);
         },
 
+        glActiveTexture : function(texture) {
+            glCtx.activeTexture(texture);
+        },
+
         glTexImage2D : function(target, level, internalformat, width, height, border, format, type, data) {
             var pixelData = null;
             if (data) {
                 pixelData = webGlGetTexPixelData(type, format, width, height, data, internalformat);
             }
             glCtx.texImage2D(target, level, internalformat, width, height, border, format, type, pixelData);
+        },
+
+        glGenerateMipmap : function(target) {
+            glCtx.generateMipmap(target); 
         }
     });
 }

@@ -11,30 +11,43 @@ app.use(bodyParser.json());
 
 fs.openSync(path.join(__dirname, "files"));
 
+function sendError(res, error)
+{
+    console.log(error);
+    res.status(500).send(JSON.stringify({ error: error }));
+}
 app.get("/fd_open", function (req, res) {
     const filename = path.join(__dirname, "files", req.query.filename);
     try {
         fs.open(filename, 'r', function(err, fd) {
-            console.log("[TRACE] fd_open on fd:" + fd);
-            if (err) {
-                throw err;
+            if (err)  {
+                sendError(res, err);
+                return;
             }
+
+            console.log("[TRACE] fd_open on fd:" + fd);
+
             fs.fstat(fd, function(err, stats) {
-                if (err) {
-                    throw err;
+                if (err)  {
+                    sendError(res, err);
+                    fs.close(fd);
+                    return;
                 }
+
                 var buffer = Buffer.alloc(stats.size);
                 fs.read(fd, buffer, 0, buffer.length, 0, function(err, bytesRead){
-                    if (err) {
-                        throw err;
+                    if (err)  {
+                        sendError(res, err);
+                        fs.close(fd);
+                        return;
                     }
-                    res.send(JSON.stringify({ fd :fd, payload: buffer }));
+
+                    res.send(JSON.stringify({ fd : fd, payload: buffer }));
                 });
             });
         });
     } catch (error) {
-        console.log(error);
-        res.status(500).send(JSON.stringify({ error: error }));
+        sendError(res, error);
     }
 });
 

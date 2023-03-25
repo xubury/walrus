@@ -346,7 +346,13 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
 
         var xhr = new XMLHttpRequest();
         xhr.open('GET', "/fd_open?" + new URLSearchParams({filename : filename}), false);
+        var code = WASI_ESUCCESS;
         xhr.onload = function() {
+            if (xhr.status != 200)
+            {
+                code = WASI_EIO;
+                return;
+            }
             const json = JSON.parse(xhr.response);
             const fd = json.fd;
             var file = {};
@@ -366,11 +372,12 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
             heap.setUint32(opened_fd, fd, true);
         };
         xhr.onerror = function() {
-              WA.print(`[WAJS] Network Error`);
+            WA.print(`[WAJS] Network Error`);
+            code = WASI_EIO;
         };
         xhr.send();
 
-        return WASI_ESUCCESS;
+        return code;
     };
 
     wasi.proc_exit = function(code)
