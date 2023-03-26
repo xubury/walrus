@@ -69,3 +69,7 @@ Project for learning Web Assembly.
 2023-03-14
 
 -   Using electron runtime is not good, can't run on browser. Using a server to deal with node and render to html.
+
+
+2023-03-26
+- function pointer from c/c++ will be converted to table index in function table. Add `-Wl,--export-table` then call `__indirect_function_table.get` from wasm instance to invoke the function.

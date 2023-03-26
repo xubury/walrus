@@ -21,6 +21,13 @@ export function abort(code, msg) {
     throw "abort";
 }
 
+export function getFuntionFromTbl(func)
+{
+    if (!WA.wasm) return null;
+
+    return WA.wasm.__indirect_function_table.get(func)
+}
+
 export function getHeap()
 {
     return new DataView(WASM_MEMORY.buffer);

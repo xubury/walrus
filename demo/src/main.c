@@ -66,7 +66,7 @@ void glRender()
     glClearColor(0.1, 0.2, 0.3, 1);
     glUseProgram(glProg);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    // printf("dt:%f\n", wajsGetFrameTime());
+    /* printf("dt:%f\n", wajsGetFrameTime()); */
 }
 
 GLuint compileShader(GLenum type, const char *source)
@@ -92,8 +92,7 @@ GLuint compileShader(GLenum type, const char *source)
 
 GLuint linkProgram(GLuint vs, GLuint fs)
 {
-    GLuint prog;
-    prog = glCreateProgram();
+    GLuint prog = glCreateProgram();
     glAttachShader(prog, vs);
     glAttachShader(prog, fs);
     glLinkProgram(prog);
@@ -115,8 +114,7 @@ GLuint linkProgram(GLuint vs, GLuint fs)
 
 void glSetup()
 {
-    wajsSetupGlCanvas(canvasWidth, canvasHeight);
-    wajsSetGlRenderCallback(glRender);
+    wajsSetupGlContext(canvasWidth, canvasHeight, glRender);
     glViewport(0, 0, canvasWidth, canvasHeight);
 
     GLuint vs = compileShader(GL_VERTEX_SHADER, vsSource);

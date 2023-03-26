@@ -5,8 +5,6 @@
 
 typedef struct timespec timespec;
 
-static WajsRenderCallback s_WajsRenderCallback = NULL;
-
 static float unixTimeNanoseconds()
 {
     timespec nw;
@@ -24,23 +22,17 @@ static float unixTimeSeoncds()
     return unixTimeNanoseconds() / (1.0e9);
 }
 
-void wajsSetGlRenderCallback(WajsRenderCallback callback)
-{
-    s_WajsRenderCallback = callback;
-}
-
-void __wajsGlDraw()
-{
-    if (s_WajsRenderCallback != NULL) {
-        s_WajsRenderCallback();
-    }
-}
+static float s_frametime = 0;
 
 float wajsGetFrameTime()
 {
-    static float wajsLastFrameTs = 0.f;
-    float nw = unixTimeMiliseconds();
-    float frametime = nw - wajsLastFrameTs;
-    wajsLastFrameTs = nw;
-    return frametime;
+    return s_frametime;
+}
+
+void __wajsUpdateFrameTime()
+{
+    static float lastts = 0.f;
+    float        nw     = unixTimeMiliseconds();
+    s_frametime         = nw - lastts;
+    lastts              = nw;
 }

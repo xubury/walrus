@@ -25,7 +25,7 @@ app.get("/fd_open", function (req, res) {
                 return;
             }
 
-            console.log("[TRACE] fd_open on fd:" + fd);
+            console.log("[TRACE] fd_open on fd: " + fd);
 
             fs.fstat(fd, function(err, stats) {
                 if (err)  {

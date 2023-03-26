@@ -20,9 +20,7 @@ typedef void (*WajsRenderCallback)();
 extern "C" {
 #endif
 
-void wajsSetupGlCanvas(int width, int height);
-
-void wajsSetGlRenderCallback(WajsRenderCallback callback);
+void wajsSetupGlContext(int width, int height, WajsRenderCallback callback);
 
 float wajsGetFrameTime();
 
