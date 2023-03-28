@@ -117,9 +117,9 @@ void glSetup()
     /* stbi img test */
     stbi_set_flip_vertically_on_load(true);
     i32 x, y, c;
-    u64 ts  = clockms();
+    u64 ts  = unitclock(kSysClockUnitMs);
     u8 *img = stbi_load("test.png", &x, &y, &c, 4);
-    printf("stbi_load time: %llu ms\n", clockms() - ts);
+    printf("stbi_load time: %llu ms\n", unitclock(kSysClockUnitMs) - ts);
     if (img != NULL) {
         printf("load image width: %d height: %d channel: %d\n", x, y, c);
         glBindTexture(GL_TEXTURE_2D, textures[0]);
@@ -140,7 +140,7 @@ void glSetup()
 void printUnixTime()
 {
     u64 sec, nano;
-    unixclock(&sec, &nano);
+    nanoclock(&sec, &nano);
     u64 ms = round(nano / 1.0e6);  // Convert nanoseconds to milliseconds
     if (ms > 999) {
         sec++;

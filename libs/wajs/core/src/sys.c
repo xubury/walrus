@@ -5,7 +5,7 @@
 
 typedef struct timespec timespec;
 
-i32 unixclock(uint64_t *sec, uint64_t *nano)
+i32 nanoclock(uint64_t *sec, uint64_t *nano)
 {
     timespec spec;
     if (clock_gettime(CLOCK_REALTIME, &spec) == 0) {
@@ -18,19 +18,16 @@ i32 unixclock(uint64_t *sec, uint64_t *nano)
     return -1;
 }
 
-u64 clocksec()
+u64 unitclock(SysClockUnit unit)
 {
     timespec spec;
     clock_gettime(CLOCK_REALTIME, &spec);
-    return spec.tv_sec;
-}
-
-u64 clockms()
-{
-    timespec spec;
-    clock_gettime(CLOCK_REALTIME, &spec);
-
-    time_t s  = spec.tv_sec;
-    u64    ms = round(spec.tv_nsec / 1.0e6);
-    return ms + s * 1e3;
+    if (unit == SYS_CLOCK_UNIT_MS) {
+        u64 ms = round(spec.tv_nsec / 1.0e6);
+        return ms + spec.tv_sec * 1e3;
+    }
+    else if (unit == SYS_CLOCK_UNIT_SEC) {
+        return spec.tv_sec;
+    }
+    return 0;
 }

@@ -2,11 +2,10 @@
 
 #include "type.h"
 
-// Function to get unix time, return 0 on success, -1 otherwise
-i32 unixclock(uint64_t *sec, uint64_t *nano);
+// Function to get accurate unix time, return 0 on success, -1 otherwise
+i32 nanoclock(uint64_t *sec, uint64_t *nano);
 
-// Helper to get unix clock in miliseconds
-u64 clockms();
+typedef enum { SYS_CLOCK_UNIT_MS = 0, SYS_CLOCK_UNIT_SEC = 1 } SysClockUnit;
 
-// Helper to get unix clock in seconds
-u64 clocksec();
+// Function to get unix time in unit
+u64 unitclock(SysClockUnit unit);
