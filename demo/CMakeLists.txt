@@ -3,7 +3,7 @@ add_executable(webasm_demo src/main.c)
 
 target_compile_options(webasm_demo PUBLIC -O0)
 
-target_link_libraries(webasm_demo PUBLIC c wajs_gl stb::stb)
+target_link_libraries(webasm_demo PUBLIC wajs_core wajs_gl stb::stb)
 
 target_link_options(webasm_demo PUBLIC -Wl,--no-entry -Wl,-allow-undefined
                     -Wl,--import-memory -Wl,--export-table)

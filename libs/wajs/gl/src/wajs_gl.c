@@ -1,38 +1,18 @@
 #include <wajs_gl.h>
 
-#include <stddef.h>
-#include <time.h>
+#include <sys.h>
 
-typedef struct timespec timespec;
+static f32 s_frametime = 0;
 
-static float unixTimeNanoseconds()
-{
-    timespec nw;
-    clock_gettime(CLOCK_REALTIME, &nw);
-    return nw.tv_nsec;
-}
-
-static float unixTimeMiliseconds()
-{
-    return unixTimeNanoseconds() / (1.0e6);
-}
-
-static float unixTimeSeoncds()
-{
-    return unixTimeNanoseconds() / (1.0e9);
-}
-
-static float s_frametime = 0;
-
-float wajsGetFrameTime()
+f32 wajsGetFrameTime()
 {
     return s_frametime;
 }
 
 void __wajsUpdateFrameTime()
 {
-    static float lastts = 0.f;
-    float        nw     = unixTimeMiliseconds();
-    s_frametime         = nw - lastts;
-    lastts              = nw;
+    static f32 lastts = 0.f;
+    f32        nw     = clockms();
+    s_frametime       = nw - lastts;
+    lastts            = nw;
 }

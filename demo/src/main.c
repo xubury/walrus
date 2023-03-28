@@ -1,6 +1,7 @@
 #include <math.h>
-#include <stdint.h>
-#include <stdbool.h>
+#include <type.h>
+#include <sys.h>
+#include <macro.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,28 +11,6 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-
-typedef float    f32;
-typedef double   f64;
-typedef uint8_t  u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef int8_t   i8;
-typedef int16_t  i16;
-typedef int32_t  i32;
-typedef int64_t  i64;
-typedef size_t   usize;
-typedef ssize_t  isize;
-
-#include <assert.h>
-#define ASSERT(e, ...)                \
-    if (!(e)) {                       \
-        assert(false);                \
-        fprintf(stderr, __VA_ARGS__); \
-    }
-
-#define ARRAY_LEN(arr) sizeof(arr) / sizeof(arr[0])
 
 char const *vsSource =
     "#version 300 es\n"
@@ -83,7 +62,7 @@ GLuint compileShader(GLenum type, const char *source)
 
         char *infoLog    = (char *)malloc(logSize);
         infoLog[logSize] = 0;
-        glGetShaderInfoLog(shader, 255, NULL, infoLog);
+        glGetShaderInfoLog(shader, logSize, NULL, infoLog);
         printf("Shader compile error: %s\n", infoLog);
         free(infoLog);
     }
@@ -135,8 +114,12 @@ void glSetup()
         printf("texture: %d\n", textures[i]);
     }
 
+    /* stbi img test */
+    stbi_set_flip_vertically_on_load(true);
     i32 x, y, c;
+    u64 ts  = clockms();
     u8 *img = stbi_load("test.png", &x, &y, &c, 4);
+    printf("stbi_load time: %llu ms\n", clockms() - ts);
     if (img != NULL) {
         printf("load image width: %d height: %d channel: %d\n", x, y, c);
         glBindTexture(GL_TEXTURE_2D, textures[0]);
@@ -159,11 +142,10 @@ void printUnixTime()
     typedef struct timespec timespec;
 
     timespec spec;
-    time_t   s = spec.tv_sec;
-
     clock_gettime(CLOCK_REALTIME, &spec);
 
-    u64 ms = round(spec.tv_nsec / 1.0e6);  // Convert nanoseconds to milliseconds
+    time_t s  = spec.tv_sec;
+    u64    ms = round(spec.tv_nsec / 1.0e6);  // Convert nanoseconds to milliseconds
     if (ms > 999) {
         s++;
         ms = 0;

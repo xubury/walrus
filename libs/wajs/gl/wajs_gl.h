@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type.h>
+
 #define GL_GLEXT_PROTOTYPES
 #define EGL_EGLEXT_PROTOTYPES
 // #define GL_VERSION_3_0 1
@@ -22,7 +24,7 @@ extern "C" {
 
 void wajsSetupGlContext(int width, int height, WajsRenderCallback callback);
 
-float wajsGetFrameTime();
+f32 wajsGetFrameTime();
 
 #ifdef __cplusplus
 }
