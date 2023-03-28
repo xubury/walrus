@@ -3,6 +3,8 @@ const { app, BrowserWindow, session } = require('electron')
 const path = require('path')
 const isDev = require('electron-is-dev');
 const os = require('os')
+const waitPort = require('wait-port');
+require("../server.js")
 
  // on windows
  const reactDevToolsPath = path.join(
@@ -17,12 +19,16 @@ async function createWindow () {
     })
 
     if (isDev) {
-        mainWindow.loadURL('http://localhost:8080/');
         mainWindow.webContents.openDevTools()
         await session.defaultSession.loadExtension(reactDevToolsPath)
-    } else {
-        mainWindow.loadFile('./build/index.html');
-    }
+    } 
+    const params = {
+      host: 'localhost',
+      port: 8080,
+    };
+    waitPort(params)
+      .then(({ open, ipVersion }) => { mainWindow.loadURL('http://localhost:8080/'); })
+      .catch((err) => { console.err(`An unknown error occured while waiting for the port: ${err}`); });
 }
 
 app.whenReady().then(() => {

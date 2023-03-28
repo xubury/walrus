@@ -139,19 +139,14 @@ void glSetup()
 
 void printUnixTime()
 {
-    typedef struct timespec timespec;
-
-    timespec spec;
-    clock_gettime(CLOCK_REALTIME, &spec);
-
-    time_t s  = spec.tv_sec;
-    u64    ms = round(spec.tv_nsec / 1.0e6);  // Convert nanoseconds to milliseconds
+    u64 sec, nano;
+    unixclock(&sec, &nano);
+    u64 ms = round(nano / 1.0e6);  // Convert nanoseconds to milliseconds
     if (ms > 999) {
-        s++;
+        sec++;
         ms = 0;
     }
-
-    printf("Current time: %lld.%lld seconds since the Epoch\n", s, ms);
+    printf("Current time: %lld.%lld seconds since the Epoch\n", sec, ms);
 }
 
 void printArgs(int argc, char *argv[])
