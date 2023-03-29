@@ -117,9 +117,9 @@ void glSetup()
     /* stbi img test */
     stbi_set_flip_vertically_on_load(true);
     i32 x, y, c;
-    u64 ts  = unitclock(kSysClockUnitMs);
+    u64 ts  = unitclock(SYS_CLOCK_UNIT_MILISEC);
     u8 *img = stbi_load("test.png", &x, &y, &c, 4);
-    printf("stbi_load time: %llu ms\n", unitclock(kSysClockUnitMs) - ts);
+    printf("stbi_load time: %llu ms\n", unitclock(SYS_CLOCK_UNIT_MILISEC) - ts);
     if (img != NULL) {
         printf("load image width: %d height: %d channel: %d\n", x, y, c);
         glBindTexture(GL_TEXTURE_2D, textures[0]);
@@ -147,6 +147,9 @@ void printUnixTime()
         ms = 0;
     }
     printf("Current time: %lld.%lld seconds since the Epoch\n", sec, ms);
+
+    u64 micro = unitclock(SYS_CLOCK_UNIT_MICROSEC);
+    printf("micro time: %lld\n", micro);
 }
 
 void printArgs(int argc, char *argv[])
