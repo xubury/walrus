@@ -54,14 +54,14 @@ function getSource(count, string, length) {
         if (length) {
             var len = heap.getInt32(length + i  * 4);
             if (len < 0)
-                frag = sys.ReadHeapString(heap.getInt32(string + i * 4, true));
+                frag = sys.readHeapString(heap.getInt32(string + i * 4, true));
             else
-                frag = sys.ReadHeapString(
+                frag = sys.readHeapString(
                     heap.getInt32(string + i * 4, true),
                     len
                 );
         } else {
-            frag = sys.ReadHeapString(heap.getInt32(string + i * 4, true));
+            frag = sys.readHeapString(heap.getInt32(string + i * 4, true));
         }
         source += frag;
     }
@@ -182,7 +182,7 @@ export function importGl(env)
 
     Object.assign(env, {
         wajsSetupGlContext: function (width, height, callback) {
-            const func = sys.getFuntionFromTbl(callback);
+            const func = sys.getCallbackFromWasm(callback);
             var cnvs = WA.canvas;
             cnvs.width = width;
             cnvs.height = height;
@@ -261,7 +261,7 @@ export function importGl(env)
                 var heap = sys.getHeap()
                 heap.setInt32(logSize, log.length, true);
             }
-            sys.WriteHeapString(log, ptr, bufSize);
+            sys.writeHeapString(log, ptr, bufSize);
         },
 
         glGetProgramiv: function (program, param, ptr) {
@@ -282,7 +282,7 @@ export function importGl(env)
                 var heap = sys.getHeap()
                 heap.setInt32(logSize, log.length, true);
             }
-            sys.WriteHeapString(log, ptr, bufSize);
+            sys.writeHeapString(log, ptr, bufSize);
         },
 
         glAttachShader: function (program, shader) {
@@ -301,7 +301,7 @@ export function importGl(env)
         },
 
         glGetUniformLocation : function(program, name) {
-            name = sys.ReadHeapString(name);
+            name = sys.readHeapString(name);
 
             var arrayOffset = 0;
             if (name.indexOf(']', name.length - 1) !== -1) {

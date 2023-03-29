@@ -39,7 +39,7 @@ static GLuint    glProg       = 0;
 static int const canvasWidth  = 640;
 static int const canvasHeight = 480;
 
-void glRender()
+void render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glClearColor(0.1, 0.2, 0.3, 1);
@@ -48,7 +48,7 @@ void glRender()
     /* printf("dt:%f\n", wajsGetFrameTime()); */
 }
 
-GLuint compileShader(GLenum type, const char *source)
+GLuint compile_shader(GLenum type, const char *source)
 {
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, NULL);
@@ -69,7 +69,7 @@ GLuint compileShader(GLenum type, const char *source)
     return shader;
 }
 
-GLuint linkProgram(GLuint vs, GLuint fs)
+GLuint link_program(GLuint vs, GLuint fs)
 {
     GLuint prog = glCreateProgram();
     glAttachShader(prog, vs);
@@ -91,14 +91,14 @@ GLuint linkProgram(GLuint vs, GLuint fs)
     return prog;
 }
 
-void glSetup()
+void gl_setup()
 {
-    wajsSetupGlContext(canvasWidth, canvasHeight, glRender);
+    wajsSetupGlContext(canvasWidth, canvasHeight, render);
     glViewport(0, 0, canvasWidth, canvasHeight);
 
-    GLuint vs = compileShader(GL_VERTEX_SHADER, vsSource);
-    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fsSource);
-    glProg    = linkProgram(vs, fs);
+    GLuint vs = compile_shader(GL_VERTEX_SHADER, vsSource);
+    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, fsSource);
+    glProg    = link_program(vs, fs);
 
     GLuint textureloc = glGetUniformLocation(glProg, "u_texture");
     printf("uniform \"u_texture\" loc: %d\n", textureloc);
@@ -117,9 +117,9 @@ void glSetup()
     /* stbi img test */
     stbi_set_flip_vertically_on_load(true);
     i32 x, y, c;
-    u64 ts  = unitclock(SYS_CLOCK_UNIT_MILISEC);
+    u64 ts  = sysclock(SYS_CLOCK_UNIT_MILLSEC);
     u8 *img = stbi_load("test.png", &x, &y, &c, 4);
-    printf("stbi_load time: %llu ms\n", unitclock(SYS_CLOCK_UNIT_MILISEC) - ts);
+    printf("stbi_load time: %llu ms\n", sysclock(SYS_CLOCK_UNIT_MILLSEC) - ts);
     if (img != NULL) {
         printf("load image width: %d height: %d channel: %d\n", x, y, c);
         glBindTexture(GL_TEXTURE_2D, textures[0]);
@@ -137,10 +137,10 @@ void glSetup()
     /* glDeleteTextures(arrayLen, textures); */
 }
 
-void printUnixTime()
+void print_time()
 {
     u64 sec, nano;
-    nanoclock(&sec, &nano);
+    sysclock_128(&sec, &nano);
     u64 ms = round(nano / 1.0e6);  // Convert nanoseconds to milliseconds
     if (ms > 999) {
         sec++;
@@ -148,11 +148,11 @@ void printUnixTime()
     }
     printf("Current time: %lld.%lld seconds since the Epoch\n", sec, ms);
 
-    u64 micro = unitclock(SYS_CLOCK_UNIT_MICROSEC);
+    u64 micro = sysclock(SYS_CLOCK_UNIT_MICROSEC);
     printf("micro time: %lld\n", micro);
 }
 
-void printArgs(int argc, char *argv[])
+void print_args(int argc, char *argv[])
 {
     printf("argc: %d\n", argc);
     for (i32 i = 0; i < argc; ++i) {
@@ -161,9 +161,9 @@ void printArgs(int argc, char *argv[])
     printf("\n");
 }
 
-void libcTest()
+void libc_test()
 {
-    printUnixTime();
+    print_time();
     printf("sinf:%f\n", sinf(1.0));
     u8 *ptr = (u8 *)malloc(100);
     ptr[0]  = 122;
@@ -180,10 +180,11 @@ void libcTest()
 
 int main(int argc, char *argv[])
 {
-    printArgs(argc, argv);
-    libcTest();
+    print_args(argc, argv);
 
-    glSetup();
+    libc_test();
+
+    gl_setup();
 
     return 0;
 }

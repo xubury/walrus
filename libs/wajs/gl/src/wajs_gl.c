@@ -12,7 +12,7 @@ f32 wajsGetFrameTime()
 void __wajsUpdateFrameTime()
 {
     static f32 lastts = 0.f;
-    f32        nw     = unitclock(SYS_CLOCK_UNIT_MILISEC);
+    f32        nw     = sysclock(SYS_CLOCK_UNIT_MILLSEC);
     s_frametime       = nw - lastts;
     lastts            = nw;
 }

@@ -21,7 +21,7 @@ export function abort(code, msg) {
     throw "abort";
 }
 
-export function getFuntionFromTbl(func)
+export function getCallbackFromWasm(func)
 {
     if (!WA.wasm) return null;
 
@@ -34,7 +34,7 @@ export function getHeap()
 }
 
 // Puts a string from javascript onto the wasm memory heap (encoded as UTF8) (max_length is optional)
-export function WriteHeapString(str, ptr, max_length)
+export function writeHeapString(str, ptr, max_length)
 {
     var HEAPU8 = new Uint8Array(WASM_MEMORY.buffer);
 	for (var e=str,r=HEAPU8,f=ptr,i=(max_length?max_length:HEAPU8.length),a=f,t=f+i-1,b=0;b<e.length;++b)
@@ -51,7 +51,7 @@ export function WriteHeapString(str, ptr, max_length)
 }
 
 // Reads a string from the wasm memory heap to javascript (decoded as UTF8)
-export function ReadHeapString(ptr, length)
+export function readHeapString(ptr, length)
 {
     var HEAPU8 = new Uint8Array(WASM_MEMORY.buffer);
 	if (length === 0 || !ptr) return '';
@@ -165,7 +165,7 @@ var env =
 	},
 
 	// Various functions thet can be called from wasm that abort the program
-	__assert_fail:  function(condition, filename, line, func) { abort('CRASH', 'Assert ' + ReadHeapString(condition) + ', at: ' + (filename ? ReadHeapString(filename) : 'unknown filename'), line, (func ? ReadHeapString(func) : 'unknown function')); },
+	__assert_fail:  function(condition, filename, line, func) { abort('CRASH', 'Assert ' + readHeapString(condition) + ', at: ' + (filename ? readHeapString(filename) : 'unknown filename'), line, (func ? readHeapString(func) : 'unknown function')); },
 	__cxa_uncaught_exception: function() { abort('CRASH', 'Uncaught exception!'); },
 	__cxa_pure_virtual: function() { abort('CRASH', 'pure virtual'); },
 	abort: function() { abort('CRASH', 'Abort called'); },
@@ -201,7 +201,7 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
         var heap = getHeap();
         for (const arg of argvs) {
             heap.setUint32(argv, argv_buf, true)
-            argv_buf += WriteHeapString(arg, argv_buf)
+            argv_buf += writeHeapString(arg, argv_buf)
             heap.setUint8(argv_buf, 0, true)
             argv_buf += 1;
             argv += 4;
@@ -282,7 +282,7 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
             var len = heap.getUint32(iov + 8 * i + 4, true);
             if (len < 0) return -1;
             ret += len;
-            str += ReadHeapString(ptr, len);
+            str += readHeapString(ptr, len);
             //console.log('fd_write - fd: ' + fd + ' - ['+i+'][len:'+len+']: ' + ReadHeapString(ptr, len).replace(/\n/g, '\\n'));
         }
 
@@ -340,7 +340,7 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
         if (rootDir.length != pathlen) {
             return WASI_EINVAL;
         }
-        WriteHeapString(rootDir, pathptr)
+        writeHeapString(rootDir, pathptr)
         return WASI_ESUCCESS;
     };
 
@@ -348,7 +348,7 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
 
     wasi.path_open = function(parent_fd, dirflags, path, path_len, oflags, fs_rights_base, fs_rights_inheriting, fdflags, opened_fd)
     {
-        const filename = ReadHeapString(path, path_len);
+        const filename = readHeapString(path, path_len);
         var heap = getHeap()
 
         var xhr = new XMLHttpRequest();
