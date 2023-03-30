@@ -1,9 +1,9 @@
 find_package(stb REQUIRED)
 add_executable(webasm_demo src/main.c)
 
-target_compile_options(webasm_demo PUBLIC -O0)
+target_compile_options(webasm_demo PUBLIC -O0 PRIVATE -Wall -Wextra -Wundef -pedantic)
 
-target_link_libraries(webasm_demo PUBLIC wajs_core wajs_gl stb::stb)
+target_link_libraries(webasm_demo PUBLIC wajs_core wajs_gl wajs_window stb::stb)
 
 target_link_options(webasm_demo PUBLIC -Wl,--no-entry -Wl,-allow-undefined
                     -Wl,--import-memory -Wl,--export-table)

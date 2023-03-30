@@ -39,7 +39,7 @@ static GLuint    glProg       = 0;
 static int const canvasWidth  = 640;
 static int const canvasHeight = 480;
 
-void render()
+void render(void)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glClearColor(0.1, 0.2, 0.3, 1);
@@ -91,9 +91,9 @@ GLuint link_program(GLuint vs, GLuint fs)
     return prog;
 }
 
-void gl_setup()
+void gl_setup(void)
 {
-    wajsSetupGlContext(canvasWidth, canvasHeight, render);
+    wajs_setup_gl_context(canvasWidth, canvasHeight, render);
     glViewport(0, 0, canvasWidth, canvasHeight);
 
     GLuint vs = compile_shader(GL_VERTEX_SHADER, vsSource);
@@ -137,7 +137,7 @@ void gl_setup()
     /* glDeleteTextures(arrayLen, textures); */
 }
 
-void print_time()
+void print_time(void)
 {
     u64 sec, nano;
     sysclock_128(&sec, &nano);
@@ -161,7 +161,7 @@ void print_args(int argc, char *argv[])
     printf("\n");
 }
 
-void libc_test()
+void libc_test(void)
 {
     print_time();
     printf("sinf:%f\n", sinf(1.0));

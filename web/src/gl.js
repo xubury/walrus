@@ -181,7 +181,7 @@ export function importGl(env)
     console.log("importGl()");
 
     Object.assign(env, {
-        wajsSetupGlContext: function (width, height, callback) {
+        wajs_setup_gl_context: function (width, height, callback) {
             const func = sys.getCallbackFromWasm(callback);
             var cnvs = WA.canvas;
             cnvs.width = width;
@@ -194,7 +194,7 @@ export function importGl(env)
             var drawFunc = function () {
                 if (sys.ABORT) return;
                 window.requestAnimationFrame(drawFunc);
-                WA.wasm.__wajsUpdateFrameTime()
+                WA.wasm.__wajs_update_frametime()
                 func();
             };
 

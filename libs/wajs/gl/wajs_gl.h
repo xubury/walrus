@@ -16,15 +16,15 @@
 #define GL_VERSION_4_5 0
 #include <GL/gl.h>
 
-typedef void (*WajsRenderCallback)();
+typedef void (*WajsRenderCallback)(void);
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void wajsSetupGlContext(int width, int height, WajsRenderCallback callback);
+void wajs_setup_gl_context(i32 width, i32 height, WajsRenderCallback callback);
 
-f32 wajsGetFrameTime();
+f32 wajs_get_frametime(void);
 
 #ifdef __cplusplus
 }
