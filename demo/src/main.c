@@ -141,7 +141,7 @@ void print_time()
 {
     u64 sec, nano;
     sysclock_128(&sec, &nano);
-    u64 ms = round(nano / 1.0e6);  // Convert nanoseconds to milliseconds
+    u64 ms = round(nano * 1.0e-6);  // Convert nanoseconds to milliseconds
     if (ms > 999) {
         sec++;
         ms = 0;

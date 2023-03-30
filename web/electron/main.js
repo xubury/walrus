@@ -18,17 +18,16 @@ async function createWindow () {
         height: 600,
     })
 
-    if (isDev) {
-        mainWindow.webContents.openDevTools()
-        await session.defaultSession.loadExtension(reactDevToolsPath)
-    } 
     const params = {
       host: 'localhost',
       port: 8080,
     };
-    waitPort(params)
-      .then(({ open, ipVersion }) => { mainWindow.loadURL('http://localhost:8080/'); })
-      .catch((err) => { console.err(`An unknown error occured while waiting for the port: ${err}`); });
+    await waitPort(params);
+    if (isDev) {
+        await session.defaultSession.loadExtension(reactDevToolsPath)
+        mainWindow.webContents.openDevTools()
+    } 
+    mainWindow.loadURL('http://localhost:8080/'); 
 }
 
 app.whenReady().then(() => {
