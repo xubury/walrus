@@ -3,23 +3,58 @@
 
 #include <stdio.h>
 
-void __on_mouse_move(i32 x, i32 y, i32 xrel, i32 yrel, i32 mod)
+void __on_mouse_move(i32 x, i32 y, u8 mods)
 {
-    printf("on mouse move x:%d y:%d xrel:%d yrel:%d mod:%d\n", x, y, xrel, yrel, mod);
+    Event e;
+    e.type = EVENT_AXIS;
+    e.axis.device = INPUT_MOUSE;
+    e.axis.x = x;
+    e.axis.y = y;
+    e.axis.z = 0;
+    e.axis.mods = mods;
+    push_event(&e);
 }
 
-void __on_mouse_click(i8 btn, i32 x, i32 y, i32 xrel, i32 yrel, i32 mod)
+void __on_mouse_up(u8 btn, u8 mods)
 {
-    printf("on mouse click btn:%d x:%d y:%d mod:%d xrel:%d yrel:%d\n", btn, x, y, mod, xrel, yrel);
+    Event e;
+    e.type = EVENT_BUTTON;
+    e.button.device = INPUT_MOUSE;
+    e.button.code = btn;
+    e.button.state = true;
+    e.button.mods = mods;
+    push_event(&e);
 }
 
-void __on_mouse_up(i8 btn, i32 x, i32 y, i32 xrel, i32 yrel, i32 mod)
+void __on_mouse_down(u8 btn, u8 mods)
 {
-    printf("on mouse up btn:%d x:%d y:%d mod:%d xrel:%d yrel:%d\n", btn, x, y, mod, xrel, yrel);
+    Event e;
+    e.type = EVENT_BUTTON;
+    e.button.device = INPUT_MOUSE;
+    e.button.code = btn;
+    e.button.state = false;
+    e.button.mods = mods;
+    push_event(&e);
 }
 
-void __on_mouse_down(i8 btn, i32 x, i32 y, i32 xrel, i32 yrel, i32 mod)
+void __on_key_down(u16 btn, u8 mods)
 {
-    printf("on mouse down btn:%d x:%d y:%d mod:%d xrel:%d yrel:%d\n", btn, x, y, mod, xrel, yrel);
+    Event e;
+    e.type = EVENT_BUTTON;
+    e.button.device = INPUT_KEYBOARD;
+    e.button.code = btn;
+    e.button.state = true;
+    e.button.mods = mods;
+    push_event(&e);
 }
 
+void __on_key_up(u16 btn, u8 mods)
+{
+    Event e;
+    e.type = EVENT_BUTTON;
+    e.button.device = INPUT_KEYBOARD;
+    e.button.code = btn;
+    e.button.state = false;
+    e.button.mods = mods;
+    push_event(&e);
+}

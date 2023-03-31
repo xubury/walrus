@@ -1,8 +1,13 @@
-add_library(wajs_window STATIC src/input.c)
+add_library(wajs_window STATIC src/input.c src/event.c)
 
 target_link_options(
-  wajs_window PUBLIC -Wl,-export=__on_mouse_move -Wl,-export=__on_mouse_click
-  -Wl,-export=__on_mouse_down -Wl,-export=__on_mouse_up)
+  wajs_window
+  PUBLIC
+  -Wl,-export=__on_mouse_move
+  -Wl,-export=__on_mouse_down
+  -Wl,-export=__on_mouse_up
+  -Wl,-export=__on_key_down
+  -Wl,-export=__on_key_up)
 
 target_compile_options(wajs_window PRIVATE -Wall -Wextra -Wundef -pedantic)
 

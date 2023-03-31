@@ -27,32 +27,34 @@ await initSys(wasmBytes, loadLibraries);
 if (WA.wasm.__on_mouse_move) {
     WA.canvas.addEventListener("mousemove", (event) => {
         const mod = getMod(event);
-        WA.wasm.__on_mouse_move(event.clientX, event.clientY, event.movementX, event.movementY, mod)
-    })
-}
-
-
-if (WA.wasm.__on_mouse_click) {
-    WA.canvas.addEventListener("click", (event) => {
-        const mod = getMod(event);
-        WA.wasm.__on_mouse_click(event.button, event.clientX, event.clientY, event.movementX, event.movementY, mod)
-    })
-    WA.canvas.addEventListener("auxclick", (event) => {
-        const mod = getMod(event);
-        WA.wasm.__on_mouse_click(event.button, event.clientX, event.clientY, event.movementX, event.movementY, mod)
+        WA.wasm.__on_mouse_move(event.clientX, event.clientY, mod)
     })
 }
 
 if (WA.wasm.__on_mouse_down) {
     WA.canvas.addEventListener("mousedown", (event) => {
         const mod = getMod(event);
-        WA.wasm.__on_mouse_down(event.button, event.clientX, event.clientY, event.movementX, event.movementY, mod)
+        WA.wasm.__on_mouse_down(event.button, mod)
     })
 }
 if (WA.wasm.__on_mouse_up) {
     WA.canvas.addEventListener("mouseup", (event) => {
         const mod = getMod(event);
-        WA.wasm.__on_mouse_up(event.button, event.clientX, event.clientY, event.movementX, event.movementY, mod)
+        WA.wasm.__on_mouse_up(event.button, mod)
+    })
+}
+
+if (WA.wasm.__on_key_down) {
+    WA.canvas.addEventListener("keydown", (event) => {
+        const mod = getMod(event);
+        WA.wasm.__on_key_down(event.keyCode, mod)
+    })
+}
+
+if (WA.wasm.__on_key_up) {
+    WA.canvas.addEventListener("keyup", (event) => {
+        const mod = getMod(event);
+        WA.wasm.__on_key_up(event.keyCode, mod)
     })
 }
 

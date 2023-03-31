@@ -1,6 +1,7 @@
 #pragma once
 
 #include <assert.h>
+#include <stdio.h>
 
 #define ASSERT(e, ...)                \
     if (!(e)) {                       \

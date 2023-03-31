@@ -2,12 +2,19 @@
 
 #include <type.h>
 
+typedef enum {
+    INPUT_MOUSE,
+    INPUT_KEYBOARD,
+    INPUT_JOYSTICK,
+} InputDeivceType;
+
 typedef struct {
     u8  device;
     u8  axis;
-    f32 x;
-    f32 y;
-    f32 z;
+    i32 x;
+    i32 y;
+    i32 z;
+    u8  mods;
 } AxisEvent;
 
 typedef struct {
@@ -17,7 +24,13 @@ typedef struct {
     u8   mods;
 } ButtonEvent;
 
+typedef enum {
+    EVENT_AXIS,
+    EVENT_BUTTON
+} EventType;
+
 typedef struct {
+    EventType type;
     union {
         AxisEvent   axis;
         ButtonEvent button;
