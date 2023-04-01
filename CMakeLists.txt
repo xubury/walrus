@@ -1,11 +1,18 @@
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-include(${CMAKE_SOURCE_DIR}/cmake/macro.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/bootstraps.cmake)
-set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/toolchain.cmake)
+include(macro)
+include(bootstraps)
 
 cmake_minimum_required(VERSION 3.20.0)
 project(webasm VERSION 0.1.0)
+
+if(WASM)
+  set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/toolchain.cmake)
+endif()
+
+if(BUILD_TEST)
+  include(CTest)
+endif()
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -30,20 +37,34 @@ conan_cmake_configure(
 
 conan_cmake_autodetect(settings)
 
-conan_cmake_install(
-  PATH_OR_REFERENCE
-  .
-  BUILD
-  missing
-  REMOTE
-  conancenter
-  SETTINGS_BUILD
-  ${settings}
-  PROFILE_BUILD
-  default
-  PROFILE_HOST
-  wasm)
+if(WASM)
+  conan_cmake_install(
+    PATH_OR_REFERENCE
+    .
+    BUILD
+    missing
+    REMOTE
+    conancenter
+    SETTINGS_BUILD
+    ${settings}
+    PROFILE_BUILD
+    default
+    PROFILE_HOST
+    wasm)
+else()
+  conan_cmake_install(
+    PATH_OR_REFERENCE
+    .
+    BUILD
+    missing
+    REMOTE
+    conancenter
+    SETTINGS
+    ${settings})
+endif()
 # ##############################################################################
 
 add_subdirectory(${WASM_LIB_DIR}/wajs)
-add_subdirectory(demo)
+if(WASM)
+  add_subdirectory(demo)
+endif()
