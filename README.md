@@ -2,6 +2,12 @@
 
 Project for learning Web Assembly.
 
+## Usage
+
+-   Install `conan` and `cmake`
+-   copy `wasm` to `.conan/profiles/`
+-   run `cmake`
+
 ## Reference
 
 -   [C to wasm](https://developer.mozilla.org/en-US/docs/WebAssembly/C_to_wasm)
@@ -70,6 +76,6 @@ Project for learning Web Assembly.
 
 -   Using electron runtime is not good, can't run on browser. Using a server to deal with node and render to html.
 
-
 2023-03-26
-- function pointer from c/c++ will be converted to table index in function table. Add `-Wl,--export-table` then call `__indirect_function_table.get` from wasm instance to invoke the function.
+
+-   function pointer from c/c++ will be converted to table index in function table. Add `-Wl,--export-table` then call `__indirect_function_table.get` from wasm instance to invoke the function.

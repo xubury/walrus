@@ -1,0 +1,9 @@
+{
+    "version": 4,
+    "vendor": {
+        "conan": {}
+    },
+    "include": [
+        "C:\\Users\\bury\\projects\\webasm\\build\\windows-debug\\CMakePresets.json"
+    ]
+}

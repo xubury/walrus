@@ -24,17 +24,25 @@ endif()
 
 include(${CONAN_CMAKE})
 
-conan_cmake_run(
-  CONANFILE conanfile.txt
-  BASIC_SETUP
-  ARCH wasm
-  ENV CC=${CMAKE_C_COMPILER}
-  ENV CXX=${CMAKE_CXX_COMPILER}
-  ENV CFLAGS=${CMAKE_C_FLAGS}
-  ENV CXXFLAGS=${CMAKE_CXX_FLAGS}
-  ENV CONAN_CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-  PROFILE_AUTO ALL
-  BUILD missing)
+conan_cmake_configure(
+  REQUIRES stb/cci.20210910 imgui/cci.20230105+1.89.2.docking GENERATORS
+  cmake_find_package)
+
+conan_cmake_autodetect(settings)
+
+conan_cmake_install(
+  PATH_OR_REFERENCE
+  .
+  BUILD
+  missing
+  REMOTE
+  conancenter
+  SETTINGS_BUILD
+  ${settings}
+  PROFILE_BUILD
+  default
+  PROFILE_HOST
+  wasm)
 # ##############################################################################
 
 add_subdirectory(${WASM_LIB_DIR}/wajs)
