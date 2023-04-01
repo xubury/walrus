@@ -1,4 +1,4 @@
-add_library(wajs_core STATIC src/sys.c)
+add_library(wajs_core STATIC src/sys.c src/list.c src/queue.c)
 
 target_include_directories(wajs_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

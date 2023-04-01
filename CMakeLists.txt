@@ -1,5 +1,8 @@
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
+
 include(${CMAKE_SOURCE_DIR}/cmake/macro.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/toolchain.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/bootstraps.cmake)
+set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/toolchain.cmake)
 
 cmake_minimum_required(VERSION 3.20.0)
 project(webasm VERSION 0.1.0)
@@ -21,26 +24,17 @@ endif()
 
 include(${CONAN_CMAKE})
 
-conan_cmake_configure(
-  REQUIRES
-  stb/cci.20210910
-  GENERATORS
-  cmake_find_package
-  IMPORTS
-  "bin, *.dll -> ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
-  OPTIONS)
-
-conan_cmake_autodetect(settings)
-
-conan_cmake_install(
-  PATH_OR_REFERENCE
-  .
-  BUILD
-  missing
-  REMOTE
-  conancenter
-  SETTINGS
-  ${settings})
+conan_cmake_run(
+  CONANFILE conanfile.txt
+  BASIC_SETUP
+  ARCH wasm
+  ENV CC=${CMAKE_C_COMPILER}
+  ENV CXX=${CMAKE_CXX_COMPILER}
+  ENV CFLAGS=${CMAKE_C_FLAGS}
+  ENV CXXFLAGS=${CMAKE_CXX_FLAGS}
+  ENV CONAN_CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+  PROFILE_AUTO ALL
+  BUILD missing)
 # ##############################################################################
 
 add_subdirectory(${WASM_LIB_DIR}/wajs)

@@ -1,72 +1,31 @@
-set(WASI_VERSION 14)
-set(WASI_VERSION_FULL ${WASI_VERSION}.0)
+# Cmake toolchain description file for the Makefile
 
-set(WASM_LIB_DIR ${CMAKE_SOURCE_DIR}/libs)
-set(WASI_SDK_PREFIX ${WASM_LIB_DIR}/wasi-sdk-${WASI_VERSION_FULL})
-set(WASI_SYS_ROOT ${WASI_SDK_PREFIX}/share/wasi-sysroot)
+# This is arbitrary, AFAIK, for now.
+cmake_minimum_required(VERSION 3.4.0)
 
-set(WASM_RUNTIME_ENTRY ${CMAKE_SOURCE_DIR}/web/res/main.wasm)
-
-if(WIN32)
-  set(BUILD_PLATFORM mingw)
-elseif(UNIX)
-  set(BUILD_PLATFORM linux)
-else()
-  set(BUILD_PLATFORM macos)
-endif()
-
-set(WASI_HOST_URL
-    https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_VERSION}
-)
-set(WASI_PACKAGE_NAME wasi-sdk-${WASI_VERSION_FULL}-${BUILD_PLATFORM}.tar.gz)
-set(WASI_PACKAGE ${CMAKE_SOURCE_DIR}/${WASI_PACKAGE_NAME})
-set(WASI_URL ${WASI_HOST_URL}/${WASI_PACKAGE_NAME})
-
-if(NOT EXISTS ${WASI_SDK_PREFIX})
-  if(NOT EXISTS ${WASI_PACKAGE})
-    file_download(${WASI_PACKAGE} ${WASI_URL})
-  endif()
-  message("extracting ${WASI_PACKAGE}")
-  file(ARCHIVE_EXTRACT INPUT ${WASI_PACKAGE} DESTINATION ${WASM_LIB_DIR})
-  file(REMOVE ${WASI_PACKAGE})
-endif()
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_VERSION 1)
+set(CMAKE_SYSTEM_PROCESSOR wasm32)
+set(triple wasm32-wasi)
 
 if(WIN32)
   set(WASI_HOST_EXE_SUFFIX ".exe")
-  set(CMAKE_EXECUTABLE_SUFFIX ".wasm")
 else()
   set(WASI_HOST_EXE_SUFFIX "")
 endif()
 
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_SYSTEM_NAME Generic)
-set(CMAKE_SYSTEM_VERSION 1)
-set(CMAKE_SYSTEM_PROCESSOR wasm)
-set(triple wasm32-wasi)
-set(CMAKE_C_COMPILER_TARGET ${triple})
-set(CMAKE_CXX_COMPILER_TARGET ${triple})
-
 set(CMAKE_C_COMPILER ${WASI_SDK_PREFIX}/bin/clang${WASI_HOST_EXE_SUFFIX})
 set(CMAKE_CXX_COMPILER ${WASI_SDK_PREFIX}/bin/clang++${WASI_HOST_EXE_SUFFIX})
+set(CMAKE_ASM_COMPILER ${WASI_SDK_PREFIX}/bin/clang${WASI_HOST_EXE_SUFFIX})
 set(CMAKE_AR ${WASI_SDK_PREFIX}/bin/llvm-ar${WASI_HOST_EXE_SUFFIX})
 set(CMAKE_RANLIB ${WASI_SDK_PREFIX}/bin/llvm-ranlib${WASI_HOST_EXE_SUFFIX})
+set(CMAKE_C_COMPILER_TARGET ${triple})
+set(CMAKE_CXX_COMPILER_TARGET ${triple})
+set(CMAKE_ASM_COMPILER_TARGET ${triple})
 
-# set(WASM_LINKER ${WASI_SDK_PREFIX}/bin/wasm-ld${WASI_HOST_EXE_SUFFIX})
-# set(CMAKE_C_LINK_EXECUTABLE
-#     "${WASM_LINKER} <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
-# set(CMAKE_CXX_LINK_EXECUTABLE
-#     "${WASM_LINKER} <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
-
+# Don't look in the sysroot for executables to run during the build
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 # Only look in the sysroot (not in the host paths) for the rest
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
-
-set(CMAKE_C_COMPILER_WORKS 1)
-set(CMAKE_CXX_COMPILER_WORKS 1)
-
-add_compile_options(--sysroot=${WASI_SYS_ROOT} --target=wasm32-wasi)
-add_compile_definitions(__wasi__)
-link_directories(${WASI_SYS_ROOT}/lib/wasm32-wasi)

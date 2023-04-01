@@ -1,20 +1,62 @@
 #include <event.h>
 #include <queue.h>
+#include <stdlib.h>
+#include <string.h>
 
-i32 poll_event(Event *event)
+static Queue *s_event_queue = NULL;
+
+static Event *event_alloc(void)
 {
-    if (event == NULL) return EVENT_INVALID;
-
-    /* queue_pop(&event_queue, event); */
-
-    return EVENT_SUCCESS;
+    return (Event *)malloc(sizeof(Event));
 }
 
-i32 push_event(Event *event)
+static void event_free(Event *event)
+{
+    free(event);
+}
+
+void event_init(void)
+{
+    s_event_queue = queue_alloc();
+}
+
+void event_destroy(void)
+{
+    Event *p = NULL;
+    // free unpolled events
+    while ((p = queue_pop(s_event_queue)) != NULL) {
+        event_free(p);
+    }
+
+    // Free queue itself
+    queue_free(s_event_queue);
+}
+
+i32 event_poll(Event *event)
 {
     if (event == NULL) return EVENT_INVALID;
 
-    /* queue_push(&event_queue, event); */
+    Event *p = queue_pop(s_event_queue);
+
+    if (p) {
+        memcpy(event, p, sizeof(Event));
+        event_free(p);
+
+        return EVENT_SUCCESS;
+    }
+    else {
+        return EVENT_EMPTY;
+    }
+}
+
+i32 event_push(Event *event)
+{
+    if (event == NULL) return EVENT_INVALID;
+
+    Event *e = event_alloc();
+
+    memcpy(e, event, sizeof(Event));
+    queue_push(s_event_queue, e);
 
     return EVENT_SUCCESS;
 }

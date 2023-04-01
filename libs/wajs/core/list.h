@@ -10,10 +10,20 @@ struct _List {
     List *prev;
 };
 
+// Allocate a double linked list
 List *list_alloc(void);
 
+// Free a double linked list
 void list_free(List *list);
 
-List *list_push(List *list, void *data);
+// Free one node from linked list
+void list_free1(List *list);
 
-List *list_pop(List *list);
+// Return the last element of linked list
+List *list_last(List *list);
+
+// Append an element to the last of a linked list
+List *list_append(List *list, void *data);
+
+// Remove an element from the last of a linked list
+List *list_remove(List *list, void *data);

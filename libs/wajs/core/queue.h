@@ -1,22 +1,21 @@
 #pragma once
 
-#include <type.h>
+#include <list.h>
 
 typedef struct {
-    u32 head;
-    u32 tail;
-    u32 element_size;
-    u32 size;
-    u32 capacity;
-    u8 *data;
+    List *head;
+    List *tail;
+    u8    length;
 } Queue;
 
-Queue *queue_new(i32 element_size, i32 capacity);
+// Allocate a queue
+Queue *queue_alloc(void);
 
+// Free a queue
 void queue_free(Queue *queue);
 
-bool queue_empty(Queue *queue);
+void queue_push(Queue *queue, void *data);
 
-bool queue_push(Queue *queue, const void *data);
+void *queue_pop(Queue *queue);
 
-bool queue_pop(Queue *queue, void *data);
+void *queue_peek(Queue *queue);

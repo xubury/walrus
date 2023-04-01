@@ -25,8 +25,8 @@ typedef struct {
 } ButtonEvent;
 
 typedef enum {
-    EVENT_AXIS,
-    EVENT_BUTTON
+    EVENT_TYPE_AXIS,
+    EVENT_TYPE_BUTTON
 } EventType;
 
 typedef struct {
@@ -45,6 +45,10 @@ typedef enum {
     EVENT_ERROR   = -1,
 } EventResult;
 
-i32 poll_event(Event *event);
+void event_init(void);
 
-i32 push_event(Event *event);
+void event_destroy(void);
+
+i32 event_poll(Event *event);
+
+i32 event_push(Event *event);

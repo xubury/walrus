@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include <wajs_gl.h>
+#include <event.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -41,6 +42,18 @@ static int const canvasHeight = 480;
 
 void render(void)
 {
+    // Event queue test
+    Event e;
+    i32   ret;
+    while ((ret = event_poll(&e)) == EVENT_SUCCESS) {
+        if (e.type == EVENT_TYPE_AXIS) {
+            printf("mouse move: %d, %d\n", e.axis.x, e.axis.y);
+        }
+        else if (e.type == EVENT_TYPE_BUTTON) {
+            printf("key: %d\n", e.button.code);
+        }
+    }
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glClearColor(0.1, 0.2, 0.3, 1);
     glUseProgram(glProg);
@@ -184,6 +197,7 @@ int main(int argc, char *argv[])
 
     libc_test();
 
+    event_init();
     gl_setup();
 
     return 0;
