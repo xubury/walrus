@@ -64,7 +64,9 @@ else()
 endif()
 # ##############################################################################
 
-add_subdirectory(${WASM_LIB_DIR}/wajs)
 if(WASM)
   add_subdirectory(demo)
 endif()
+
+add_subdirectory(engine/core)
+add_subdirectory(engine/window)

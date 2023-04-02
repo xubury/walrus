@@ -7,9 +7,8 @@
 #include <string.h>
 #include <time.h>
 
-#include <wajs_gl.h>
 #include <event.h>
-#include <window.h>
+#include <wajs_window.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
