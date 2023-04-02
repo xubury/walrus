@@ -170,6 +170,18 @@ var env =
 	__cxa_pure_virtual: function() { abort('CRASH', 'pure virtual'); },
 	abort: function() { abort('CRASH', 'Abort called'); },
 	longjmp: function() { abort('CRASH', 'Unsupported longjmp called'); },
+
+
+    wajs_set_main_loop: function(callback) {
+        const func = getCallbackFromWasm(callback);
+        var drawFunc = function () {
+            if (ABORT) return;
+            window.requestAnimationFrame(drawFunc);
+            func();
+        };
+
+        window.requestAnimationFrame(drawFunc);
+    }
 }, wasi = {};
 
 // Extend the objects with the syscall IO emulation
