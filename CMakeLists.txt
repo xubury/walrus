@@ -67,6 +67,4 @@ endif()
 if(WASM)
   add_subdirectory(demo)
 endif()
-
-add_subdirectory(engine/core)
-add_subdirectory(engine/window)
+add_subdirectory(engine)

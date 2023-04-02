@@ -8,7 +8,8 @@
 #include <time.h>
 
 #include <event.h>
-#include <wajs_window.h>
+#include <engine.h>
+#include <rhi.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -49,48 +50,11 @@ void render(void)
     /* printf("dt:%f\n", wajsGetFrameTime()); */
 }
 
-void event_process(void)
+void tick(float dt)
 {
-    // Event queue test
-    Event e;
-    i32   ret;
-    while ((ret = event_poll(&e)) == EVENT_SUCCESS) {
-        if (e.type == EVENT_TYPE_AXIS) {
-            printf("mouse move: %d, %d\n", e.axis.x, e.axis.y);
-        }
-        else if (e.type == EVENT_TYPE_BUTTON) {
-            printf("key: %d\n", e.button.code);
-        }
-    }
+
 }
 
-void tick(f32 dt)
-{
-}
-
-f32 const min_fps     = 30.f;
-f32 const max_spf     = 1.0 / min_fps;
-f32       sec_elapesd = 0.f;
-
-void loop(void)
-{
-    static u64 last_ts = 0;
-    const u64  nw      = sysclock(SYS_CLOCK_UNIT_MILLSEC);
-    if (last_ts > 0) {
-        sec_elapesd = (nw - last_ts) * 1e-3;
-    }
-    last_ts = nw;
-
-    while (sec_elapesd > max_spf) {
-        sec_elapesd -= max_spf;
-        tick(max_spf);
-    }
-    tick(sec_elapesd);
-
-    render();
-
-    event_process();
-}
 
 GLuint compile_shader(GLenum type, const char *source)
 {
@@ -138,7 +102,6 @@ GLuint link_program(GLuint vs, GLuint fs)
 void gl_setup(void)
 {
     wajs_setup_gl_context(canvasWidth, canvasHeight);
-    wajs_set_main_loop(loop);
     glViewport(0, 0, canvasWidth, canvasHeight);
 
     GLuint vs = compile_shader(GL_VERTEX_SHADER, vsSource);
@@ -231,6 +194,8 @@ int main(int argc, char *argv[])
 
     event_init();
     gl_setup();
+
+    engine_run(render, tick);
 
     return 0;
 }

@@ -1,5 +1,7 @@
 add_subdirectory(core)
+add_subdirectory(engine)
+add_subdirectory(rhi)
 
-if (WASM)
-add_subdirectory(window)
+if(WASM)
+  add_subdirectory(window)
 endif()
