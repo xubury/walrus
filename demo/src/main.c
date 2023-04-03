@@ -37,11 +37,9 @@ char const *fsSource =
     "    fragColor = texture(u_texture, v_uv) * vec4(v_pos, 1.0, 1.0);"
     "}";
 
-static GLuint    glProg       = 0;
-static int const canvasWidth  = 640;
-static int const canvasHeight = 480;
+static GLuint glProg = 0;
 
-void render(void)
+void on_render(void)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glClearColor(0.1, 0.2, 0.3, 1);
@@ -50,11 +48,19 @@ void render(void)
     /* printf("dt:%f\n", wajsGetFrameTime()); */
 }
 
-void tick(float dt)
+void on_tick(float dt)
 {
-
 }
 
+void on_event(Event *e)
+{
+    if (e->type == EVENT_TYPE_AXIS) {
+        printf("mouse move: %d, %d\n", e->axis.x, e->axis.y);
+    }
+    else if (e->type == EVENT_TYPE_BUTTON) {
+        printf("key: %d\n", e->button.code);
+    }
+}
 
 GLuint compile_shader(GLenum type, const char *source)
 {
@@ -99,10 +105,9 @@ GLuint link_program(GLuint vs, GLuint fs)
     return prog;
 }
 
-void gl_setup(void)
+void on_init(Engine *engine)
 {
-    wajs_setup_gl_context(canvasWidth, canvasHeight);
-    glViewport(0, 0, canvasWidth, canvasHeight);
+    glViewport(0, 0, engine->opt.window_width, engine->opt.window_height);
 
     GLuint vs = compile_shader(GL_VERTEX_SHADER, vsSource);
     GLuint fs = compile_shader(GL_FRAGMENT_SHADER, fsSource);
@@ -145,57 +150,26 @@ void gl_setup(void)
     /* glDeleteTextures(arrayLen, textures); */
 }
 
-void print_time(void)
-{
-    u64 sec, nano;
-    sysclock_128(&sec, &nano);
-    u64 ms = round(nano * 1.0e-6);  // Convert nanoseconds to milliseconds
-    if (ms > 999) {
-        sec++;
-        ms = 0;
-    }
-    printf("Current time: %lld.%lld seconds since the Epoch\n", sec, ms);
-
-    u64 micro = sysclock(SYS_CLOCK_UNIT_MICROSEC);
-    printf("micro time: %lld\n", micro);
-}
-
-void print_args(int argc, char *argv[])
-{
-    printf("argc: %d\n", argc);
-    for (i32 i = 0; i < argc; ++i) {
-        printf("argv[%d]: %s ", i, argv[i]);
-    }
-    printf("\n");
-}
-
-void libc_test(void)
-{
-    print_time();
-    printf("sinf:%f\n", sinf(1.0));
-    u8 *ptr = (u8 *)malloc(100);
-    ptr[0]  = 122;
-    ptr[1]  = 123;
-    ptr[2]  = 124;
-    printf("malloc:0x%lx\n", (intptr_t)ptr);
-    for (i32 i = 0; i < 3; ++i) {
-        printf("ptr[%d]:%d ", i, ptr[i]);
-    }
-    printf("\n");
-
-    free(ptr);
-}
-
 int main(int argc, char *argv[])
 {
-    print_args(argc, argv);
+    UNUSED(argc) UNUSED(argv);
 
-    libc_test();
+    EngineOption opt;
+    opt.window_width  = 640;
+    opt.window_height = 480;
+    opt.minfps        = 30.f;
 
-    event_init();
-    gl_setup();
+    App *app = app_alloc();
+    app_set_init(app, on_init);
+    app_set_tick(app, on_tick);
+    app_set_render(app, on_render);
+    app_set_event(app, on_event);
 
-    engine_run(render, tick);
+    engine_init(&opt);
+
+    engine_run(app);
+
+    engine_destroy();
 
     return 0;
 }

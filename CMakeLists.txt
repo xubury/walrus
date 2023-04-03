@@ -3,12 +3,12 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(macro)
 include(bootstraps)
 
-cmake_minimum_required(VERSION 3.20.0)
-project(webasm VERSION 0.1.0)
-
 if(WASM)
   set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/toolchain.cmake)
 endif()
+
+cmake_minimum_required(VERSION 3.20.0)
+project(webasm VERSION 0.1.0)
 
 if(BUILD_TEST)
   include(CTest)
@@ -31,9 +31,8 @@ endif()
 
 include(${CONAN_CMAKE})
 
-conan_cmake_configure(
-  REQUIRES stb/cci.20210910 imgui/cci.20230105+1.89.2.docking GENERATORS
-  cmake_find_package)
+conan_cmake_configure(REQUIRES stb/cci.20210910 imgui/cci.20220621+1.88.docking
+                      GENERATORS cmake_find_package)
 
 conan_cmake_autodetect(settings)
 

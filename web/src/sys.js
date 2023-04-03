@@ -172,12 +172,12 @@ var env =
 	longjmp: function() { abort('CRASH', 'Unsupported longjmp called'); },
 
 
-    wajs_set_main_loop: function(loop, render, tick) {
-        loop = getCallbackFromWasm(loop);
+    wajs_set_main_loop: function(engine_loop) {
+        engine_loop = getCallbackFromWasm(engine_loop);
         var drawFunc = function () {
             if (ABORT) return;
             window.requestAnimationFrame(drawFunc);
-            loop(render, tick);
+            engine_loop();
         };
 
         window.requestAnimationFrame(drawFunc);

@@ -13,6 +13,7 @@ endif()
 
 target_compile_options(wajs_window PRIVATE -Wall -Wextra -Wundef -pedantic)
 
-target_include_directories(wajs_window PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(wajs_window
+                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_link_libraries(wajs_window PRIVATE wajs_core)
