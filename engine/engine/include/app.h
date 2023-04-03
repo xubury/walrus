@@ -3,8 +3,6 @@
 #include <type.h>
 #include <event.h>
 
-typedef struct _Engine Engine;
-
 typedef struct _App App;
 
 typedef void (*AppInitCallback)(App *);

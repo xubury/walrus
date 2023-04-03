@@ -12,6 +12,8 @@ struct _Engine {
     EngineOption opt;
 };
 
+typedef struct _Engine Engine;
+
 void engine_init(EngineOption *opt);
 
 void engine_destroy(void);
