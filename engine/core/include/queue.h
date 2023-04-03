@@ -5,7 +5,7 @@
 typedef struct {
     List *head;
     List *tail;
-    u8    length;
+    u64   length;
 } Queue;
 
 // Allocate a queue

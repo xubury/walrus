@@ -5,7 +5,7 @@
 typedef struct _List List;
 
 struct _List {
-    u8   *data;
+    void *data;
     List *next;
     List *prev;
 };
