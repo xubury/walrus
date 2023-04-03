@@ -9,13 +9,14 @@
 #include <string.h>
 #include <stdio.h>
 #include <macro.h>
+#include <platform.h>
 #include <math.h>
 
 typedef void (*WajsLoopCallback)(void);
 
-void wajs_setup_gl_context(i32 width, i32 height);
-
+#if PLATFORM == PLATFORM_WASI
 void wajs_set_main_loop(WajsLoopCallback loop);
+#endif
 
 static Engine *s_engine = NULL;
 static App    *s_app    = NULL;
@@ -69,10 +70,12 @@ void engine_init(EngineOption *opt)
     opt->window_height = fmax(opt->window_height, 1);
 
     s_engine = malloc(sizeof(Engine));
+
     memcpy(&s_engine->opt, opt, sizeof(EngineOption));
 
-    wajs_setup_gl_context(opt->window_width, opt->window_height);
     event_init();
+
+    s_engine->window = window_create(opt->window_width, opt->window_height, opt->window_flags);
 }
 
 void engine_run(App *app)
@@ -81,12 +84,23 @@ void engine_run(App *app)
 
     app->init(app);
 
+#if PLATFORM == PLATFORM_WASI
     wajs_set_main_loop(engine_loop);
+#else
+    engine_loop();
+#endif
 }
 
-void engine_destroy(void)
+void engine_shutdown(void)
 {
-    // do nothing, handle by js side
+#if PLATFORM != PLATFORM_WASI
+    event_shutdown();
+    app_destroy(s_app);
+    free(s_engine);
+
+    s_app    = NULL;
+    s_engine = NULL;
+#endif
 }
 
 Engine *engine_get(void)

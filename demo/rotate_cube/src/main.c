@@ -180,9 +180,10 @@ int main(int argc, char *argv[])
     EngineOption opt;
     opt.window_width  = 640;
     opt.window_height = 480;
+    opt.window_flags  = 0;
     opt.minfps        = 30.f;
 
-    App *app = app_alloc();
+    App *app = app_create();
     app_set_init(app, on_init);
     app_set_destroy(app, on_destroy);
     app_set_tick(app, on_tick);
@@ -193,7 +194,7 @@ int main(int argc, char *argv[])
 
     engine_run(app);
 
-    engine_destroy();
+    engine_shutdown();
 
     return 0;
 }

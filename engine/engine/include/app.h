@@ -15,9 +15,9 @@ typedef void (*AppRenderCallback)(App *);
 
 typedef void (*AppEventCallback)(App *, Event *);
 
-App *app_alloc(void);
+App *app_create(void);
 
-void app_free(App *app);
+void app_destroy(App *app);
 
 void app_set_userdata(App *app, void *userdata);
 

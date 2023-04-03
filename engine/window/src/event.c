@@ -20,10 +20,10 @@ void event_init(void)
     s_event_queue = queue_alloc();
 }
 
-void event_destroy(void)
+void event_shutdown(void)
 {
     Event *p = NULL;
-    // free unpolled events
+    // Free unpolled events
     while ((p = queue_pop(s_event_queue)) != NULL) {
         event_free(p);
     }

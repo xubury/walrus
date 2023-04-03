@@ -24,7 +24,7 @@ static void dummyevent(App *app, Event *e)
     UNUSED(app) UNUSED(e);
 }
 
-App *app_alloc(void)
+App *app_create(void)
 {
     App *app = malloc(sizeof(App));
 
@@ -39,8 +39,9 @@ App *app_alloc(void)
     return app;
 }
 
-void app_free(App *app)
+void app_destroy(App *app)
 {
+    app->destroy(app);
     free(app);
 }
 

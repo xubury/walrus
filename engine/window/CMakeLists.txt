@@ -1,4 +1,4 @@
-add_library(wajs_window STATIC src/wajs_window.c src/event.c)
+add_library(wajs_window STATIC src/wajs_window.c src/event.c src/window.c)
 
 if(WASM)
   target_link_options(

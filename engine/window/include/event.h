@@ -47,7 +47,7 @@ typedef enum {
 
 void event_init(void);
 
-void event_destroy(void);
+void event_shutdown(void);
 
 i32 event_poll(Event *event);
 
