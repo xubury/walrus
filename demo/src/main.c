@@ -14,6 +14,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include <cglm/cglm.h>
+
 char const *vsSource =
     "#version 300 es\n"
     "const vec2 quadVert[] = vec2[](vec2(-1.0f, 1.0f), vec2(-1.0f, -1.0f), vec2(1.0f, 1.0f), vec2(1.0f, -1.0f));"
@@ -50,6 +52,7 @@ void on_render(void)
 
 void on_tick(float dt)
 {
+    UNUSED(dt);
 }
 
 void on_event(Event *e)
@@ -153,6 +156,12 @@ void on_init(Engine *engine)
 int main(int argc, char *argv[])
 {
     UNUSED(argc) UNUSED(argv);
+
+    // cglm test
+    vec3 ve = {1.0, 0, 0};
+    printf("before rotate: %f, %f, %f\n", ve[0], ve[1], ve[2]);
+    glm_vec3_rotate(ve, glm_rad(45), (vec3){0, 0, 1.0});
+    printf("after rotate: %f, %f, %f\n", ve[0], ve[1], ve[2]);
 
     EngineOption opt;
     opt.window_width  = 640;
