@@ -39,33 +39,7 @@ char const *fsSource =
     "    fragColor = texture(u_texture, v_uv) * vec4(v_pos, 1.0, 1.0);"
     "}";
 
-static GLuint glProg = 0;
-
-void on_render(void)
-{
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glClearColor(0.1, 0.2, 0.3, 1);
-    glUseProgram(glProg);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    /* printf("dt:%f\n", wajsGetFrameTime()); */
-}
-
-void on_tick(float dt)
-{
-    UNUSED(dt);
-}
-
-void on_event(Event *e)
-{
-    if (e->type == EVENT_TYPE_AXIS) {
-        printf("mouse move: %d, %d\n", e->axis.x, e->axis.y);
-    }
-    else if (e->type == EVENT_TYPE_BUTTON) {
-        printf("key: %d\n", e->button.code);
-    }
-}
-
-GLuint compile_shader(GLenum type, const char *source)
+static GLuint compile_shader(GLenum type, const char *source)
 {
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, NULL);
@@ -86,7 +60,7 @@ GLuint compile_shader(GLenum type, const char *source)
     return shader;
 }
 
-GLuint link_program(GLuint vs, GLuint fs)
+static GLuint link_program(GLuint vs, GLuint fs)
 {
     GLuint prog = glCreateProgram();
     glAttachShader(prog, vs);
@@ -108,26 +82,63 @@ GLuint link_program(GLuint vs, GLuint fs)
     return prog;
 }
 
-void on_init(Engine *engine)
+typedef struct {
+    GLuint shader;
+    GLuint textures[2];
+} AppData;
+
+void on_render(App *app)
 {
+    AppData *data = app_get_userdata(app);
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClearColor(0.1, 0.2, 0.3, 1);
+    glUseProgram(data->shader);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    /* printf("dt:%f\n", wajsGetFrameTime()); */
+}
+
+void on_tick(App *app, float dt)
+{
+    UNUSED(app) UNUSED(dt);
+}
+
+void on_event(App *app, Event *e)
+{
+    UNUSED(app)
+
+    if (e->type == EVENT_TYPE_AXIS) {
+        printf("mouse move: %d, %d\n", e->axis.x, e->axis.y);
+    }
+    else if (e->type == EVENT_TYPE_BUTTON) {
+        printf("key: %d\n", e->button.code);
+    }
+}
+
+void on_init(App *app)
+{
+    AppData *app_data = malloc(sizeof(AppData));
+    Engine  *engine   = engine_get();
+
+    app_set_userdata(app, app_data);
+
     glViewport(0, 0, engine->opt.window_width, engine->opt.window_height);
 
-    GLuint vs = compile_shader(GL_VERTEX_SHADER, vsSource);
-    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, fsSource);
-    glProg    = link_program(vs, fs);
+    GLuint vs        = compile_shader(GL_VERTEX_SHADER, vsSource);
+    GLuint fs        = compile_shader(GL_FRAGMENT_SHADER, fsSource);
+    app_data->shader = link_program(vs, fs);
 
-    GLuint textureloc = glGetUniformLocation(glProg, "u_texture");
+    GLuint textureloc = glGetUniformLocation(app_data->shader, "u_texture");
     printf("uniform \"u_texture\" loc: %d\n", textureloc);
 
-    glUseProgram(glProg);
+    glUseProgram(app_data->shader);
 
-    GLuint    textures[2] = {0, 0};
-    i32 const arrayLen    = ARRAY_LEN(textures);
+    i32 const arrayLen = ARRAY_LEN(app_data->textures);
 
-    glGenTextures(arrayLen, textures);
+    glGenTextures(arrayLen, app_data->textures);
 
     for (int i = 0; i < arrayLen; ++i) {
-        printf("texture: %d\n", textures[i]);
+        printf("texture: %d\n", app_data->textures[i]);
     }
 
     /* stbi img test */
@@ -138,7 +149,7 @@ void on_init(Engine *engine)
     printf("stbi_load time: %llu ms\n", sysclock(SYS_CLOCK_UNIT_MILLSEC) - ts);
     if (img != NULL) {
         printf("load image width: %d height: %d channel: %d\n", x, y, c);
-        glBindTexture(GL_TEXTURE_2D, textures[0]);
+        glBindTexture(GL_TEXTURE_2D, app_data->textures[0]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, img);
         glGenerateMipmap(GL_TEXTURE_2D);
         glActiveTexture(GL_TEXTURE0);
@@ -149,8 +160,11 @@ void on_init(Engine *engine)
     else {
         printf("fail to load image: %s\n", stbi_failure_reason());
     }
+}
 
-    /* glDeleteTextures(arrayLen, textures); */
+void on_destroy(App *app)
+{
+    UNUSED(app);
 }
 
 int main(int argc, char *argv[])
@@ -170,6 +184,7 @@ int main(int argc, char *argv[])
 
     App *app = app_alloc();
     app_set_init(app, on_init);
+    app_set_destroy(app, on_destroy);
     app_set_tick(app, on_tick);
     app_set_render(app, on_render);
     app_set_event(app, on_event);

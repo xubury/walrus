@@ -4,32 +4,37 @@
 
 #include <stdlib.h>
 
-static void dummy(void)
+static void dummy(App *app)
 {
+    UNUSED(app);
 }
 
-static void dummyinit(Engine *engine)
+static void dummyinit(App *app)
 {
-    UNUSED(engine);
+    UNUSED(app);
 }
 
-static void dummytick(f32 t)
+static void dummytick(App *app, f32 t)
 {
-    UNUSED(t);
+    UNUSED(app) UNUSED(t);
 }
 
-static void dummyevent(Event *e)
+static void dummyevent(App *app, Event *e)
 {
-    UNUSED(e);
+    UNUSED(app) UNUSED(e);
 }
 
 App *app_alloc(void)
 {
-    App *app    = malloc(sizeof(App));
-    app->init   = dummyinit;
-    app->tick   = dummytick;
-    app->render = dummy;
-    app->event  = dummyevent;
+    App *app = malloc(sizeof(App));
+
+    app->init    = dummyinit;
+    app->destroy = dummy;
+    app->tick    = dummytick;
+    app->render  = dummy;
+    app->event   = dummyevent;
+
+    app->userdata = NULL;
 
     return app;
 }
@@ -39,9 +44,24 @@ void app_free(App *app)
     free(app);
 }
 
+void app_set_userdata(App *app, void *userdata)
+{
+    app->userdata = userdata;
+}
+
+void *app_get_userdata(App *app)
+{
+    return app->userdata;
+}
+
 void app_set_init(App *app, AppInitCallback init)
 {
     app->init = init;
+}
+
+void app_set_destroy(App *app, AppDestroyCallback destroy)
+{
+    app->destroy = destroy;
 }
 
 void app_set_tick(App *app, AppTickCallback tick)

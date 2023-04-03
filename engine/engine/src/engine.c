@@ -17,25 +17,24 @@ void wajs_setup_gl_context(i32 width, i32 height);
 
 void wajs_set_main_loop(WajsLoopCallback loop);
 
-Engine *s_engine = NULL;
+static Engine *s_engine = NULL;
+static App    *s_app    = NULL;
 
 static void event_process(void)
 {
-    // Event queue test
     Event e;
     i32   ret;
     while ((ret = event_poll(&e)) == EVENT_SUCCESS) {
-        s_engine->app->event(&e);
+        s_app->event(s_app, &e);
     }
 }
 
 static void engine_loop(void)
 {
-    App          *app = s_engine->app;
     EngineOption *opt = &s_engine->opt;
     ASSERT(opt->minfps > 0, "Invalid min fps");
-    ASSERT(app->tick != NULL, "Invalid tick function");
-    ASSERT(app->render != NULL, "Invalid render function");
+    ASSERT(s_app->tick != NULL, "Invalid tick function");
+    ASSERT(s_app->render != NULL, "Invalid render function");
 
     f32 const max_spf = 1.0 / s_engine->opt.minfps;
 
@@ -51,14 +50,14 @@ static void engine_loop(void)
 
     while (sec_elapesd > max_spf) {
         sec_elapesd -= max_spf;
-        app->tick(max_spf);
+        s_app->tick(s_app, max_spf);
     }
 
     if (sec_elapesd > 0) {
-        app->tick(sec_elapesd);
+        s_app->tick(s_app, sec_elapesd);
     }
 
-    app->render();
+    s_app->render(s_app);
 
     event_process();
 }
@@ -78,8 +77,9 @@ void engine_init(EngineOption *opt)
 
 void engine_run(App *app)
 {
-    s_engine->app = app;
-    app->init(s_engine);
+    s_app = app;
+
+    app->init(app);
 
     wajs_set_main_loop(engine_loop);
 }
@@ -87,4 +87,9 @@ void engine_run(App *app)
 void engine_destroy(void)
 {
     // do nothing, handle by js side
+}
+
+Engine *engine_get(void)
+{
+    return s_engine;
 }
