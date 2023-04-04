@@ -1,5 +1,4 @@
 find_package(stb REQUIRED)
-find_package(cglm REQUIRED)
 
 add_executable(rotate_cube src/main.c)
 
@@ -8,8 +7,7 @@ target_compile_options(
   PUBLIC -O0
   PRIVATE -Wall -Wextra -Wundef -pedantic)
 
-target_link_libraries(rotate_cube PUBLIC wajs_engine wajs_rhi stb::stb
-                                         cglm::cglm)
+target_link_libraries(rotate_cube PUBLIC wajs_engine wajs_rhi stb::stb)
 
 target_link_options(rotate_cube PUBLIC -Wl,--no-entry -Wl,-allow-undefined
                     -Wl,--import-memory -Wl,--export-table)

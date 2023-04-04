@@ -1,3 +1,5 @@
+find_package(cglm REQUIRED)
+
 add_library(wajs_engine STATIC src/engine.c src/app.c)
 
 target_compile_options(wajs_engine PRIVATE -Wall -Wextra -Wundef -pedantic)
