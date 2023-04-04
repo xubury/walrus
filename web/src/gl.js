@@ -132,7 +132,7 @@ function webGlGetTexPixelData(type, format, width, height, pixels, internalForma
         case 0x1406: return HEAPF32.subarray((pixels)>>2,(pixels+bytes)>>2); //GL_FLOAT
         case 0x1405: case 0x84FA: return HEAPU32.subarray((pixels)>>2,(pixels+bytes)>>2); //GL_UNSIGNED_INT, GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8
         case 0x1403: case 0x8363: case 0x8033: case 0x8034: case 0x8D61: return HEAPU16.subarray((pixels)>>1,(pixels+bytes)>>1); //GL_UNSIGNED_SHORT, GL_UNSIGNED_SHORT_5_6_5, GL_UNSIGNED_SHORT_4_4_4_4, GL_UNSIGNED_SHORT_5_5_5_1, GL_HALF_FLOAT_OES
-        default: WA.error("Invalid type: %d", type); return null; //GL_INVALID_ENUM
+        default: WA.error("GL_INVALID_ENUM", "Invalid type: %d", type); return null; //GL_INVALID_ENUM
     }
 }
 

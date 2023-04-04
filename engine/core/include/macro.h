@@ -5,8 +5,8 @@
 
 #define ASSERT(e, ...)                \
     if (!(e)) {                       \
-        assert(false);                \
         fprintf(stderr, __VA_ARGS__); \
+        assert(false);                \
     }
 
 #define ARRAY_LEN(arr) sizeof(arr) / sizeof(arr[0])

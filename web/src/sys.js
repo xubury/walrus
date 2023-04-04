@@ -295,11 +295,14 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
             if (len < 0) return -1;
             ret += len;
             str += readHeapString(ptr, len);
-            //console.log('fd_write - fd: ' + fd + ' - ['+i+'][len:'+len+']: ' + ReadHeapString(ptr, len).replace(/\n/g, '\\n'));
         }
 
         // Print the passed string and write the number of bytes read to the result pointer
-        WA.print(str);
+        if (fd == 1) {
+            WA.print(str);
+        } else if (fd == 2) {
+            WA.error('ASSERT', str);
+        }
         heap.setUint32(pOutResult, ret, true);
         return WASI_ESUCCESS; // no error
     };

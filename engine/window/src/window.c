@@ -35,9 +35,9 @@ Window *window_create(i32 width, i32 height, i32 flags)
     return win;
 }
 
-void window_destroy(Window *window)
+void window_destroy(Window *win)
 {
-    free(window);
+    free(win);
 }
 
 u32 window_get_width(Window *win)

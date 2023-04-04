@@ -10,17 +10,19 @@ typedef struct {
     f32 minfps;
 } EngineOption;
 
-struct _Engine {
-    EngineOption opt;
-    Window      *window;
-};
-
 typedef struct _Engine Engine;
 
+// Initialize engine
 void engine_init(EngineOption *opt);
 
+// Shutdown engine
 void engine_shutdown(void);
 
+// Run an app
 void engine_run(App *app);
 
-Engine *engine_get(void);
+// Exit current app
+void engine_exit(void);
+
+// Get engine main window
+Window *engine_get_window(void);

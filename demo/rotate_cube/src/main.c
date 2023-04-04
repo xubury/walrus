@@ -117,12 +117,10 @@ void on_event(App *app, Event *e)
 
 void on_init(App *app)
 {
-    AppData *app_data = malloc(sizeof(AppData));
-    Engine  *engine   = engine_get();
+    AppData *app_data = app_get_userdata(app);
+    Window  *window   = engine_get_window();
 
-    app_set_userdata(app, app_data);
-
-    glViewport(0, 0, engine->opt.window_width, engine->opt.window_height);
+    glViewport(0, 0, window_get_width(window), window_get_height(window));
 
     GLuint vs        = compile_shader(GL_VERTEX_SHADER, vs_src);
     GLuint fs        = compile_shader(GL_FRAGMENT_SHADER, fs_src);
@@ -184,7 +182,7 @@ int main(int argc, char *argv[])
     opt.minfps        = 30.f;
     engine_init(&opt);
 
-    App *app = app_alloc();
+    App *app = app_alloc(malloc(sizeof(AppData)));
     app_set_init(app, on_init);
     app_set_shutdown(app, on_shutdown);
     app_set_tick(app, on_tick);

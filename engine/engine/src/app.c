@@ -24,7 +24,7 @@ static void dummyevent(App *app, Event *e)
     UNUSED(app) UNUSED(e);
 }
 
-App *app_alloc(void)
+App *app_alloc(void *userdata)
 {
     App *app = malloc(sizeof(App));
 
@@ -34,7 +34,7 @@ App *app_alloc(void)
     app->render   = dummy;
     app->event    = dummyevent;
 
-    app->userdata = NULL;
+    app->userdata = userdata;
 
     return app;
 }
