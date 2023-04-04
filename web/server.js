@@ -57,16 +57,26 @@ app.get("/fd_close", function (req, res) {
     fs.closeSync(fd);
 });
 
+function getWasm(filename)
+{
+    filename = path.join(__dirname, "res", filename);
+    return filename;
+}
+
 app.get("/", function (req, res) {
-    if (req.query.wasm != null) {
+    if (req.query.wasm != null && fs.existsSync(getWasm(req.query.wasm))) {
         fs.readFile(path.join(__dirname, "res/index.html"), function(err, buffer) {
-            var str = String(buffer);
-            str = str.replace("%WASM%", req.query.wasm);
-            res.setHeader('Content-Type', 'text/html');
-            res.send(Buffer.from(str));
+            if (err == null) {
+                var str = String(buffer);
+                str = str.replace("%WASM%", req.query.wasm);
+                res.setHeader('Content-Type', 'text/html');
+                res.send(Buffer.from(str));
+            } else {
+                res.status(404).send(err);
+            }
         })
     } else {
-        res.sendStatus(404);
+        res.status(404).send("Invalid wasm!");
     }
 });
 
@@ -75,8 +85,7 @@ app.get("/favicon.ico", function (req, res) {
 });
 
 app.get("/wasm", function (req, res) {
-    const filename = path.join(__dirname, "res", req.query.filename);
-    res.sendFile(filename);
+    res.sendFile(getWasm(req.query.filename));
 });
 
 app.get("/wasm.js", function (req, res) {

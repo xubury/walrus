@@ -17,7 +17,7 @@ var wasmDataEnd = 64, wasmStackTop = 4096, wasmHeapBase = 65536;
 // A generic abort function that if called stops the execution of the program and shows an error
 export function abort(code, msg) {
     ABORT = true;
-    WA.error(code, msg);
+    WA.error("[%s] %s", code, msg);
     throw "abort";
 }
 
@@ -301,7 +301,7 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
         if (fd == 1) {
             WA.print(str);
         } else if (fd == 2) {
-            WA.error('ASSERT', str);
+            WA.error(str);
         }
         heap.setUint32(pOutResult, ret, true);
         return WASI_ESUCCESS; // no error

@@ -41,10 +41,10 @@ static void engine_loop(void)
 {
     App          *app = s_engine->app;
     EngineOption *opt = &s_engine->opt;
-    ASSERT(opt->minfps > 0, "Invalid min fps");
-    ASSERT(app->tick != NULL, "Invalid tick function");
-    ASSERT(app->render != NULL, "Invalid render function");
-    ASSERT(app->event != NULL, "Invalid event function");
+    ASSERT_MSG(opt->minfps > 0, "Invalid min fps");
+    ASSERT_MSG(app->tick != NULL, "Invalid tick function");
+    ASSERT_MSG(app->render != NULL, "Invalid render function");
+    ASSERT_MSG(app->event != NULL, "Invalid event function");
 
     f32 const max_spf = 1.0 / s_engine->opt.minfps;
 
@@ -90,7 +90,7 @@ void engine_init(EngineOption *opt)
 
 void engine_run(App *app)
 {
-    ASSERT(s_engine != NULL, "Engine should be initialized first");
+    ASSERT_MSG(s_engine != NULL, "Engine should be initialized first");
 
     s_engine->quit = false;
 
@@ -115,7 +115,7 @@ void engine_run(App *app)
 
 App *engine_exit(void)
 {
-    ASSERT(s_engine != NULL, "Engine should be initialized first");
+    ASSERT_MSG(s_engine != NULL, "Engine should be initialized first");
 
     App *app      = s_engine->app;
     s_engine->app = NULL;
@@ -127,7 +127,7 @@ App *engine_exit(void)
 
 void engine_shutdown(void)
 {
-    ASSERT(s_engine != NULL, "Engine should be initialized first");
+    ASSERT_MSG(s_engine != NULL, "Engine should be initialized first");
 
 #if PLATFORM != PLATFORM_WASI
     engine_exit(s_app);

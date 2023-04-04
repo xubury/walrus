@@ -3,7 +3,9 @@
 #include <assert.h>
 #include <stdio.h>
 
-#define ASSERT(e, ...)                \
+#define ASSERT(e) assert(e);
+
+#define ASSERT_MSG(e, ...)            \
     if (!(e)) {                       \
         fprintf(stderr, __VA_ARGS__); \
         assert(false);                \
