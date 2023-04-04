@@ -21,8 +21,8 @@ void engine_shutdown(void);
 // Run an app
 void engine_run(App *app);
 
-// Exit current app
-void engine_exit(void);
+// Exit current app, return exited app
+App *engine_exit(void);
 
 // Get engine main window
 Window *engine_get_window(void);

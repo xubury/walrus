@@ -31,8 +31,8 @@ endif()
 
 include(${CONAN_CMAKE})
 
-conan_cmake_configure(REQUIRES stb/cci.20210910 imgui/cci.20220621+1.88.docking
-                      cglm/0.8.5 GENERATORS cmake_find_package)
+conan_cmake_configure(REQUIRES stb/cci.20210910 cglm/0.8.5 GENERATORS
+                      cmake_find_package)
 
 conan_cmake_autodetect(settings)
 

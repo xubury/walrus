@@ -13,7 +13,7 @@ set(WASM_LIB_DIR ${CMAKE_SOURCE_DIR}/libs)
 set(WASI_SDK_PREFIX ${WASM_LIB_DIR}/wasi-sdk-${WASI_VERSION_FULL})
 set(WASI_SYS_ROOT ${WASI_SDK_PREFIX}/share/wasi-sysroot)
 
-set(WASM_RUNTIME_ENTRY ${CMAKE_SOURCE_DIR}/web/res/main.wasm)
+set(WASM_RUNTIME_DIR ${CMAKE_SOURCE_DIR}/web/res)
 set(WASI_HOST_URL
     https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_VERSION}
 )

@@ -20,7 +20,7 @@ function getMod(event)
 }
 
 
-const res = await fetch("/wasm");
+const res = await fetch("/wasm?" + new URLSearchParams({filename: WA.filename}));
 const wasmBytes = await res.arrayBuffer();
 await initSys(wasmBytes, loadLibraries);
 

@@ -58,7 +58,16 @@ app.get("/fd_close", function (req, res) {
 });
 
 app.get("/", function (req, res) {
-    res.sendFile(path.join(__dirname, "res/index.html"));
+    if (req.query.wasm != null) {
+        fs.readFile(path.join(__dirname, "res/index.html"), function(err, buffer) {
+            var str = String(buffer);
+            str = str.replace("%WASM%", req.query.wasm);
+            res.setHeader('Content-Type', 'text/html');
+            res.send(Buffer.from(str));
+        })
+    } else {
+        res.sendStatus(404);
+    }
 });
 
 app.get("/favicon.ico", function (req, res) {
@@ -66,7 +75,8 @@ app.get("/favicon.ico", function (req, res) {
 });
 
 app.get("/wasm", function (req, res) {
-    res.sendFile(path.join(__dirname, "res/main.wasm"));
+    const filename = path.join(__dirname, "res", req.query.filename);
+    res.sendFile(filename);
 });
 
 app.get("/wasm.js", function (req, res) {

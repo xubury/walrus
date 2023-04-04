@@ -115,7 +115,7 @@ void on_event(App *app, Event *e)
     }
 }
 
-void on_init(App *app)
+InitResult on_init(App *app)
 {
     AppData *app_data = app_get_userdata(app);
     Window  *window   = engine_get_window();
@@ -158,6 +158,8 @@ void on_init(App *app)
     else {
         printf("fail to load image: %s\n", stbi_failure_reason());
     }
+
+    return INIT_SUCCESS;
 }
 
 void on_shutdown(App *app)

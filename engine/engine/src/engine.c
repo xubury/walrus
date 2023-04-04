@@ -90,7 +90,7 @@ void engine_init(EngineOption *opt)
 
 void engine_run(App *app)
 {
-    ASSERT(s_engine != NULL, "Engine should be initialize first");
+    ASSERT(s_engine != NULL, "Engine should be initialized first");
 
     s_engine->quit = false;
 
@@ -101,31 +101,33 @@ void engine_run(App *app)
 
     s_engine->app = app;
 
-    app->init(app);
-
+    if (app->init(app) == INIT_SUCCESS) {
 #if PLATFORM == PLATFORM_WASI
-    wajs_set_main_loop(engine_loop);
+        wajs_set_main_loop(engine_loop);
 #else
-    while (!s_engine->quit) {
-        engine_loop();
-    }
-    engine_exit();
+        while (!s_engine->quit) {
+            engine_loop();
+        }
+        engine_exit();
 #endif
+    }
 }
 
-void engine_exit(void)
+App *engine_exit(void)
 {
-    ASSERT(s_engine != NULL, "Engine should be initialize first");
+    ASSERT(s_engine != NULL, "Engine should be initialized first");
 
     App *app      = s_engine->app;
     s_engine->app = NULL;
 
     app->shutdown(app);
+
+    return app;
 }
 
 void engine_shutdown(void)
 {
-    ASSERT(s_engine != NULL, "Engine should be initialize first");
+    ASSERT(s_engine != NULL, "Engine should be initialized first");
 
 #if PLATFORM != PLATFORM_WASI
     engine_exit(s_app);
