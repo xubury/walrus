@@ -11,6 +11,12 @@ var glTextures = [];
 const GL_INFO_LOG_LENGTH = 0x8b84
 const GL_UNPACK_ALIGNMENT = 4;
 
+var GL_MINI_TEMP_BUFFER_SIZE = 256;
+var GL_miniTempBuffer = null;
+var GL_miniTempBufferViews = [0];
+GL_miniTempBuffer = new Float32Array(GL_MINI_TEMP_BUFFER_SIZE);
+for (var i = 0; i < GL_MINI_TEMP_BUFFER_SIZE; i++) GL_miniTempBufferViews[i] = GL_miniTempBuffer.subarray(0, i+1);
+
 function getNewId(table) {
     var ret = glCounter++;
     for (var i = table.length; i < ret; i++) table[i] = null;
@@ -319,6 +325,25 @@ export function importGl(env)
         glUniform1i : function(loc, v0) { glCtx.uniform1i(glUniforms[loc], v0); },
         glUniform2f : function(loc, v0, v1) { glCtx.uniform2f(glUniforms[loc], v0, v1); },
         glUniform3f : function(loc, v0, v1, v2) { glCtx.uniform3f(glUniforms[loc], v0, v1, v2); },
+        glUniformMatrix4fv: function(loc, count, transpose, value) {
+            count <<= 4;
+            var view;
+            var heap = sys.getHeap()
+            var HEAPF32 = new Float32Array(heap.buffer);
+            if (count <= GL_MINI_TEMP_BUFFER_SIZE) {
+                view = GL_miniTempBufferViews[count - 1];
+                for (var ptr = value >> 2, i = 0; i != count; i += 4) {
+                    view[i] = HEAPF32[ptr + i]
+                    view[i + 1] = HEAPF32[ptr + i + 1]
+                    view[i + 2] = HEAPF32[ptr + i + 2]
+                    view[i + 3] = HEAPF32[ptr + i + 3]
+                }
+
+            } else {
+                view = HEAPF32.subarray(value >> 2, (value + count * 4) >> 2)
+            }
+            glCtx.uniformMatrix4fv(glUniforms[loc], !!transpose, view);
+        },
 
         glDrawArrays: function (mode, first, count) {
             glCtx.drawArrays(mode, first, count);

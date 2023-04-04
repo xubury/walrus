@@ -1,6 +1,7 @@
 // Some global state variables and max heap definition
 export var ABORT = false; // program crash signal
-var WASM_MEMORY, WASM_HEAP, WASM_HEAP_MAX = 256*1024*1024; //max 256MB
+var WASM_MEMORY, WASM_HEAP
+const WASM_HEAP_MAX = 256*1024*1024; //max 256MB
 
 const __WASI_CLOCKID_REALTIME =  0;
 const __WASI_CLOCKID_MONOTONIC = 1;// Unimplemented

@@ -22,8 +22,10 @@ char const *vs_src =
     "const vec2 uv[] = vec2[](vec2(0.0f, 1.0f), vec2(0.0f, 0.0f), vec2(1.0f, 1.0f), vec2(1.0f, 0.0f));"
     "out vec2 v_pos;"
     "out vec2 v_uv;"
+    "uniform mat4 u_viewproj;"
+    "uniform mat4 u_model;"
     "void main() { "
-    "    gl_Position = vec4(quadVert[gl_VertexID], 0.0, 1.0);"
+    "    gl_Position = u_viewproj * u_model * vec4(quadVert[gl_VertexID], 0.0, 1.0);"
     "    v_pos = quadVert[gl_VertexID];"
     "    v_uv = uv[gl_VertexID];"
     "}";
@@ -85,22 +87,38 @@ static GLuint link_program(GLuint vs, GLuint fs)
 typedef struct {
     GLuint shader;
     GLuint textures[2];
+
+    mat4 viewproj;
+    mat4 model;
+
+    // Uniforms
+    GLuint u_texture;
+    GLuint u_viewproj;
+    GLuint u_model;
 } AppData;
 
 void on_render(App *app)
 {
     AppData *data = app_get_userdata(app);
 
+    glUniformMatrix4fv(data->u_model, 1, false, data->model[0]);
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glClearColor(0.1, 0.2, 0.3, 1);
     glUseProgram(data->shader);
+    glBindTexture(GL_TEXTURE_2D, data->textures[0]);
+    glActiveTexture(GL_TEXTURE0);
+    glUniform1i(data->u_texture, 0);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     /* printf("dt:%f\n", wajsGetFrameTime()); */
+
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void on_tick(App *app, float dt)
 {
-    UNUSED(app) UNUSED(dt);
+    AppData *data = app_get_userdata(app);
+    glm_rotate(data->model, 1.0 * dt, (vec3){0, 1, 0});
 }
 
 void on_event(App *app, Event *e)
@@ -126,10 +144,19 @@ InitResult on_init(App *app)
     GLuint fs        = compile_shader(GL_FRAGMENT_SHADER, fs_src);
     app_data->shader = link_program(vs, fs);
 
-    GLuint textureloc = glGetUniformLocation(app_data->shader, "u_texture");
-    printf("uniform \"u_texture\" loc: %d\n", textureloc);
+    app_data->u_texture  = glGetUniformLocation(app_data->shader, "u_texture");
+    app_data->u_viewproj = glGetUniformLocation(app_data->shader, "u_viewproj");
+    app_data->u_model    = glGetUniformLocation(app_data->shader, "u_model");
+    printf("uniform \"u_texture\" loc: %d\n", app_data->u_texture);
+    printf("uniform \"u_viewproj\" loc: %d\n", app_data->u_viewproj);
+    printf("uniform \"u_model\" loc: %d\n", app_data->u_model);
 
     glUseProgram(app_data->shader);
+
+    glm_mat4_identity(app_data->viewproj);
+    glm_mat4_identity(app_data->model);
+    glUniformMatrix4fv(app_data->u_viewproj, 1, false, app_data->viewproj[0]);
+    glUniformMatrix4fv(app_data->u_model, 1, false, app_data->model[0]);
 
     i32 const arrayLen = ARRAY_LEN(app_data->textures);
 
@@ -150,8 +177,7 @@ InitResult on_init(App *app)
         glBindTexture(GL_TEXTURE_2D, app_data->textures[0]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, img);
         glGenerateMipmap(GL_TEXTURE_2D);
-        glActiveTexture(GL_TEXTURE0);
-        glUniform1i(textureloc, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
         stbi_image_free(img);
     }

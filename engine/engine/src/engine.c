@@ -74,15 +74,18 @@ static void engine_loop(void)
 
 void engine_init(EngineOption *opt)
 {
+    s_engine = malloc(sizeof(Engine));
+    if (opt != NULL) {
+        memcpy(&s_engine->opt, opt, sizeof(EngineOption));
+    }
+
+    opt                = &s_engine->opt;
     opt->minfps        = fmax(opt->minfps, 1.0);
     opt->window_width  = fmax(opt->window_width, 1);
     opt->window_height = fmax(opt->window_height, 1);
 
     event_init();
 
-    s_engine = malloc(sizeof(Engine));
-
-    memcpy(&s_engine->opt, opt, sizeof(EngineOption));
     s_engine->app    = NULL;
     s_engine->window = window_create(opt->window_width, opt->window_height, opt->window_flags);
     s_engine->quit   = true;
@@ -116,6 +119,7 @@ void engine_run(App *app)
 App *engine_exit(void)
 {
     ASSERT_MSG(s_engine != NULL, "Engine should be initialized first");
+    ASSERT(s_engine->app != NULL);
 
     App *app      = s_engine->app;
     s_engine->app = NULL;
