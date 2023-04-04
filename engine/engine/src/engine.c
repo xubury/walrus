@@ -94,8 +94,10 @@ void engine_run(App *app)
 void engine_shutdown(void)
 {
 #if PLATFORM != PLATFORM_WASI
+    s_app->shutdown(s_app);
     event_shutdown();
-    app_destroy(s_app);
+    window_destroy(s_engine->window);
+
     free(s_engine);
 
     s_app    = NULL;

@@ -24,24 +24,23 @@ static void dummyevent(App *app, Event *e)
     UNUSED(app) UNUSED(e);
 }
 
-App *app_create(void)
+App *app_alloc(void)
 {
     App *app = malloc(sizeof(App));
 
-    app->init    = dummyinit;
-    app->destroy = dummy;
-    app->tick    = dummytick;
-    app->render  = dummy;
-    app->event   = dummyevent;
+    app->init     = dummyinit;
+    app->shutdown = dummy;
+    app->tick     = dummytick;
+    app->render   = dummy;
+    app->event    = dummyevent;
 
     app->userdata = NULL;
 
     return app;
 }
 
-void app_destroy(App *app)
+void app_free(App *app)
 {
-    app->destroy(app);
     free(app);
 }
 
@@ -60,9 +59,9 @@ void app_set_init(App *app, AppInitCallback init)
     app->init = init;
 }
 
-void app_set_destroy(App *app, AppDestroyCallback destroy)
+void app_set_shutdown(App *app, AppShutdownCallback shutdown)
 {
-    app->destroy = destroy;
+    app->shutdown = shutdown;
 }
 
 void app_set_tick(App *app, AppTickCallback tick)

@@ -16,7 +16,7 @@
 
 #include <cglm/cglm.h>
 
-char const *vsSource =
+char const *vs_src =
     "#version 300 es\n"
     "const vec2 quadVert[] = vec2[](vec2(-1.0f, 1.0f), vec2(-1.0f, -1.0f), vec2(1.0f, 1.0f), vec2(1.0f, -1.0f));"
     "const vec2 uv[] = vec2[](vec2(0.0f, 1.0f), vec2(0.0f, 0.0f), vec2(1.0f, 1.0f), vec2(1.0f, 0.0f));"
@@ -28,7 +28,7 @@ char const *vsSource =
     "    v_uv = uv[gl_VertexID];"
     "}";
 
-char const *fsSource =
+char const *fs_src =
     "#version 300 es\n"
     "precision mediump float;"
     "out vec4 fragColor;"
@@ -124,8 +124,8 @@ void on_init(App *app)
 
     glViewport(0, 0, engine->opt.window_width, engine->opt.window_height);
 
-    GLuint vs        = compile_shader(GL_VERTEX_SHADER, vsSource);
-    GLuint fs        = compile_shader(GL_FRAGMENT_SHADER, fsSource);
+    GLuint vs        = compile_shader(GL_VERTEX_SHADER, vs_src);
+    GLuint fs        = compile_shader(GL_FRAGMENT_SHADER, fs_src);
     app_data->shader = link_program(vs, fs);
 
     GLuint textureloc = glGetUniformLocation(app_data->shader, "u_texture");
@@ -162,7 +162,7 @@ void on_init(App *app)
     }
 }
 
-void on_destroy(App *app)
+void on_shutdown(App *app)
 {
     UNUSED(app);
 }
@@ -182,15 +182,14 @@ int main(int argc, char *argv[])
     opt.window_height = 480;
     opt.window_flags  = 0;
     opt.minfps        = 30.f;
+    engine_init(&opt);
 
-    App *app = app_create();
+    App *app = app_alloc();
     app_set_init(app, on_init);
-    app_set_destroy(app, on_destroy);
+    app_set_shutdown(app, on_shutdown);
     app_set_tick(app, on_tick);
     app_set_render(app, on_render);
     app_set_event(app, on_event);
-
-    engine_init(&opt);
 
     engine_run(app);
 
