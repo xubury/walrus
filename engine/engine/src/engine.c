@@ -66,6 +66,9 @@ static void event_process(void)
             if (btn->device == INPUT_MOUSE) {
                 input_set_button(input->mouse, btn->button, btn->state, btn->mods);
             }
+            else if (btn->device == INPUT_KEYBOARD) {
+                input_set_button(input->keyboard, btn->button, btn->state, btn->mods);
+            }
         }
         app->event(app, &e);
     }

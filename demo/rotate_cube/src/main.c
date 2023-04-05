@@ -123,14 +123,7 @@ void on_tick(App *app, float dt)
 
 void on_event(App *app, Event *e)
 {
-    UNUSED(app)
-
-    if (e->type == EVENT_TYPE_AXIS) {
-        printf("mouse move: %d, %d\n", e->axis.x, e->axis.y);
-    }
-    else if (e->type == EVENT_TYPE_BUTTON) {
-        printf("key: %d\n", e->button.button);
-    }
+    UNUSED(app) UNUSED(e);
 }
 
 InitResult on_init(App *app)
