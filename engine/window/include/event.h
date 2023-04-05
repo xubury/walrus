@@ -24,16 +24,24 @@ typedef struct {
     u8   mods;
 } ButtonEvent;
 
+typedef struct {
+    u16 width;
+    u16 height;
+} ResolutionEvent;
+
 typedef enum {
     EVENT_TYPE_AXIS,
-    EVENT_TYPE_BUTTON
+    EVENT_TYPE_BUTTON,
+    EVENT_TYPE_RESOLUTION,
+    EVENT_TYPE_EXIT,
 } EventType;
 
 typedef struct {
     EventType type;
     union {
-        AxisEvent   axis;
-        ButtonEvent button;
+        AxisEvent       axis;
+        ButtonEvent     button;
+        ResolutionEvent resolution;
     };
 } Event;
 

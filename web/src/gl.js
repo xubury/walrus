@@ -7,6 +7,7 @@ var glProgramInfos = [];
 var glUniforms = [];
 var glShaders = [];
 var glTextures = [];
+var glVertexArrays = [];
 
 const GL_INFO_LOG_LENGTH = 0x8b84
 const GL_UNPACK_ALIGNMENT = 4;
@@ -76,8 +77,8 @@ function getSource(count, string, length) {
 
 function setupGlContext(canvas, attr) {
     var attr = {
-        majorVersion: 4,
-        minorVersion: 5,
+        majorVersion: 3,
+        minorVersion: 0,
         antialias: true,
         alpha: false,
     };
@@ -187,14 +188,8 @@ export function importGl(env)
     console.log("importGl()");
 
     Object.assign(env, {
-        wajs_setup_gl_context: function (width, height) {
-            var cnvs = WA.canvas;
-            cnvs.width = width;
-            cnvs.height = height;
-            cnvs.height = cnvs.clientHeight;
-            cnvs.width = cnvs.clientWidth;
-
-            if (!setupGlContext(cnvs)) return;
+        wajs_setup_gl_context: function () {
+            if (!setupGlContext(WA.canvas)) return;
         },
 
         glGetError: function () {
@@ -375,6 +370,15 @@ export function importGl(env)
 
         glGenerateMipmap : function(target) {
             glCtx.generateMipmap(target); 
+        },
+
+        glGenVertexArrays: function(n, vaos) {
+            genObjects(n, vaos, "createVertexArray", glVertexArrays);
+        },
+
+        glBindVertexArray : function(vao) {
+            glCtx.bindVertexArray(glVertexArrays[vao]);
         }
+
     });
 }

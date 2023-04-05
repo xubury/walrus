@@ -50,10 +50,13 @@ static void release_service(void)
 
 static void event_process(void)
 {
-    Event  e;
-    i32    ret;
-    App   *app   = s_engine->app;
-    Input *input = s_engine->input;
+    Event   e;
+    i32     ret;
+    App    *app    = s_engine->app;
+    Input  *input  = s_engine->input;
+    Window *window = s_engine->window;
+
+    window_poll_events(window);
     while ((ret = event_poll(&e)) == EVENT_SUCCESS) {
         if (e.type == EVENT_TYPE_AXIS) {
             AxisEvent *axis = &e.axis;
@@ -69,6 +72,9 @@ static void event_process(void)
             else if (btn->device == INPUT_KEYBOARD) {
                 input_set_button(input->keyboard, btn->button, btn->state, btn->mods);
             }
+        }
+        else if (e.type == EVENT_TYPE_EXIT) {
+            engine_exit();
         }
         app->event(app, &e);
     }
@@ -89,9 +95,10 @@ static void engine_frame(void)
 {
     if (s_engine->quit) return;
 
-    App          *app   = s_engine->app;
-    Input        *input = s_engine->input;
-    EngineOption *opt   = &s_engine->opt;
+    App          *app    = s_engine->app;
+    Input        *input  = s_engine->input;
+    Window       *window = s_engine->window;
+    EngineOption *opt    = &s_engine->opt;
     ASSERT_MSG(opt->minfps > 0, "Invalid min fps");
     ASSERT_MSG(app->tick != NULL, "Invalid tick function");
     ASSERT_MSG(app->render != NULL, "Invalid render function");
@@ -123,18 +130,19 @@ static void engine_frame(void)
     inputs_tick(input);
 
     event_process();
+
+    window_swap_buffers(window);
 }
 
 void engine_init_run(EngineOption *opt, App *app)
 {
-    engine_init(opt);
-
-    engine_run(app);
-
-    engine_shutdown();
+    if (engine_init(opt) == 0) {
+        engine_run(app);
+        engine_shutdown();
+    }
 }
 
-void engine_init(EngineOption *opt)
+i32 engine_init(EngineOption *opt)
 {
     s_engine = malloc(sizeof(Engine));
     if (opt != NULL) {
@@ -155,6 +163,16 @@ void engine_init(EngineOption *opt)
 #if PLATFORM == PLATFORM_WASM
     wajs_set_shutdown(_engine_shutdown);
 #endif
+    i32 error = 0;
+    if (s_engine->window == NULL) {
+        error = -1;
+    }
+
+    if (error != 0) {
+        _engine_shutdown();
+    }
+
+    return error;
 }
 
 void engine_run(App *app)
@@ -166,7 +184,7 @@ void engine_run(App *app)
         engine_exit();
     }
 
-    if (app->init(app) == INIT_SUCCESS) {
+    if (app->init(app) == APP_SUCCESS) {
         s_engine->quit = false;
         s_engine->app  = app;
         // On wasm platfrom, loop is send to js process

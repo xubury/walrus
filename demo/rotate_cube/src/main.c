@@ -87,6 +87,7 @@ static GLuint link_program(GLuint vs, GLuint fs)
 typedef struct {
     GLuint shader;
     GLuint textures[2];
+    GLuint vao;
 
     mat4 viewproj;
     mat4 model;
@@ -109,8 +110,8 @@ void on_render(App *app)
     glBindTexture(GL_TEXTURE_2D, data->textures[0]);
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(data->u_texture, 0);
+    glBindVertexArray(data->vao);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    /* printf("dt:%f\n", wajsGetFrameTime()); */
 
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -126,12 +127,14 @@ void on_event(App *app, Event *e)
     UNUSED(app) UNUSED(e);
 }
 
-InitResult on_init(App *app)
+AppError on_init(App *app)
 {
     AppData *app_data = app_get_userdata(app);
     Window  *window   = engine_get_window();
 
     glViewport(0, 0, window_get_width(window), window_get_height(window));
+
+    glGenVertexArrays(1, &app_data->vao);
 
     GLuint vs        = compile_shader(GL_VERTEX_SHADER, vs_src);
     GLuint fs        = compile_shader(GL_FRAGMENT_SHADER, fs_src);
@@ -152,7 +155,6 @@ InitResult on_init(App *app)
     glUniformMatrix4fv(app_data->u_model, 1, false, app_data->model[0]);
 
     i32 const arrayLen = ARRAY_LEN(app_data->textures);
-
     glGenTextures(arrayLen, app_data->textures);
 
     for (int i = 0; i < arrayLen; ++i) {
@@ -178,7 +180,7 @@ InitResult on_init(App *app)
         printf("fail to load image: %s\n", stbi_failure_reason());
     }
 
-    return INIT_SUCCESS;
+    return APP_SUCCESS;
 }
 
 void on_shutdown(App *app)

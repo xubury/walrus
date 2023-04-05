@@ -1,18 +1,6 @@
 #include <input.h>
 #include <event.h>
 
-#include <string.h>
-
-#define IF_KEY(key, code, res)                   \
-    if (strncmp(key, code, strlen(code)) == 0) { \
-        return res;                              \
-    }
-#define ELIF_KEY(key, code, res)                    \
-    else if (strncmp(key, code, strlen(code)) == 0) \
-    {                                               \
-        return res;                                 \
-    }
-
 u16 translate_key(i16 key, bool alter)
 {
     switch (key) {
@@ -272,5 +260,12 @@ void __on_key_up(i16 key, u8 mods, i8 location)
     e.button.button = translate_key(key, location == 1);
     e.button.state  = false;
     e.button.mods   = mods;
+    event_push(&e);
+}
+
+void __on_exit(void)
+{
+    Event e;
+    e.type = EVENT_TYPE_EXIT;
     event_push(&e);
 }

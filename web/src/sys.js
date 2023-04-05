@@ -227,6 +227,14 @@ var env =
 	longjmp: function() { abort('CRASH', 'Unsupported longjmp called'); },
 
 
+    wajs_create_window: function(width, height) {
+        var cnvs = WA.canvas;
+        cnvs.width = width;
+        cnvs.height = height;
+        cnvs.height = cnvs.clientHeight;
+        cnvs.width = cnvs.clientWidth;
+    },
+
     wajs_set_main_loop: function(engine_loop) {
         engine_loop = getCallbackFromWasm(engine_loop);
         var drawFunc = function () {
@@ -241,6 +249,7 @@ var env =
     wajs_set_shutdown : function(engine_shutdown) {
         engine_shutdown = getCallbackFromWasm(engine_shutdown);
         window.addEventListener("beforeunload", (event)=>{
+            WA.wasm.__on_exit();
             engine_shutdown();
         })
     }

@@ -11,3 +11,7 @@ void window_destroy(Window *win);
 u32 window_get_width(Window *win);
 
 u32 window_get_height(Window *win);
+
+void window_swap_buffers(Window *win);
+
+void window_poll_events(Window *win);

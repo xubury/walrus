@@ -8,7 +8,7 @@ target_compile_options(wajs_core PRIVATE -Wall -Wextra -Wundef -pedantic)
 
 target_link_libraries(wajs_core PUBLIC cglm::cglm)
 
-if(DEFINED BUILD_TEST)
+if(BUILD_TEST)
   add_executable(list_test test/list_test.c)
   add_executable(queue_test test/queue_test.c)
 

@@ -17,7 +17,7 @@ typedef struct _Engine Engine;
 void engine_init_run(EngineOption *opt, App *app);
 
 // Initialize engine
-void engine_init(EngineOption *opt);
+i32 engine_init(EngineOption *opt);
 
 // Shutdown engine
 void engine_shutdown(void);

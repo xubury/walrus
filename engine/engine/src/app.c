@@ -9,11 +9,11 @@ static void dummy(App *app)
     UNUSED(app);
 }
 
-static InitResult dummyinit(App *app)
+static AppError dummyinit(App *app)
 {
     UNUSED(app);
 
-    return INIT_SUCCESS;
+    return APP_SUCCESS;
 }
 
 static void dummytick(App *app, f32 t)

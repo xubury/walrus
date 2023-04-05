@@ -4,13 +4,14 @@
 #include <event.h>
 
 typedef enum {
-    INIT_SUCCESS = 0,
-    INIT_FAIL    = 0,
-} InitResult;
+    APP_SUCCESS = 0,
+
+    APP_INIT_FAIL = 1,
+} AppError;
 
 typedef struct _App App;
 
-typedef InitResult (*AppInitCallback)(App *);
+typedef AppError (*AppInitCallback)(App *);
 
 typedef void (*AppShutdownCallback)(App *);
 

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <type.h>
+#include <platform.h>
 
+#if PLATFORM == PLATFORM_WASM
 #define GL_GLEXT_PROTOTYPES
 #define EGL_EGLEXT_PROTOTYPES
 // #define GL_VERSION_3_0 1
@@ -15,4 +17,8 @@
 #define GL_VERSION_4_4 0
 #define GL_VERSION_4_5 0
 #include <GL/gl.h>
+#else
 
+#include <GL/glew.h>
+
+#endif

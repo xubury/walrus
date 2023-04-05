@@ -1,7 +1,14 @@
+option(WASM "Build wasm program" OFF)
+option(BUILD_TEST "Build test" OFF)
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(macro)
 include(bootstraps)
+
+if(BUILD_TEST)
+  set(WASM OFF)
+endif()
 
 if(WASM)
   set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/toolchain.cmake)
@@ -31,8 +38,13 @@ endif()
 
 include(${CONAN_CMAKE})
 
-conan_cmake_configure(REQUIRES stb/cci.20210910 cglm/0.8.5 GENERATORS
-                      cmake_find_package)
+set(conan_packages stb/cci.20210910 cglm/0.8.5)
+
+if(NOT WASM)
+  list(APPEND conan_packages glew/2.2.0 glfw/3.3.8)
+endif()
+
+conan_cmake_configure(REQUIRES ${conan_packages} GENERATORS cmake_find_package)
 
 conan_cmake_autodetect(settings)
 
@@ -63,7 +75,5 @@ else()
 endif()
 # ##############################################################################
 
-if(WASM)
-  add_subdirectory(demo)
-endif()
+add_subdirectory(demo)
 add_subdirectory(engine)

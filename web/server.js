@@ -2,6 +2,7 @@ var express = require("express");
 var bodyParser = require("body-parser");
 var path = require("path");
 var fs = require("fs");
+const args = require('yargs').argv;
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -9,7 +10,8 @@ const port = process.env.PORT || 8080;
 // create application/json parser
 app.use(bodyParser.json());
 
-fs.openSync(path.join(__dirname, "files"));
+const dir = path.join(__dirname, args.dir);
+fs.openSync(dir);
 
 function sendError(res, error)
 {
@@ -17,7 +19,7 @@ function sendError(res, error)
     res.status(500).send(JSON.stringify({ error: error }));
 }
 app.get("/fd_open", function (req, res) {
-    const filename = path.join(__dirname, "files", req.query.filename);
+    const filename = path.join(dir, req.query.filename);
     try {
         fs.open(filename, 'r', function(err, fd) {
             if (err)  {
