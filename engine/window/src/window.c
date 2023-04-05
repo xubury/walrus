@@ -10,13 +10,13 @@ struct _Window {
     u32 flags;
 };
 
-#if PLATFORM == PLATFORM_WASI
+#if PLATFORM == PLATFORM_WASM
 void wajs_setup_gl_context(i32 width, i32 height);
 #endif
 
 static void setup_gl_context(i32 width, i32 height)
 {
-#if PLATFORM == PLATFORM_WASI
+#if PLATFORM == PLATFORM_WASM
     wajs_setup_gl_context(width, height);
 #else
     ASSERT(false, "unimplement");

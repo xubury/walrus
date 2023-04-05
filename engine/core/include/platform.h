@@ -10,7 +10,7 @@
 #define PLATFORM_QNXNTO      0x00000007
 #define PLATFORM_WINCE       0x00000008
 #define PLATFORM_CYGWIN      0x00000009
-#define PLATFORM_WASI        0x00000010
+#define PLATFORM_WASM        0x00000010
 
 #ifdef FORCE_PLATFORM_UNKNOWN
 #define PLATFORM PLATFORM_UNKNOWN
@@ -33,7 +33,7 @@
 #elif defined(__unix)
 #define PLATFORM PLATFORM_UNIX
 #elif defined(__wasi__)
-#define PLATFORM PLATFORM_WASI
+#define PLATFORM PLATFORM_WASM
 #else
 #define PLATFORM PLATFORM_UNKNOWN
 #endif

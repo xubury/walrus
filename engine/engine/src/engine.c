@@ -12,7 +12,7 @@
 #include <platform.h>
 #include <math.h>
 
-#if PLATFORM == PLATFORM_WASI
+#if PLATFORM == PLATFORM_WASM
 
 typedef void (*WajsLoopCallback)(void);
 typedef void (*WajsShutdownCallback)(void);
@@ -136,7 +136,7 @@ void engine_init(EngineOption *opt)
     register_service();
 
     // On wasm platfrom, shutdown is sent to js process
-#if PLATFORM == PLATFORM_WASI
+#if PLATFORM == PLATFORM_WASM
     wajs_set_shutdown(_engine_shutdown);
 #endif
 }
@@ -154,7 +154,7 @@ void engine_run(App *app)
         s_engine->quit = false;
         s_engine->app  = app;
         // On wasm platfrom, loop is send to js process
-#if PLATFORM == PLATFORM_WASI
+#if PLATFORM == PLATFORM_WASM
         wajs_set_main_loop(engine_frame);
 #else
         // For other native platform, loop in current process
@@ -180,7 +180,7 @@ App *engine_exit(void)
 
 void engine_shutdown(void)
 {
-#if PLATFORM != PLATFORM_WASI
+#if PLATFORM != PLATFORM_WASM
     _engine_shutdown();
 #else
     // wasm platform's loop & shutdown is dealt by js side, so do nothing here
