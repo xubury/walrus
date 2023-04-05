@@ -28,6 +28,8 @@ typedef struct {
     InputDevice *keyboard;
 } Input;
 
-Input *input_create(void);
+Input *inputs_create(void);
 
-void input_destroy(Input *input);
+void inputs_destroy(Input *input);
+
+void inputs_tick(Input *input);

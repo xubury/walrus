@@ -12,10 +12,14 @@
 #include <platform.h>
 #include <math.h>
 
-typedef void (*WajsLoopCallback)(void);
-
 #if PLATFORM == PLATFORM_WASI
+
+typedef void (*WajsLoopCallback)(void);
+typedef void (*WajsShutdownCallback)(void);
+
 void wajs_set_main_loop(WajsLoopCallback loop);
+void wajs_set_shutdown(WajsShutdownCallback shutdown);
+
 #endif
 
 struct _Engine {
@@ -34,12 +38,12 @@ static void register_service(void)
 
     event_init();
     s_engine->window = window_create(opt->window_width, opt->window_height, opt->window_flags);
-    s_engine->input  = input_create();
+    s_engine->input  = inputs_create();
 }
 
 static void release_service(void)
 {
-    input_destroy(s_engine->input);
+    inputs_destroy(s_engine->input);
     window_destroy(s_engine->window);
     event_shutdown();
 }
@@ -54,10 +58,24 @@ static void event_process(void)
     }
 }
 
-static void engine_loop(void)
+static void _engine_shutdown(void)
 {
-    App          *app = s_engine->app;
-    EngineOption *opt = &s_engine->opt;
+    ASSERT_MSG(s_engine != NULL, "Engine should be initialized first");
+    engine_exit();
+
+    release_service();
+
+    free(s_engine);
+    s_engine = NULL;
+}
+
+static void engine_frame(void)
+{
+    if (s_engine->quit) return;
+
+    App          *app   = s_engine->app;
+    Input        *input = s_engine->input;
+    EngineOption *opt   = &s_engine->opt;
     ASSERT_MSG(opt->minfps > 0, "Invalid min fps");
     ASSERT_MSG(app->tick != NULL, "Invalid tick function");
     ASSERT_MSG(app->render != NULL, "Invalid render function");
@@ -86,7 +104,18 @@ static void engine_loop(void)
 
     app->render(app);
 
+    inputs_tick(input);
+
     event_process();
+}
+
+void engine_init_run(EngineOption *opt, App *app)
+{
+    engine_init(opt);
+
+    engine_run(app);
+
+    engine_shutdown();
 }
 
 void engine_init(EngineOption *opt)
@@ -105,29 +134,37 @@ void engine_init(EngineOption *opt)
     s_engine->quit = true;
 
     register_service();
+
+    // On wasm platfrom, shutdown is sent to js process
+#if PLATFORM == PLATFORM_WASI
+    wajs_set_shutdown(_engine_shutdown);
+#endif
 }
 
 void engine_run(App *app)
 {
     ASSERT_MSG(s_engine != NULL, "Engine should be initialized first");
 
-    s_engine->quit = false;
-
     // If engine has running app, exit the app first
     if (s_engine->app != NULL) {
         engine_exit();
     }
 
-    s_engine->app = app;
-
     if (app->init(app) == INIT_SUCCESS) {
+        s_engine->quit = false;
+        s_engine->app  = app;
+        // On wasm platfrom, loop is send to js process
 #if PLATFORM == PLATFORM_WASI
-        wajs_set_main_loop(engine_loop);
+        wajs_set_main_loop(engine_frame);
 #else
+        // For other native platform, loop in current process
         while (!s_engine->quit) {
-            engine_loop();
+            engine_frame();
         }
-        engine_exit();
+
+        app->shutdown(app);
+
+        s_engine->app = NULL;
 #endif
     }
 }
@@ -135,27 +172,18 @@ void engine_run(App *app)
 App *engine_exit(void)
 {
     ASSERT_MSG(s_engine != NULL, "Engine should be initialized first");
-    ASSERT(s_engine->app != NULL);
 
-    App *app      = s_engine->app;
-    s_engine->app = NULL;
+    s_engine->quit = true;
 
-    app->shutdown(app);
-
-    return app;
+    return s_engine->app;
 }
 
 void engine_shutdown(void)
 {
-    ASSERT_MSG(s_engine != NULL, "Engine should be initialized first");
-
 #if PLATFORM != PLATFORM_WASI
-    engine_exit();
-
-    release_service();
-
-    free(s_engine);
-    s_engine = NULL;
+    _engine_shutdown();
+#else
+    // wasm platform's loop & shutdown is dealt by js side, so do nothing here
 #endif
 }
 

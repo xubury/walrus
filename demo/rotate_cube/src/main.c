@@ -208,7 +208,6 @@ int main(int argc, char *argv[])
     opt.window_height = 480;
     opt.window_flags  = 0;
     opt.minfps        = 30.f;
-    engine_init(&opt);
 
     App *app = app_alloc(malloc(sizeof(AppData)));
     app_set_init(app, on_init);
@@ -217,9 +216,7 @@ int main(int argc, char *argv[])
     app_set_render(app, on_render);
     app_set_event(app, on_event);
 
-    engine_run(app);
-
-    engine_shutdown();
+    engine_init_run(&opt, app);
 
     return 0;
 }

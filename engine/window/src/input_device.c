@@ -15,7 +15,7 @@ struct _InputDevice {
     vec3* last_axis;
 };
 
-InputDevice* input_device_create(i16 num_btns, i8 num_axes)
+InputDevice* input_create(i16 num_btns, i8 num_axes)
 {
     InputDevice* device = malloc(sizeof(InputDevice));
 
@@ -35,7 +35,7 @@ InputDevice* input_device_create(i16 num_btns, i8 num_axes)
     return device;
 }
 
-void input_device_destroy(InputDevice* device)
+void input_destroy(InputDevice* device)
 {
     free(device->state);
     free(device->last_state);

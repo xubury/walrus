@@ -7,9 +7,9 @@ typedef struct _InputDevice InputDevice;
 
 #define INTPUT_INVALID_ID UINT16_MAX;
 
-InputDevice* input_device_create(i16 num_btns, i8 num_axes);
+InputDevice* input_create(i16 num_btns, i8 num_axes);
 
-void input_device_destroy(InputDevice* device);
+void input_destroy(InputDevice* device);
 
 // Check if current button is pressed
 bool input_pressed(InputDevice* device, i16 id);

@@ -182,7 +182,15 @@ var env =
         };
 
         window.requestAnimationFrame(drawFunc);
+    },
+
+    wajs_set_shutdown : function(engine_shutdown) {
+        engine_shutdown = getCallbackFromWasm(engine_shutdown);
+        window.addEventListener("beforeunload", (event)=>{
+            engine_shutdown();
+        })
     }
+
 }, wasi = {};
 
 // Extend the objects with the syscall IO emulation

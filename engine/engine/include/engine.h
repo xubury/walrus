@@ -13,6 +13,9 @@ typedef struct {
 
 typedef struct _Engine Engine;
 
+// Helper function to init engine, runs an app and shutdown engine.
+void engine_init_run(EngineOption *opt, App *app);
+
 // Initialize engine
 void engine_init(EngineOption *opt);
 
