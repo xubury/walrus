@@ -24,7 +24,7 @@ async function createWindow() {
     };
     await waitPort(params);
     if (isDev) {
-        await session.defaultSession.loadExtension(reactDevToolsPath);
+        // await session.defaultSession.loadExtension(reactDevToolsPath);
         mainWindow.webContents.openDevTools();
     }
     mainWindow.loadURL("http://localhost:8080/?wasm=rotate_cube.wasm");

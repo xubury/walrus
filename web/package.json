@@ -10,7 +10,7 @@
     "scripts": {
         "start": "node ./server.js --dir=../",
         "build": "rm -rf build && webpack",
-        "electron": "electron ."
+        "electron": "electron . --dir=../"
     },
     "name": "my-electron-app",
     "main": "electron/main.js",
