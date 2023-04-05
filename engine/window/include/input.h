@@ -1,5 +1,7 @@
 #pragma once
 
+#include <input_device.h>
+
 typedef enum {
     MOUSE_BTN_LEFT   = 0,
     MOUSE_BTN_MIDDLE = 1,
@@ -16,5 +18,16 @@ typedef enum {
 } KeyMod;
 
 typedef enum {
-    KEYCODE_A = 65
+    KEYCODE_A = 65,
+
+    KEYCODE_COUNT
 } Keycode;
+
+typedef struct {
+    InputDevice *mouse;
+    InputDevice *keyboard;
+} Input;
+
+Input *input_create(void);
+
+void input_destroy(Input *input);

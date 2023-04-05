@@ -2,6 +2,7 @@
 
 #include <app.h>
 #include <window.h>
+#include <input.h>
 
 typedef struct {
     i32 window_width;
@@ -26,3 +27,6 @@ App *engine_exit(void);
 
 // Get engine main window
 Window *engine_get_window(void);
+
+// Get engine input
+Input *engine_get_input(void);

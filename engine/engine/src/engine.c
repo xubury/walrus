@@ -22,10 +22,27 @@ struct _Engine {
     EngineOption opt;
     Window      *window;
     App         *app;
+    Input       *input;
     bool         quit;
 };
 
 static Engine *s_engine = NULL;
+
+static void register_service(void)
+{
+    EngineOption *opt = &s_engine->opt;
+
+    event_init();
+    s_engine->window = window_create(opt->window_width, opt->window_height, opt->window_flags);
+    s_engine->input  = input_create();
+}
+
+static void release_service(void)
+{
+    input_destroy(s_engine->input);
+    window_destroy(s_engine->window);
+    event_shutdown();
+}
 
 static void event_process(void)
 {
@@ -84,11 +101,10 @@ void engine_init(EngineOption *opt)
     opt->window_width  = fmax(opt->window_width, 1);
     opt->window_height = fmax(opt->window_height, 1);
 
-    event_init();
+    s_engine->app  = NULL;
+    s_engine->quit = true;
 
-    s_engine->app    = NULL;
-    s_engine->window = window_create(opt->window_width, opt->window_height, opt->window_flags);
-    s_engine->quit   = true;
+    register_service();
 }
 
 void engine_run(App *app)
@@ -134,10 +150,9 @@ void engine_shutdown(void)
     ASSERT_MSG(s_engine != NULL, "Engine should be initialized first");
 
 #if PLATFORM != PLATFORM_WASI
-    engine_exit(s_app);
+    engine_exit();
 
-    event_shutdown();
-    window_destroy(s_engine->window);
+    release_service();
 
     free(s_engine);
     s_engine = NULL;
@@ -147,4 +162,9 @@ void engine_shutdown(void)
 Window *engine_get_window(void)
 {
     return s_engine->window;
+}
+
+Input *engine_get_input(void)
+{
+    return s_engine->input;
 }
