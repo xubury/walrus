@@ -50,10 +50,23 @@ static void release_service(void)
 
 static void event_process(void)
 {
-    Event e;
-    i32   ret;
-    App  *app = s_engine->app;
+    Event  e;
+    i32    ret;
+    App   *app   = s_engine->app;
+    Input *input = s_engine->input;
     while ((ret = event_poll(&e)) == EVENT_SUCCESS) {
+        if (e.type == EVENT_TYPE_AXIS) {
+            AxisEvent *axis = &e.axis;
+            if (axis->device == INPUT_MOUSE) {
+                input_set_axis(input->mouse, axis->axis, axis->x, axis->y, axis->z, axis->mods);
+            }
+        }
+        else if (e.type == EVENT_TYPE_BUTTON) {
+            ButtonEvent *btn = &e.button;
+            if (btn->device == INPUT_MOUSE) {
+                input_set_button(input->mouse, btn->button, btn->state, btn->mods);
+            }
+        }
         app->event(app, &e);
     }
 }

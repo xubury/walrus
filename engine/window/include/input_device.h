@@ -30,7 +30,7 @@ bool input_down(InputDevice* device, i16 id);
 u16 input_any_down(InputDevice* device);
 
 // Set button state
-void input_set_button(InputDevice* device, i16 id, bool state, i8 modifiers);
+void input_set_button(InputDevice* device, i16 id, bool state, u8 modifiers);
 
 // Check modifiers state
 u8 input_modifiers(InputDevice* device);
@@ -42,7 +42,7 @@ void input_axis(InputDevice* device, i8 id, vec3 out);
 void input_relaxis(InputDevice* device, i8 id, vec3 out);
 
 // Set axis state
-void input_set_axis(InputDevice* device, i8 id, f32 x, f32 y, f32 z);
+void input_set_axis(InputDevice* device, i8 id, f32 x, f32 y, f32 z, u8 modifiers);
 
 // Tick the state to next frame
 void input_tick(InputDevice* device);

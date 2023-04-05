@@ -19,7 +19,7 @@ typedef struct {
 
 typedef struct {
     u8   device;
-    u16  code;
+    u16  button;
     bool state;
     u8   mods;
 } ButtonEvent;

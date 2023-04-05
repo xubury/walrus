@@ -3,8 +3,8 @@
 Input *inputs_create(void)
 {
     Input *input    = malloc(sizeof(Input));
-    input->mouse    = input_create(MOUSE_BTN_COUNT, 2);
-    input->keyboard = input_create(KEYCODE_COUNT, 0);
+    input->mouse    = input_create(MOUSE_BTN_COUNT, 1);
+    input->keyboard = input_create(KEYBOARD_COUNT, 0);
 
     return input;
 }

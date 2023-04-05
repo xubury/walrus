@@ -74,7 +74,7 @@ u16 input_any_down(InputDevice* device)
     return input_down(device, device->first_buttons[0]) ? device->first_buttons[0] : INTPUT_INVALID_ID;
 }
 
-void input_set_button(InputDevice* device, i16 id, bool state, i8 modifiers)
+void input_set_button(InputDevice* device, i16 id, bool state, u8 modifiers)
 {
     device->state[id]                    = state;
     device->first_buttons[state ? 0 : 1] = id;
@@ -97,11 +97,12 @@ void input_relaxis(InputDevice* device, i8 id, vec3 out)
                           : glm_vec3_copy(out, (vec3){0, 0, 0});
 }
 
-void input_set_axis(InputDevice* device, i8 id, f32 x, f32 y, f32 z)
+void input_set_axis(InputDevice* device, i8 id, f32 x, f32 y, f32 z, u8 modifiers)
 {
     device->axis[id][0] = x;
     device->axis[id][1] = y;
     device->axis[id][2] = z;
+    device->modifiers   = modifiers;
 }
 
 void input_tick(InputDevice* device)

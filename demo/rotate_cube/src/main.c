@@ -129,7 +129,7 @@ void on_event(App *app, Event *e)
         printf("mouse move: %d, %d\n", e->axis.x, e->axis.y);
     }
     else if (e->type == EVENT_TYPE_BUTTON) {
-        printf("key: %d\n", e->button.code);
+        printf("key: %d\n", e->button.button);
     }
 }
 
