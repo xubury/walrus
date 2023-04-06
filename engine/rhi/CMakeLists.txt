@@ -1,4 +1,4 @@
-add_library(wajs_rhi STATIC src/rhi.c)
+add_library(wajs_rhi STATIC src/rhi.c src/rhi_gl.c)
 
 if(WASM)
   target_include_directories(wajs_rhi PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/webgl)

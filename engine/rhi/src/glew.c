@@ -4,7 +4,7 @@
 #include <log.h>
 #include <macro.h>
 
-static void dbg_callback(GLenum p0, GLenum p1, GLuint p2, GLenum severity, i32 p3, const char *message, const void *p4)
+static void dbg_callback(GLenum p0, GLenum p1, GLuint p2, GLenum severity, i32 p3, char const *message, void const *p4)
 {
     UNUSED(p0)
     UNUSED(p1)
@@ -13,7 +13,7 @@ static void dbg_callback(GLenum p0, GLenum p1, GLuint p2, GLenum severity, i32 p
     UNUSED(p4)
     switch (severity) {
         case GL_DEBUG_SEVERITY_HIGH:
-            ASSERT_MSG(false, "%s", message);
+            ASSERT_MSG(false, message);
             return;
         case GL_DEBUG_SEVERITY_MEDIUM:
             // BD_ASSERT(false, message);

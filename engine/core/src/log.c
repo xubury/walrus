@@ -3,17 +3,17 @@
 #define MAX_CALLBACKS 32
 
 typedef struct {
-    log_LogFn fn;
-    void     *udata;
-    i32       level;
+    LogFn fn;
+    void *udata;
+    i32   level;
 } Callback;
 
 static struct {
-    void      *udata;
-    log_LockFn lock;
-    i32        level;
-    bool       quiet;
-    Callback   callbacks[MAX_CALLBACKS];
+    void     *udata;
+    LogLockFn lock;
+    i32       level;
+    bool      quiet;
+    Callback  callbacks[MAX_CALLBACKS];
 } L;
 
 static char const *level_strings[] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
@@ -22,7 +22,7 @@ static char const *level_strings[] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR",
 static char const *level_colors[] = {"\x1b[94m", "\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m", "\x1b[35m"};
 #endif
 
-static void stdout_callback(log_Event *ev)
+static void stdout_callback(LogEvent *ev)
 {
     char buf[16];
     buf[strftime(buf, sizeof(buf), "%H:%M:%S", ev->time)] = '\0';
@@ -37,7 +37,7 @@ static void stdout_callback(log_Event *ev)
     fflush(ev->udata);
 }
 
-static void file_callback(log_Event *ev)
+static void file_callback(LogEvent *ev)
 {
     char buf[64];
     buf[strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", ev->time)] = '\0';
@@ -66,7 +66,7 @@ char const *log_level_string(i32 level)
     return level_strings[level];
 }
 
-void log_set_lock(log_LockFn fn, void *udata)
+void log_set_lock(LogLockFn fn, void *udata)
 {
     L.lock  = fn;
     L.udata = udata;
@@ -82,7 +82,7 @@ void log_set_quiet(bool enable)
     L.quiet = enable;
 }
 
-i32 log_add_callback(log_LogFn fn, void *udata, i32 level)
+i32 log_add_callback(LogFn fn, void *udata, i32 level)
 {
     for (i32 i = 0; i < MAX_CALLBACKS; i++) {
         if (!L.callbacks[i].fn) {
@@ -98,7 +98,7 @@ i32 log_add_fp(FILE *fp, i32 level)
     return log_add_callback(file_callback, fp, level);
 }
 
-static void init_event(log_Event *ev, void *udata)
+static void init_event(LogEvent *ev, void *udata)
 {
     if (!ev->time) {
         time_t t = time(NULL);
@@ -109,7 +109,7 @@ static void init_event(log_Event *ev, void *udata)
 
 void log_log(i32 level, char const *file, i32 line, char const *fmt, ...)
 {
-    log_Event ev = {
+    LogEvent ev = {
         .fmt   = fmt,
         .file  = file,
         .line  = line,

@@ -55,7 +55,7 @@ static EngineError register_service(void)
         return ENGINE_INIT_WINDOW_ERROR;
     }
 
-    if (rhi_init() != RHI_SUCCESS) {
+    if (rhi_init(RHI_FLAG_BACKEND_OPENGL) != RHI_SUCCESS) {
         return ENGINE_INIT_RHI_ERROR;
     }
 
@@ -79,23 +79,30 @@ static void event_process(void)
 
     window_poll_events(window);
     while ((ret = event_poll(&e)) == EVENT_SUCCESS) {
-        if (e.type == EVENT_TYPE_AXIS) {
-            AxisEvent *axis = &e.axis;
-            if (axis->device == INPUT_MOUSE) {
-                input_set_axis(input->mouse, axis->axis, axis->x, axis->y, axis->z, axis->mods);
-            }
-        }
-        else if (e.type == EVENT_TYPE_BUTTON) {
-            ButtonEvent *btn = &e.button;
-            if (btn->device == INPUT_MOUSE) {
-                input_set_button(input->mouse, btn->button, btn->state, btn->mods);
-            }
-            else if (btn->device == INPUT_KEYBOARD) {
-                input_set_button(input->keyboard, btn->button, btn->state, btn->mods);
-            }
-        }
-        else if (e.type == EVENT_TYPE_EXIT) {
-            engine_exit();
+        switch (e.type) {
+            case EVENT_TYPE_AXIS: {
+                AxisEvent *axis = &e.axis;
+                if (axis->device == INPUT_MOUSE) {
+                    input_set_axis(input->mouse, axis->axis, axis->x, axis->y, axis->z, axis->mods);
+                }
+            } break;
+            case EVENT_TYPE_BUTTON: {
+                ButtonEvent *btn = &e.button;
+                if (btn->device == INPUT_MOUSE) {
+                    input_set_button(input->mouse, btn->button, btn->state, btn->mods);
+                }
+                else if (btn->device == INPUT_KEYBOARD) {
+                    input_set_button(input->keyboard, btn->button, btn->state, btn->mods);
+                }
+            } break;
+            case EVENT_TYPE_RESOLUTION: {
+                rhi_set_resolution(e.resolution.width, e.resolution.height);
+            } break;
+            case EVENT_TYPE_EXIT: {
+                engine_exit();
+            } break;
+            default:
+                break;
         }
         app->event(app, &e);
     }
@@ -138,6 +145,8 @@ static void engine_frame(void)
     inputs_tick(input);
 
     event_process();
+
+    rhi_frame();
 
     window_swap_buffers(window);
 }

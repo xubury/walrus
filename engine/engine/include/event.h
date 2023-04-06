@@ -25,8 +25,8 @@ typedef struct {
 } ButtonEvent;
 
 typedef struct {
-    u16 width;
-    u16 height;
+    u32 width;
+    u32 height;
 } ResolutionEvent;
 
 typedef enum {

@@ -13,10 +13,10 @@ typedef struct {
     void       *udata;
     i32         line;
     i32         level;
-} log_Event;
+} LogEvent;
 
-typedef void (*log_LogFn)(log_Event *ev);
-typedef void (*log_LockFn)(bool lock, void *udata);
+typedef void (*LogFn)(LogEvent *ev);
+typedef void (*LogLockFn)(bool lock, void *udata);
 
 enum {
     LOG_TRACE,
@@ -35,10 +35,10 @@ enum {
 #define log_fatal(...) log_log(LOG_FATAL, __FILE__, __LINE__, __VA_ARGS__)
 
 char const *log_level_string(i32 level);
-void        log_set_lock(log_LockFn fn, void *udata);
+void        log_set_lock(LogLockFn fn, void *udata);
 void        log_set_level(i32 level);
 void        log_set_quiet(bool enable);
-i32         log_add_callback(log_LogFn fn, void *udata, i32 level);
+i32         log_add_callback(LogFn fn, void *udata, i32 level);
 i32         log_add_fp(FILE *fp, i32 level);
 
 void log_log(i32 level, char const *file, i32 line, char const *fmt, ...);

@@ -1,15 +1,14 @@
 #pragma once
 
 #include <assert.h>
-#include <stdio.h>
+#include <log.h>
 
 #define ASSERT(e) assert(e);
 
-#define ASSERT_MSG(e, ...)            \
-    if (!(e)) {                       \
-        fprintf(stderr, __VA_ARGS__); \
-        fprintf(stderr, "\n");        \
-        assert(false);                \
+#define ASSERT_MSG(e, ...)      \
+    if (!(e)) {                 \
+        log_error(__VA_ARGS__); \
+        assert(false);          \
     }
 
 #define ARRAY_LEN(arr) sizeof(arr) / sizeof(arr[0])
