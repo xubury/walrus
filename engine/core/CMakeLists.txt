@@ -1,6 +1,6 @@
 find_package(cglm REQUIRED)
 
-add_library(wajs_core STATIC src/sys.c src/list.c src/queue.c)
+add_library(wajs_core STATIC src/sys.c src/list.c src/queue.c src/log.c)
 
 target_include_directories(wajs_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 

@@ -1,6 +1,7 @@
 #include <engine.h>
 #include <type.h>
 #include <sys.h>
+#include <log.h>
 #include <event.h>
 #include <rhi.h>
 
@@ -154,7 +155,7 @@ void engine_init_run(EngineOption *opt, App *app)
         engine_run(app);
     }
     else {
-        printf("%s\n", engine_error_msg(err));
+        log_error("%s", engine_error_msg(err));
     }
 }
 

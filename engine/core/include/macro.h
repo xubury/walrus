@@ -8,6 +8,7 @@
 #define ASSERT_MSG(e, ...)            \
     if (!(e)) {                       \
         fprintf(stderr, __VA_ARGS__); \
+        fprintf(stderr, "\n");        \
         assert(false);                \
     }
 

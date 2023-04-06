@@ -10,6 +10,7 @@
 #include <event.h>
 #include <engine.h>
 #include <rhi.h>
+#include <log.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -56,7 +57,7 @@ static GLuint compile_shader(GLenum type, char const *source)
         char *infoLog    = (char *)malloc(logSize);
         infoLog[logSize] = 0;
         glGetShaderInfoLog(shader, logSize, NULL, infoLog);
-        printf("Shader compile error: %s\n", infoLog);
+        log_error("Shader compile error: %s", infoLog);
         free(infoLog);
     }
     return shader;
@@ -78,7 +79,7 @@ static GLuint link_program(GLuint vs, GLuint fs)
         char *infoLog    = (char *)malloc(logSize);
         infoLog[logSize] = 0;
         glGetProgramInfoLog(prog, logSize, NULL, infoLog);
-        printf("Failed to link shader program: %s\n", infoLog);
+        log_error("Failed to link shader program: %s", infoLog);
         free(infoLog);
     }
     return prog;
@@ -212,9 +213,9 @@ AppError on_init(App *app)
     app_data->u_texture  = glGetUniformLocation(app_data->shader, "u_texture");
     app_data->u_viewproj = glGetUniformLocation(app_data->shader, "u_viewproj");
     app_data->u_model    = glGetUniformLocation(app_data->shader, "u_model");
-    printf("uniform \"u_texture\" loc: %d\n", app_data->u_texture);
-    printf("uniform \"u_viewproj\" loc: %d\n", app_data->u_viewproj);
-    printf("uniform \"u_model\" loc: %d\n", app_data->u_model);
+    log_trace("uniform \"u_texture\" loc: %d", app_data->u_texture);
+    log_trace("uniform \"u_viewproj\" loc: %d", app_data->u_viewproj);
+    log_trace("uniform \"u_model\" loc: %d", app_data->u_model);
 
     glUseProgram(app_data->shader);
 
@@ -224,11 +225,11 @@ AppError on_init(App *app)
     glUniformMatrix4fv(app_data->u_viewproj, 1, false, app_data->viewproj[0]);
     glUniformMatrix4fv(app_data->u_model, 1, false, app_data->model[0]);
 
-    i32 const arrayLen = ARRAY_LEN(app_data->textures);
-    glGenTextures(arrayLen, app_data->textures);
+    i32 const array_len = ARRAY_LEN(app_data->textures);
+    glGenTextures(array_len, app_data->textures);
 
-    for (int i = 0; i < arrayLen; ++i) {
-        printf("texture: %d\n", app_data->textures[i]);
+    for (int i = 0; i < array_len; ++i) {
+        log_trace("texture: %d", app_data->textures[i]);
     }
 
     /* stbi img test */
@@ -236,9 +237,9 @@ AppError on_init(App *app)
     i32 x, y, c;
     u64 ts  = sysclock(SYS_CLOCK_UNIT_MILLSEC);
     u8 *img = stbi_load("test.png", &x, &y, &c, 4);
-    printf("stbi_load time: %llu ms\n", sysclock(SYS_CLOCK_UNIT_MILLSEC) - ts);
+    log_trace("stbi_load time: %llu ms", sysclock(SYS_CLOCK_UNIT_MILLSEC) - ts);
     if (img != NULL) {
-        printf("load image width: %d height: %d channel: %d\n", x, y, c);
+        log_trace("load image width: %d height: %d channel: %d", x, y, c);
         glBindTexture(GL_TEXTURE_2D, app_data->textures[0]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, img);
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -249,7 +250,7 @@ AppError on_init(App *app)
     else {
         err = APP_INIT_FAIL;
 
-        printf("fail to load image: %s\n", stbi_failure_reason());
+        log_error("fail to load image: %s", stbi_failure_reason());
     }
 
     return err;
@@ -270,12 +271,12 @@ int main(int argc, char *argv[])
 
     // cglm test
     vec3 ve = {1.0, 0, 0};
-    printf("before rotate: %f, %f, %f\n", ve[0], ve[1], ve[2]);
+    log_trace("before rotate: %f, %f, %f", ve[0], ve[1], ve[2]);
     glm_vec3_rotate(ve, glm_rad(45), (vec3){0, 0, 1.0});
-    printf("after rotate: %f, %f, %f\n", ve[0], ve[1], ve[2]);
+    log_trace("after rotate: %f, %f, %f", ve[0], ve[1], ve[2]);
 
     EngineOption opt;
-    opt.window_title  = "Null";
+    opt.window_title  = "Rotate Cube";
     opt.window_width  = 640;
     opt.window_height = 480;
     opt.window_flags  = WINDOW_FLAG_ASYNC;

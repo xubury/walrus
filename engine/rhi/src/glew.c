@@ -1,6 +1,7 @@
 #include <type.h>
 #include <GL/glew.h>
 
+#include <log.h>
 #include <macro.h>
 
 static void dbg_callback(GLenum p0, GLenum p1, GLuint p2, GLenum severity, i32 p3, const char *message, const void *p4)
@@ -12,17 +13,17 @@ static void dbg_callback(GLenum p0, GLenum p1, GLuint p2, GLenum severity, i32 p
     UNUSED(p4)
     switch (severity) {
         case GL_DEBUG_SEVERITY_HIGH:
-            ASSERT_MSG(false, "%s\n", message);
+            ASSERT_MSG(false, "%s", message);
             return;
         case GL_DEBUG_SEVERITY_MEDIUM:
             // BD_ASSERT(false, message);
-            printf("error: %s\n", message);
+            log_error(message);
             return;
         case GL_DEBUG_SEVERITY_LOW:
-            printf("warning: %s\n", message);
+            log_warn(message);
             return;
         case GL_DEBUG_SEVERITY_NOTIFICATION:
-            printf("notify: %s\n", message);
+            log_trace(message);
             return;
         default:
             ASSERT_MSG(false, "Unknown severity level!");

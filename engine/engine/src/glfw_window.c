@@ -4,12 +4,13 @@
 #include <macro.h>
 #include <event.h>
 #include <input.h>
+#include <log.h>
 
 #include <GLFW/glfw3.h>
 
 static void error_callback(i32 error, char const *description)
 {
-    printf("GLFW Error ({%d}): {%s}\n", error, description);
+    log_error("GLFW Error ({%d}): {%s}\n", error, description);
 }
 
 static void framebuffer_size_callback(GLFWwindow *window, i32 width, i32 height)
@@ -255,7 +256,7 @@ static void key_callback(GLFWwindow *window, i32 keycode, i32 scancode, i32 acti
 
     Keyboard button = translate_key(keycode);
     if (button == KEYBOARD_UNKNOWN) {
-        printf("Unknown keycode: %d\n", keycode);
+        log_error("Unknown keycode: %d", keycode);
         return;
     }
     else {
