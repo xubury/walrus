@@ -199,7 +199,7 @@ export async function initSys(wasmBytes, libLoader)
         }
 
         window.addEventListener("beforeunload", (event)=>{
-            WA.wasm.__on_exit();
+            WA.exit_callback()
         })
 
     } catch (err) {
@@ -231,8 +231,9 @@ var env =
 	longjmp: function() { abort('CRASH', 'Unsupported longjmp called'); },
 
 
-    wajs_create_window: function(width, height) {
+    wajs_create_window: function(title, width, height) {
         var cnvs = WA.canvas;
+        document.title = readHeapString(title);
         cnvs.width = width;
         cnvs.height = height;
         cnvs.height = cnvs.clientHeight;
@@ -242,6 +243,7 @@ var env =
     wajs_set_main_loop: function(loop, loop_end) {
         loop = getCallbackFromWasm(loop);
         loop_end = getCallbackFromWasm(loop_end);
+        WA.exit_callback = loop_end
         var drawFunc = function () {
             if (ABORT) return;
             if (WA.wasm.__engine_should_close()) {

@@ -29,14 +29,14 @@ static void dbg_callback(GLenum p0, GLenum p1, GLuint p2, GLenum severity, i32 p
     }
 }
 
-void glew_init(void)
+GLenum glew_init(void)
 {
     GLenum err = glewInit();
-    if (err != GLEW_OK) {
-        printf("Error init glew: %s\n", glewGetErrorString(err));
+    if (err == GLEW_OK) {
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDebugMessageCallback(dbg_callback, NULL);
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
     }
-    glEnable(GL_DEBUG_OUTPUT);
-    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    glDebugMessageCallback(dbg_callback, NULL);
-    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
+    return err;
 }

@@ -18,17 +18,17 @@
 
 char const *vs_src =
     "#version 300 es\n"
-    "const vec2 quadVert[] = vec2[](vec2(-1.0f, 1.0f), vec2(-1.0f, -1.0f), vec2(1.0f, 1.0f), vec2(1.0f, -1.0f));"
-    "const vec2 uv[] = vec2[](vec2(0.0f, 1.0f), vec2(0.0f, 0.0f), vec2(1.0f, 1.0f), vec2(1.0f, 0.0f));"
-    "out vec2 v_pos;"
-    "out vec2 v_uv;"
-    "uniform mat4 u_viewproj;"
-    "uniform mat4 u_model;"
-    "void main() { "
-    "    gl_Position = u_viewproj * u_model * vec4(quadVert[gl_VertexID], 0.0, 1.0);"
-    "    v_pos = quadVert[gl_VertexID];"
-    "    v_uv = uv[gl_VertexID];"
-    "}";
+    "layout (location = 0) in vec3 a_pos;\n"
+    "layout (location = 1) in vec2 a_uv;\n"
+    "out vec2 v_pos;\n"
+    "out vec2 v_uv;\n"
+    "uniform mat4 u_viewproj;\n"
+    "uniform mat4 u_model;\n"
+    "void main() { \n"
+    "    gl_Position = u_viewproj * u_model * vec4(a_pos, 1.0);\n"
+    "    v_pos = a_pos.xy;\n"
+    "    v_uv = a_uv;\n"
+    "}\n";
 
 char const *fs_src =
     "#version 300 es\n"
@@ -41,7 +41,7 @@ char const *fs_src =
     "    fragColor = texture(u_texture, v_uv) * vec4(v_pos, 1.0, 1.0);"
     "}";
 
-static GLuint compile_shader(GLenum type, const char *source)
+static GLuint compile_shader(GLenum type, char const *source)
 {
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, NULL);
@@ -88,6 +88,7 @@ typedef struct {
     GLuint shader;
     GLuint textures[2];
     GLuint vao;
+    GLuint vbo;
 
     mat4 viewproj;
     mat4 model;
@@ -111,7 +112,7 @@ void on_render(App *app)
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(data->u_texture, 0);
     glBindVertexArray(data->vao);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -124,7 +125,8 @@ void on_tick(App *app, float dt)
 
 void on_event(App *app, Event *e)
 {
-    UNUSED(app) UNUSED(e);
+    UNUSED(app);
+
     if (e->type == EVENT_TYPE_BUTTON) {
         if (e->button.device == INPUT_KEYBOARD && e->button.button == KEYBOARD_ESCAPE) {
             engine_exit();
@@ -134,12 +136,74 @@ void on_event(App *app, Event *e)
 
 AppError on_init(App *app)
 {
+    AppError err      = APP_SUCCESS;
     AppData *app_data = app_get_userdata(app);
     Window  *window   = engine_get_window();
+    i32      width    = window_get_width(window);
+    i32      height   = window_get_height(window);
 
-    glViewport(0, 0, window_get_width(window), window_get_height(window));
+    glViewport(0, 0, width, height);
+    glEnable(GL_DEPTH_TEST);
 
     glGenVertexArrays(1, &app_data->vao);
+    // clang-format off
+    float vertices[] = {
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+    };
+    // clang-format on
+
+    glGenBuffers(1, &app_data->vbo);
+
+    glBindVertexArray(app_data->vao);
+    glBindBuffer(GL_ARRAY_BUFFER, app_data->vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+    // texture coord attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     GLuint vs        = compile_shader(GL_VERTEX_SHADER, vs_src);
     GLuint fs        = compile_shader(GL_FRAGMENT_SHADER, fs_src);
@@ -154,8 +218,9 @@ AppError on_init(App *app)
 
     glUseProgram(app_data->shader);
 
-    glm_mat4_identity(app_data->viewproj);
+    glm_perspective(glm_rad(45.0), (float)width / height, 0.1, 100, app_data->viewproj);
     glm_mat4_identity(app_data->model);
+    glm_translate(app_data->model, (vec3){0, 0, -2});
     glUniformMatrix4fv(app_data->u_viewproj, 1, false, app_data->viewproj[0]);
     glUniformMatrix4fv(app_data->u_model, 1, false, app_data->model[0]);
 
@@ -182,14 +247,20 @@ AppError on_init(App *app)
         stbi_image_free(img);
     }
     else {
+        err = APP_INIT_FAIL;
+
         printf("fail to load image: %s\n", stbi_failure_reason());
     }
 
-    return APP_SUCCESS;
+    return err;
 }
 
 void on_shutdown(App *app)
 {
+    AppData *data = app_get_userdata(app);
+    glDeleteTextures(ARRAY_LEN(data->textures), data->textures);
+    glDeleteBuffers(1, &data->vbo);
+    glDeleteVertexArrays(1, &data->vao);
     UNUSED(app);
 }
 
@@ -204,9 +275,10 @@ int main(int argc, char *argv[])
     printf("after rotate: %f, %f, %f\n", ve[0], ve[1], ve[2]);
 
     EngineOption opt;
+    opt.window_title  = "Null";
     opt.window_width  = 640;
     opt.window_height = 480;
-    opt.window_flags  = 0;
+    opt.window_flags  = WINDOW_FLAG_ASYNC;
     opt.minfps        = 30.f;
 
     App *app = app_alloc(malloc(sizeof(AppData)));

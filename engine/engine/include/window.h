@@ -4,7 +4,12 @@
 
 typedef struct _Window Window;
 
-Window *window_create(i32 width, i32 height, i32 flags);
+typedef enum {
+    WINDOW_FLAG_NONE  = 0,
+    WINDOW_FLAG_ASYNC = 1 << 0
+} WindowFlag;
+
+Window *window_create(char const *title, i32 width, i32 height, i32 flags);
 
 void window_destroy(Window *win);
 

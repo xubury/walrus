@@ -7,6 +7,7 @@ var glProgramInfos = [];
 var glUniforms = [];
 var glShaders = [];
 var glTextures = [];
+var glBuffers = [];
 var glVertexArrays = [];
 
 const GL_INFO_LOG_LENGTH = 0x8b84
@@ -196,6 +197,10 @@ export function importGl(env)
             return glCtx.getError();
         },
 
+        glEnable: function(cap) {
+            glCtx.enable(cap);
+        },
+
         glDisable: function (cap) {
             glCtx.disable(cap);
         },
@@ -282,7 +287,6 @@ export function importGl(env)
 
         glLinkProgram: function (program) {
             glCtx.linkProgram(glPrograms[program]);
-            // TODO: uniforms
             glProgramInfos[program] = null; // uniforms no longer keep the same names after linking
             populateUniformTable(program);
         },
@@ -372,13 +376,46 @@ export function importGl(env)
             glCtx.generateMipmap(target); 
         },
 
+        glGenBuffers: function(n, buffers) {
+            genObjects(n, buffers, "createBuffer", glBuffers);
+        },
+
+        glDeleteBuffers: function(n, buffers) {
+            deleteObjects(n, buffers, "deleteBuffer", glBuffers);
+        },
+
+        glBindBuffer: function(target, buffer) {
+            glCtx.bindBuffer(target, glBuffers[buffer]);
+        },
+
+        glBufferData: function(target, size, data, usage) {
+            if (data != null) {
+                var heap = sys.getHeap();
+                var HEAPU8 = new Uint8Array(heap.buffer);
+                glCtx.bufferData(target, HEAPU8.subarray(data, data + size), usage)
+            } 
+            else {
+                glCtx.bufferData(target, size, usage)
+            }
+        },
+
         glGenVertexArrays: function(n, vaos) {
             genObjects(n, vaos, "createVertexArray", glVertexArrays);
         },
 
+        glDeleteVertexArrays: function(n, vaos) {
+            deleteObjects(n, vaos, "deleteVertexArray", glVertexArrays);
+        },
+
         glBindVertexArray : function(vao) {
             glCtx.bindVertexArray(glVertexArrays[vao]);
-        }
+        },
 
+        glEnableVertexAttribArray: function(index) { glCtx.enableVertexAttribArray(index); },
+        glDisableVertexAttribArray: function(index) { glCtx.disableVertexAttribArray(index); },
+
+        glVertexAttribPointer:  function(index, size, type, normalized, stride, ptr) { 
+            glCtx.vertexAttribPointer(index, size, type, !!normalized, stride, ptr); 
+        },
     });
 }

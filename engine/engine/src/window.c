@@ -12,60 +12,40 @@ struct _Window {
 };
 
 #if PLATFORM == PLATFORM_WASM
-void wajs_create_window(i32 width, i32 height);
+void wajs_create_window(char const *title, i32 width, i32 height);
 #else
 #include <glfw_window.h>
 #include <GLFW/glfw3.h>
 #endif
 
-static void setup_gl_context(Window *win, i32 width, i32 height)
-{
-#if PLATFORM == PLATFORM_WASM
-    win->handle = NULL;
-    wajs_create_window(width, height);
-#else
-    win->handle = glfw_create_window(width, height, "null");
-    if (win->handle == NULL) {
-        printf("Error creating window!\n");
-    }
-#endif
-}
-
-static void release_gl_context(Window *win)
-{
-#if PLATFORM != PLATFORM_WASM
-    if (win->handle != NULL) {
-        glfw_destroy_window(win->handle);
-    }
-#else
-    UNUSED(win)
-#endif
-}
-
-Window *window_create(i32 width, i32 height, i32 flags)
+Window *window_create(char const *title, i32 width, i32 height, i32 flags)
 {
     Window *win = malloc(sizeof(Window));
     win->width  = width;
     win->height = height;
     win->flags  = flags;
+
+#if PLATFORM == PLATFORM_WASM
     win->handle = NULL;
-
-    setup_gl_context(win, width, height);
-
-#if PLATFORM != PLATFORM_WASM
+    wajs_create_window(title, width, height);
+#else
+    win->handle = glfw_create_window(title, width, height, flags);
     if (win->handle == NULL) {
         window_destroy(win);
         win = NULL;
     }
 #endif
-
     return win;
 }
 
 void window_destroy(Window *win)
 {
     if (win) {
-        release_gl_context(win);
+#if PLATFORM != PLATFORM_WASM
+        if (win->handle != NULL) {
+            glfw_destroy_window(win->handle);
+        }
+#endif
         free(win);
     }
 }

@@ -39,14 +39,26 @@ bool __engine_should_close(void)
 
 #endif
 
-static void register_service(void)
+static EngineError register_service(void)
 {
     EngineOption *opt = &s_engine->opt;
 
     event_init();
-    s_engine->window = window_create(opt->window_width, opt->window_height, opt->window_flags);
-    s_engine->input  = inputs_create();
-    rhi_init();
+
+    s_engine->input = inputs_create();
+    if (s_engine->input == NULL) {
+        return ENGINE_INIT_INPUT_ERROR;
+    }
+    s_engine->window = window_create(opt->window_title, opt->window_width, opt->window_height, opt->window_flags);
+    if (s_engine->window == NULL) {
+        return ENGINE_INIT_WINDOW_ERROR;
+    }
+
+    if (rhi_init() != RHI_SUCCESS) {
+        return ENGINE_INIT_RHI_ERROR;
+    }
+
+    return ENGINE_SUCCESS;
 }
 
 static void release_service(void)
@@ -86,17 +98,6 @@ static void event_process(void)
         }
         app->event(app, &e);
     }
-}
-
-void engine_shutdown(void)
-{
-    ASSERT_MSG(s_engine != NULL, "Engine should be initialized first");
-    engine_exit();
-
-    release_service();
-
-    free(s_engine);
-    s_engine = NULL;
 }
 
 static void engine_frame(void)
@@ -140,14 +141,24 @@ static void engine_frame(void)
     window_swap_buffers(window);
 }
 
+char const *engine_error_msg(EngineError err)
+{
+    char const *err_msg[] = {"No error", "Fail to create window", rhi_error_msg(), "Fail to create input"};
+    return err_msg[err];
+}
+
 void engine_init_run(EngineOption *opt, App *app)
 {
-    if (engine_init(opt) == ENGINE_SUCCESS) {
+    i32 err = engine_init(opt);
+    if (err == ENGINE_SUCCESS) {
         engine_run(app);
+    }
+    else {
+        printf("%s\n", engine_error_msg(err));
     }
 }
 
-i32 engine_init(EngineOption *opt)
+EngineError engine_init(EngineOption *opt)
 {
     s_engine = malloc(sizeof(Engine));
     if (opt != NULL) {
@@ -162,19 +173,26 @@ i32 engine_init(EngineOption *opt)
     s_engine->app  = NULL;
     s_engine->quit = true;
 
-    register_service();
-
     i32 error = ENGINE_SUCCESS;
 
-    if (s_engine->window == NULL) {
-        error = ENGINE_INIT_WINDOW_ERROR;
-    }
+    error = register_service();
 
     if (error != ENGINE_SUCCESS) {
         engine_shutdown();
     }
 
     return error;
+}
+
+void engine_shutdown(void)
+{
+    ASSERT_MSG(s_engine != NULL, "Engine should be initialized first");
+    engine_exit();
+
+    release_service();
+
+    free(s_engine);
+    s_engine = NULL;
 }
 
 static AppError app_init(App *app)
@@ -194,7 +212,7 @@ static void app_shutdown(void)
     s_engine->app = NULL;
 }
 
-void engine_run(App *app)
+AppError engine_run(App *app)
 {
     ASSERT_MSG(s_engine != NULL, "Engine should be initialized first");
     ASSERT_MSG(app != NULL, "App can't be NULL!");
@@ -204,7 +222,9 @@ void engine_run(App *app)
         engine_exit();
     }
 
-    if (app_init(app) == APP_SUCCESS) {
+    AppError err = app_init(app);
+
+    if (err == APP_SUCCESS) {
         // On wasm platfrom, loop is send to js process
 #if PLATFORM == PLATFORM_WASM
         wajs_set_main_loop(engine_frame, app_shutdown);
@@ -217,6 +237,8 @@ void engine_run(App *app)
         app_shutdown();
 #endif
     }
+
+    return err;
 }
 
 App *engine_exit(void)

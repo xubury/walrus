@@ -1,4 +1,5 @@
 #include <glfw_window.h>
+#include <window.h>
 
 #include <macro.h>
 #include <event.h>
@@ -6,7 +7,7 @@
 
 #include <GLFW/glfw3.h>
 
-static void error_callback(i32 error, const char *description)
+static void error_callback(i32 error, char const *description)
 {
     printf("GLFW Error ({%d}): {%s}\n", error, description);
 }
@@ -295,7 +296,7 @@ static void mousebtn_callback(GLFWwindow *window, i32 btn, i32 action, i32 mods)
     e.button.mods   = mods;
 }
 
-void *glfw_create_window(i32 width, i32 height, const char *title)
+void *glfw_create_window(char const *title, i32 width, i32 height, i32 flags)
 {
     ASSERT_MSG(glfwInit(), "Cannot initialize glfw!");
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -307,7 +308,9 @@ void *glfw_create_window(i32 width, i32 height, const char *title)
     if (handle != NULL) {
         glfwMakeContextCurrent(handle);
 
-        glfwSwapInterval(1);
+        if (flags & WINDOW_FLAG_ASYNC) {
+            glfwSwapInterval(1);
+        }
         glfwSetWindowCloseCallback(handle, window_close_callback);
         glfwSetFramebufferSizeCallback(handle, framebuffer_size_callback);
         glfwSetKeyCallback(handle, key_callback);
