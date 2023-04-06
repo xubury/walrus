@@ -1,4 +1,6 @@
 #include <input_device.h>
+#include <macro.h>
+
 #include <string.h>
 
 struct _InputDevice {
@@ -19,18 +21,21 @@ InputDevice* input_create(i16 num_btns, i8 num_axes)
 {
     InputDevice* device = malloc(sizeof(InputDevice));
 
-    device->num_buttons = num_btns;
-    device->state       = malloc(num_btns);
-    device->last_state  = malloc(num_btns);
-    device->modifiers   = 0;
-    device->axis        = malloc(num_axes * sizeof(vec3));
-    device->last_axis   = malloc(num_axes * sizeof(vec3));
+    if (device) {
+        device->num_buttons = num_btns;
+        device->state       = malloc(num_btns * sizeof(bool));
+        device->last_state  = malloc(num_btns * sizeof(bool));
+        device->modifiers   = 0;
+        device->num_axes    = num_axes;
+        device->axis        = malloc(num_axes * sizeof(vec3));
+        device->last_axis   = malloc(num_axes * sizeof(vec3));
 
-    memset(device->first_buttons, 0, 2 * sizeof(u16));
-    memset(device->state, 0, num_btns);
-    memset(device->last_state, 0, num_btns);
-    memset(device->axis, 0, num_axes * sizeof(vec3));
-    memset(device->last_axis, 0, num_axes * sizeof(vec3));
+        memset(device->first_buttons, 0, ARRAY_LEN(device->first_buttons) * sizeof(u16));
+        memset(device->state, 0, num_btns * sizeof(bool));
+        memset(device->last_state, 0, num_btns * sizeof(bool));
+        memset(device->axis, 0, num_axes * sizeof(vec3));
+        memset(device->last_axis, 0, num_axes * sizeof(vec3));
+    }
 
     return device;
 }

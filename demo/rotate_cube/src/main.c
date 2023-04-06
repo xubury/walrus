@@ -125,6 +125,11 @@ void on_tick(App *app, float dt)
 void on_event(App *app, Event *e)
 {
     UNUSED(app) UNUSED(e);
+    if (e->type == EVENT_TYPE_BUTTON) {
+        if (e->button.device == INPUT_KEYBOARD && e->button.button == KEYBOARD_ESCAPE) {
+            engine_exit();
+        }
+    }
 }
 
 AppError on_init(App *app)

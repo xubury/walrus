@@ -198,6 +198,10 @@ export async function initSys(wasmBytes, libLoader)
             })
         }
 
+        window.addEventListener("beforeunload", (event)=>{
+            WA.wasm.__on_exit();
+        })
+
     } catch (err) {
         // On an exception, if the err is 'abort' the error was already processed in the abort function above
         if (err !== 'abort')
@@ -235,25 +239,21 @@ var env =
         cnvs.width = cnvs.clientWidth;
     },
 
-    wajs_set_main_loop: function(engine_loop) {
-        engine_loop = getCallbackFromWasm(engine_loop);
+    wajs_set_main_loop: function(loop, loop_end) {
+        loop = getCallbackFromWasm(loop);
+        loop_end = getCallbackFromWasm(loop_end);
         var drawFunc = function () {
             if (ABORT) return;
+            if (WA.wasm.__engine_should_close()) {
+                loop_end();
+                return;
+            }
             window.requestAnimationFrame(drawFunc);
-            engine_loop();
+            loop();
         };
 
         window.requestAnimationFrame(drawFunc);
     },
-
-    wajs_set_shutdown : function(engine_shutdown) {
-        engine_shutdown = getCallbackFromWasm(engine_shutdown);
-        window.addEventListener("beforeunload", (event)=>{
-            WA.wasm.__on_exit();
-            engine_shutdown();
-        })
-    }
-
 }, wasi = {};
 
 // Extend the objects with the syscall IO emulation

@@ -1,8 +1,7 @@
 #include <window.h>
 #include <macro.h>
 #include <platform.h>
-
-#include <rhi_context.h>
+#include <rhi.h>
 #include <stdlib.h>
 
 struct _Window {
@@ -24,13 +23,9 @@ static void setup_gl_context(Window *win, i32 width, i32 height)
 #if PLATFORM == PLATFORM_WASM
     win->handle = NULL;
     wajs_create_window(width, height);
-    wajs_setup_gl_context();
 #else
-    win->handle = glfw_create_gl_context(width, height);
-    if (win->handle != NULL) {
-        glew_init();
-    }
-    else {
+    win->handle = glfw_create_window(width, height, "null");
+    if (win->handle == NULL) {
         printf("Error creating window!\n");
     }
 #endif
@@ -40,8 +35,10 @@ static void release_gl_context(Window *win)
 {
 #if PLATFORM != PLATFORM_WASM
     if (win->handle != NULL) {
-        glfw_destroy_gl_context(win->handle);
+        glfw_destroy_window(win->handle);
     }
+#else
+    UNUSED(win)
 #endif
 }
 

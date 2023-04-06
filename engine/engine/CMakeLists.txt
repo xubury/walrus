@@ -8,3 +8,7 @@ target_include_directories(wajs_engine
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_link_libraries(wajs_engine PUBLIC wajs_core wajs_window)
+
+if(WASM)
+  target_link_options(wajs_engine PUBLIC -Wl,-export=__engine_should_close)
+endif()

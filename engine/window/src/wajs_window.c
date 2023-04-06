@@ -1,7 +1,7 @@
 #include <input.h>
 #include <event.h>
 
-u16 translate_key(i16 key, bool alter)
+static u16 translate_key(i16 key, bool alter)
 {
     switch (key) {
         case 9:

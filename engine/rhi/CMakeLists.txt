@@ -1,8 +1,9 @@
+add_library(wajs_rhi STATIC src/rhi.c)
+
 if(WASM)
-  add_library(wajs_rhi STATIC src/webgl_context.c)
   target_include_directories(wajs_rhi PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/webgl)
 else()
-  add_library(wajs_rhi STATIC src/glew_context.c)
+  target_sources(wajs_rhi PRIVATE src/glew.c)
 
   find_package(opengl REQUIRED)
   find_package(GLEW REQUIRED)

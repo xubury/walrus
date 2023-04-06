@@ -2,6 +2,7 @@
 #include <type.h>
 #include <sys.h>
 #include <event.h>
+#include <rhi.h>
 
 #include "app_impl.h"
 
@@ -11,16 +12,6 @@
 #include <macro.h>
 #include <platform.h>
 #include <math.h>
-
-#if PLATFORM == PLATFORM_WASM
-
-typedef void (*WajsLoopCallback)(void);
-typedef void (*WajsShutdownCallback)(void);
-
-void wajs_set_main_loop(WajsLoopCallback loop);
-void wajs_set_shutdown(WajsShutdownCallback shutdown);
-
-#endif
 
 struct _Engine {
     EngineOption opt;
@@ -32,6 +23,22 @@ struct _Engine {
 
 static Engine *s_engine = NULL;
 
+#if PLATFORM == PLATFORM_WASM
+
+typedef void (*WajsLoopCallback)(void);
+typedef void (*WajsLoopEndCallback)(void);
+typedef void (*WajsShutdownCallback)(void);
+
+void wajs_set_main_loop(WajsLoopCallback loop, WajsLoopEndCallback loop_end);
+void wajs_set_shutdown(WajsShutdownCallback shutdown);
+
+bool __engine_should_close(void)
+{
+    return s_engine->quit;
+}
+
+#endif
+
 static void register_service(void)
 {
     EngineOption *opt = &s_engine->opt;
@@ -39,6 +46,7 @@ static void register_service(void)
     event_init();
     s_engine->window = window_create(opt->window_width, opt->window_height, opt->window_flags);
     s_engine->input  = inputs_create();
+    rhi_init();
 }
 
 static void release_service(void)
@@ -80,7 +88,7 @@ static void event_process(void)
     }
 }
 
-static void _engine_shutdown(void)
+void engine_shutdown(void)
 {
     ASSERT_MSG(s_engine != NULL, "Engine should be initialized first");
     engine_exit();
@@ -93,8 +101,6 @@ static void _engine_shutdown(void)
 
 static void engine_frame(void)
 {
-    if (s_engine->quit) return;
-
     App          *app    = s_engine->app;
     Input        *input  = s_engine->input;
     Window       *window = s_engine->window;
@@ -136,9 +142,8 @@ static void engine_frame(void)
 
 void engine_init_run(EngineOption *opt, App *app)
 {
-    if (engine_init(opt) == 0) {
+    if (engine_init(opt) == ENGINE_SUCCESS) {
         engine_run(app);
-        engine_shutdown();
     }
 }
 
@@ -159,46 +164,57 @@ i32 engine_init(EngineOption *opt)
 
     register_service();
 
-    // On wasm platfrom, shutdown is sent to js process
-#if PLATFORM == PLATFORM_WASM
-    wajs_set_shutdown(_engine_shutdown);
-#endif
-    i32 error = 0;
+    i32 error = ENGINE_SUCCESS;
+
     if (s_engine->window == NULL) {
-        error = -1;
+        error = ENGINE_INIT_WINDOW_ERROR;
     }
 
-    if (error != 0) {
-        _engine_shutdown();
+    if (error != ENGINE_SUCCESS) {
+        engine_shutdown();
     }
 
     return error;
 }
 
+static AppError app_init(App *app)
+{
+    AppError err = app->init(app);
+    if (err == APP_SUCCESS) {
+        s_engine->quit = false;
+        s_engine->app  = app;
+    }
+    return err;
+}
+
+static void app_shutdown(void)
+{
+    App *app = s_engine->app;
+    app->shutdown(app);
+    s_engine->app = NULL;
+}
+
 void engine_run(App *app)
 {
     ASSERT_MSG(s_engine != NULL, "Engine should be initialized first");
+    ASSERT_MSG(app != NULL, "App can't be NULL!");
 
     // If engine has running app, exit the app first
     if (s_engine->app != NULL) {
         engine_exit();
     }
 
-    if (app->init(app) == APP_SUCCESS) {
-        s_engine->quit = false;
-        s_engine->app  = app;
+    if (app_init(app) == APP_SUCCESS) {
         // On wasm platfrom, loop is send to js process
 #if PLATFORM == PLATFORM_WASM
-        wajs_set_main_loop(engine_frame);
+        wajs_set_main_loop(engine_frame, app_shutdown);
 #else
         // For other native platform, loop in current process
         while (!s_engine->quit) {
             engine_frame();
         }
 
-        app->shutdown(app);
-
-        s_engine->app = NULL;
+        app_shutdown();
 #endif
     }
 }
@@ -210,15 +226,6 @@ App *engine_exit(void)
     s_engine->quit = true;
 
     return s_engine->app;
-}
-
-void engine_shutdown(void)
-{
-#if PLATFORM != PLATFORM_WASM
-    _engine_shutdown();
-#else
-    // wasm platform's loop & shutdown is dealt by js side, so do nothing here
-#endif
 }
 
 Window *engine_get_window(void)

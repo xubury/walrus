@@ -13,6 +13,12 @@ typedef struct {
 
 typedef struct _Engine Engine;
 
+typedef enum {
+    ENGINE_SUCCESS = 0,
+
+    ENGINE_INIT_WINDOW_ERROR
+} EngineError;
+
 // Helper function to init engine, runs an app and shutdown engine.
 void engine_init_run(EngineOption *opt, App *app);
 

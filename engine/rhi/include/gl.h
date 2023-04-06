@@ -17,8 +17,12 @@
 #define GL_VERSION_4_4 0
 #define GL_VERSION_4_5 0
 #include <GL/gl.h>
+
+void wajs_setup_gl_context(void);
+
 #else
 
 #include <GL/glew.h>
+
 
 #endif
