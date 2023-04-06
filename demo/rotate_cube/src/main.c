@@ -236,7 +236,7 @@ AppError on_init(App *app)
     stbi_set_flip_vertically_on_load(true);
     i32 x, y, c;
     u64 ts  = sysclock(SYS_CLOCK_UNIT_MILLSEC);
-    u8 *img = stbi_load("test.png", &x, &y, &c, 4);
+    u8 *img = stbi_load("imgs/test.png", &x, &y, &c, 4);
     log_trace("stbi_load time: %llu ms", sysclock(SYS_CLOCK_UNIT_MILLSEC) - ts);
     if (img != NULL) {
         log_trace("load image width: %d height: %d channel: %d", x, y, c);
