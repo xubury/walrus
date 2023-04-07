@@ -4,6 +4,8 @@
 
 GLenum glew_init(void);
 
+void wajs_setup_gl_context(void);
+
 static Rhi s_rhi;
 
 Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags)

@@ -7,7 +7,7 @@ if(NOT WASM)
   find_package(GLEW REQUIRED)
   target_link_libraries(walrus_rhi PUBLIC opengl::opengl GLEW::GLEW)
 else()
-  target_include_directories(walrus_rhi PUBLIC ${walrus_root_dir}/include/rhi/webgl)
+  target_include_directories(walrus_rhi PUBLIC ${walrus_library_dir}/webgl)
 endif()
 
 target_compile_options(walrus_rhi PUBLIC -Wall -Wextra -Wundef -pedantic)

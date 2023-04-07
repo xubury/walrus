@@ -210,7 +210,7 @@ void __on_mouse_move(i32 x, i32 y, u8 mods)
 {
     Walrus_Event e;
     e.type        = WR_EVENT_TYPE_AXIS;
-    e.axis.device = INPUT_MOUSE;
+    e.axis.device = WR_INPUT_MOUSE;
     e.axis.axis   = 0;
     e.axis.x      = x;
     e.axis.y      = y;
@@ -223,7 +223,7 @@ void __on_mouse_up(i8 btn, u8 mods)
 {
     Walrus_Event e;
     e.type          = WR_EVENT_TYPE_BUTTON;
-    e.button.device = INPUT_MOUSE;
+    e.button.device = WR_INPUT_MOUSE;
     e.button.button = btn;
     e.button.state  = true;
     e.button.mods   = mods;
@@ -234,7 +234,7 @@ void __on_mouse_down(i8 btn, u8 mods)
 {
     Walrus_Event e;
     e.type          = WR_EVENT_TYPE_BUTTON;
-    e.button.device = INPUT_MOUSE;
+    e.button.device = WR_INPUT_MOUSE;
     e.button.button = btn;
     e.button.state  = false;
     e.button.mods   = mods;
@@ -245,7 +245,7 @@ void __on_key_down(i16 key, u8 mods, i8 location)
 {
     Walrus_Event e;
     e.type          = WR_EVENT_TYPE_BUTTON;
-    e.button.device = INPUT_KEYBOARD;
+    e.button.device = WR_INPUT_KEYBOARD;
     e.button.button = translate_key(key, location == 1);
     e.button.state  = true;
     e.button.mods   = mods;
@@ -256,7 +256,7 @@ void __on_key_up(i16 key, u8 mods, i8 location)
 {
     Walrus_Event e;
     e.type          = WR_EVENT_TYPE_BUTTON;
-    e.button.device = INPUT_KEYBOARD;
+    e.button.device = WR_INPUT_KEYBOARD;
     e.button.button = translate_key(key, location == 1);
     e.button.state  = false;
     e.button.mods   = mods;

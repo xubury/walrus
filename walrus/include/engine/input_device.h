@@ -3,7 +3,7 @@
 #include <core/type.h>
 #include <cglm/cglm.h>
 
-typedef struct _InputDevice Walrus_InputDevice;
+typedef struct _Walrus_InputDevice Walrus_InputDevice;
 
 #define WR_INPUT_INVALID_ID UINT16_MAX;
 

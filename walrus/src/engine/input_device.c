@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-struct _InputDevice {
+struct _Walrus_InputDevice {
     u16 num_buttons;
     u16 first_buttons[2];
 
