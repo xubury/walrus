@@ -15,7 +15,7 @@ if(WASM)
 endif()
 
 cmake_minimum_required(VERSION 3.20.0)
-project(webasm VERSION 0.1.0)
+project(walrus VERSION 0.1.0)
 
 if(BUILD_TEST)
   include(CTest)
