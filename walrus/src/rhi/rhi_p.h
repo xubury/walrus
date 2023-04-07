@@ -21,6 +21,11 @@ typedef struct {
 
     Walrus_RhiError err;
     char const     *err_msg;
-} Walrus_Rhi;
+} Walrus_RhiContext;
 
-void init_gl_backend(Walrus_RhiVTable *vtable);
+#define WR_RHI_ALLOC_FAIL_STR    "Rhi fail to allocate memory"
+#define WR_RHI_GL_ALLOC_FAIL_STR "Rhi's opengl context fail to allocate memory"
+
+void init_gl_backend(Walrus_RhiContext *ctx, Walrus_RhiVTable *vtable);
+
+void shutdown_gl_backend(void);

@@ -105,13 +105,11 @@ void on_render(Walrus_App *app)
     glUniformMatrix4fv(data->u_model, 1, false, data->model[0]);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glClearColor(0.1, 0.2, 0.3, 1);
     glUseProgram(data->shader);
     glBindTexture(GL_TEXTURE_2D, data->textures[0]);
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(data->u_texture, 0);
     glDrawArrays(GL_TRIANGLES, 0, 36);
-
     glBindTexture(GL_TEXTURE_2D, 0);
 
     walrus_rhi_submit(0);
@@ -153,7 +151,7 @@ Walrus_AppError on_init(Walrus_App *app)
     i32 const       height   = walrus_window_height(window);
 
     walrus_rhi_set_view_rect(0, 0, 0, width, height);
-    glEnable(GL_DEPTH_TEST);
+    walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_COLOR | WR_RHI_CLEAR_DEPTH, 0xffffffff, 1.0, 0);
 
     // clang-format off
     float vertices[] = {
