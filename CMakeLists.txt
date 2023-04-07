@@ -78,4 +78,4 @@ endif()
 # ##############################################################################
 
 add_subdirectory(demo)
-add_subdirectory(engine)
+add_subdirectory(engine/src)

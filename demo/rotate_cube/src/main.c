@@ -1,16 +1,14 @@
+#include <core/type.h>
+#include <core/sys.h>
+#include <core/macro.h>
+#include <core/log.h>
+
+#include <engine/engine.h>
+#include <rhi/rhi.h>
+
 #include <math.h>
-#include <type.h>
-#include <sys.h>
-#include <macro.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-
-#include <event.h>
-#include <engine.h>
-#include <rhi.h>
-#include <log.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>

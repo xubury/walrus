@@ -1,0 +1,82 @@
+#include <engine/app.h>
+#include <core/macro.h>
+#include "app_impl.h"
+
+#include <stdlib.h>
+
+static void dummy(App *app)
+{
+    UNUSED(app);
+}
+
+static AppError dummyinit(App *app)
+{
+    UNUSED(app);
+
+    return APP_SUCCESS;
+}
+
+static void dummytick(App *app, f32 t)
+{
+    UNUSED(app) UNUSED(t);
+}
+
+static void dummyevent(App *app, Event *e)
+{
+    UNUSED(app) UNUSED(e);
+}
+
+App *app_alloc(void *userdata)
+{
+    App *app = malloc(sizeof(App));
+
+    app->init     = dummyinit;
+    app->shutdown = dummy;
+    app->tick     = dummytick;
+    app->render   = dummy;
+    app->event    = dummyevent;
+
+    app->userdata = userdata;
+
+    return app;
+}
+
+void app_free(App *app)
+{
+    free(app);
+}
+
+void app_set_userdata(App *app, void *userdata)
+{
+    app->userdata = userdata;
+}
+
+void *app_get_userdata(App *app)
+{
+    return app->userdata;
+}
+
+void app_set_init(App *app, AppInitCallback init)
+{
+    app->init = init;
+}
+
+void app_set_shutdown(App *app, AppShutdownCallback shutdown)
+{
+    app->shutdown = shutdown;
+}
+
+void app_set_tick(App *app, AppTickCallback tick)
+{
+    app->tick = tick;
+}
+
+void app_set_render(App *app, AppRenderCallback render)
+{
+    app->render = render;
+}
+
+void app_set_event(App *app, AppEventCallback event)
+{
+    app->event = event;
+}
