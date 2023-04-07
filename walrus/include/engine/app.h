@@ -21,9 +21,9 @@ typedef void (*Walrus_AppRenderCallback)(Walrus_App *);
 
 typedef void (*Walrus_AppEventCallback)(Walrus_App *, Walrus_Event *);
 
-Walrus_App *walrus_app_alloc(void *userdata);
+Walrus_App *walrus_app_create(void *userdata);
 
-void walrus_app_free(Walrus_App *app);
+void walrus_app_destroy(Walrus_App *app);
 
 void walrus_app_set_userdata(Walrus_App *app, void *userdata);
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <rhi/rhi_defines.h>
+
 #include "gl.h"
 
 typedef enum {
@@ -21,3 +23,7 @@ char const *walrus_rhi_error_msg(void);
 void walrus_rhi_set_resolution(i32 width, i32 height);
 
 void walrus_rhi_frame(void);
+
+void walrus_rhi_submit(i16 view_id);
+
+void walrus_rhi_set_view_rect(i16 view_id, i32 x, i32 y, i32 width, i32 height);

@@ -1,6 +1,6 @@
 find_package(cglm REQUIRED)
 
-add_library(walrus_core STATIC sys.c list.c queue.c log.c)
+add_library(walrus_core STATIC handle_alloc.c sys.c list.c queue.c log.c)
 
 target_include_directories(walrus_core PUBLIC ${walrus_root_dir}/include)
 

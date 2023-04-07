@@ -64,6 +64,7 @@ static Walrus_EngineError register_service(void)
     if (walrus_rhi_init(rhi_flags) != WR_RHI_SUCCESS) {
         return WR_ENGINE_INIT_RHI_ERROR;
     }
+    walrus_rhi_set_resolution(opt->window_width, opt->window_height);
 
     return WR_ENGINE_SUCCESS;
 }

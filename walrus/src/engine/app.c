@@ -26,7 +26,7 @@ static void dummyevent(Walrus_App *app, Walrus_Event *e)
     walrus_unused(app) walrus_unused(e);
 }
 
-Walrus_App *walrus_app_alloc(void *userdata)
+Walrus_App *walrus_app_create(void *userdata)
 {
     Walrus_App *app = malloc(sizeof(Walrus_App));
 
@@ -41,7 +41,7 @@ Walrus_App *walrus_app_alloc(void *userdata)
     return app;
 }
 
-void walrus_app_free(Walrus_App *app)
+void walrus_app_destroy(Walrus_App *app)
 {
     free(app);
 }

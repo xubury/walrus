@@ -2,6 +2,7 @@
 #include <core/sys.h>
 #include <core/macro.h>
 #include <core/log.h>
+#include <core/handle_alloc.h>
 
 #include <engine/engine.h>
 #include <rhi/rhi.h>
@@ -86,7 +87,6 @@ static GLuint link_program(GLuint vs, GLuint fs)
 typedef struct {
     GLuint shader;
     GLuint textures[2];
-    GLuint vao;
     GLuint vbo;
 
     mat4 viewproj;
@@ -110,10 +110,11 @@ void on_render(Walrus_App *app)
     glBindTexture(GL_TEXTURE_2D, data->textures[0]);
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(data->u_texture, 0);
-    glBindVertexArray(data->vao);
     glDrawArrays(GL_TRIANGLES, 0, 36);
 
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    walrus_rhi_submit(0);
 }
 
 void on_tick(Walrus_App *app, float dt)
@@ -135,16 +136,25 @@ void on_event(Walrus_App *app, Walrus_Event *e)
 
 Walrus_AppError on_init(Walrus_App *app)
 {
+    Walrus_HandleAlloc *alloc   = walrus_handle_create(1234);
+    Walrus_Handle       handle0 = walrus_handle_alloc(alloc);
+    Walrus_Handle       handle1 = walrus_handle_alloc(alloc);
+    walrus_handle_free(alloc, handle0);
+    walrus_assert(!walrus_handle_valid(alloc, handle0));
+    Walrus_Handle handle2 = walrus_handle_alloc(alloc);
+    /* walrus_handle_free(alloc, handle1); */
+    Walrus_Handle handle3 = walrus_handle_alloc(alloc);
+    walrus_trace("handle alloc: %d, %d, %d, %d", handle0, handle1, handle2, handle3);
+
     Walrus_AppError err      = WR_APP_SUCCESS;
     AppData        *app_data = walrus_app_userdata(app);
     Walrus_Window  *window   = walrus_engine_window();
     i32 const       width    = walrus_window_width(window);
     i32 const       height   = walrus_window_height(window);
 
-    glViewport(0, 0, width, height);
+    walrus_rhi_set_view_rect(0, 0, 0, width, height);
     glEnable(GL_DEPTH_TEST);
 
-    glGenVertexArrays(1, &app_data->vao);
     // clang-format off
     float vertices[] = {
         -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
@@ -193,7 +203,6 @@ Walrus_AppError on_init(Walrus_App *app)
 
     glGenBuffers(1, &app_data->vbo);
 
-    glBindVertexArray(app_data->vao);
     glBindBuffer(GL_ARRAY_BUFFER, app_data->vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
@@ -259,8 +268,6 @@ void on_shutdown(Walrus_App *app)
     AppData *data = walrus_app_userdata(app);
     glDeleteTextures(walrus_array_len(data->textures), data->textures);
     glDeleteBuffers(1, &data->vbo);
-    glDeleteVertexArrays(1, &data->vao);
-    walrus_unused(app);
 }
 
 int main(int argc, char *argv[])
@@ -280,7 +287,7 @@ int main(int argc, char *argv[])
     opt.window_flags  = WR_WINDOW_FLAG_ASYNC | WR_WINDOW_FLAG_OPENGL;
     opt.minfps        = 30.f;
 
-    Walrus_App *app = walrus_app_alloc(malloc(sizeof(AppData)));
+    Walrus_App *app = walrus_app_create(malloc(sizeof(AppData)));
     walrus_app_set_init(app, on_init);
     walrus_app_set_shutdown(app, on_shutdown);
     walrus_app_set_tick(app, on_tick);

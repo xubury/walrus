@@ -2,26 +2,25 @@
 
 #include <rhi/rhi.h>
 
-typedef struct {
-    u32 width;
-    u32 height;
-} RhiResolution;
+#include "frame.h"
+
+typedef void (*Walrus_RhiSubmitFn)(Walrus_RenderFrame *frame);
 
 typedef struct {
-    RhiResolution resolution;
-} RhiFrame;
-
-typedef void (*RhiSubmitFn)(RhiFrame *frame);
+    Walrus_RhiSubmitFn submit_fn;
+} Walrus_RhiVTable;
 
 typedef struct {
     Walrus_RhiFlag flags;
 
-    RhiFrame submit_frame;
+    Walrus_RenderDraw    draw;
+    Walrus_RenderCompute compute;
+    Walrus_RenderFrame   submit_frame;
 
-    RhiSubmitFn submit_fn;
+    Walrus_RenderView views[WR_RHI_MAX_VIEWS];
 
-    Walrus_RhiError    err;
-    char const *err_msg;
-} Rhi;
+    Walrus_RhiError err;
+    char const     *err_msg;
+} Walrus_Rhi;
 
-void init_gl_backend(Rhi *rhi);
+void init_gl_backend(Walrus_RhiVTable *vtable);

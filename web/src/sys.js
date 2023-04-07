@@ -490,10 +490,8 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
         } else {
             return WASI_ENOSYS;
         }
-        var nsec = Math.round(now * 1000 * 1000);
         var heap = getHeap();
-        heap.setInt32(ptime + 4, (nsec / Math.pow(2, 32)) >>> 0, true);
-        heap.setInt32(ptime + 0, (nsec >>> 0), true);
+        heap.setBigUint64(ptime, BigInt(now) * BigInt(1000000), true);
         return WASI_ESUCCESS;
     };
 
