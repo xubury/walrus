@@ -30,15 +30,15 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
 
 # ######### Conan configuration #####################
-set(CONAN_CMAKE ${CMAKE_SOURCE_DIR}/cmake/conan.cmake)
-set(CONAN_URL
+set(cnoan_cmake ${CMAKE_SOURCE_DIR}/cmake/conan.cmake)
+set(cnoan_url
     https://raw.githubusercontent.com/conan-io/cmake-conan/0.18.1/conan.cmake)
 
-if(NOT EXISTS ${CONAN_CMAKE})
-  file_download(${CONAN_CMAKE} ${CONAN_URL})
+if(NOT EXISTS ${cnoan_cmake})
+  file_download(${cnoan_cmake} ${cnoan_url})
 endif()
 
-include(${CONAN_CMAKE})
+include(${cnoan_cmake})
 
 set(conan_packages stb/cci.20210910 cglm/0.8.5)
 
@@ -77,5 +77,6 @@ else()
 endif()
 # ##############################################################################
 
+set(walrus_root_dir ${CMAKE_CURRENT_SOURCE_DIR}/walrus)
+add_subdirectory(walrus/src)
 add_subdirectory(demo)
-add_subdirectory(engine/src)

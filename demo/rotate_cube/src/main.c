@@ -55,7 +55,7 @@ static GLuint compile_shader(GLenum type, char const *source)
         char *infoLog    = (char *)malloc(logSize);
         infoLog[logSize] = 0;
         glGetShaderInfoLog(shader, logSize, NULL, infoLog);
-        log_error("Shader compile error: %s", infoLog);
+        walrus_error("Shader compile error: %s", infoLog);
         free(infoLog);
     }
     return shader;
@@ -77,7 +77,7 @@ static GLuint link_program(GLuint vs, GLuint fs)
         char *infoLog    = (char *)malloc(logSize);
         infoLog[logSize] = 0;
         glGetProgramInfoLog(prog, logSize, NULL, infoLog);
-        log_error("Failed to link shader program: %s", infoLog);
+        walrus_error("Failed to link shader program: %s", infoLog);
         free(infoLog);
     }
     return prog;
@@ -98,9 +98,9 @@ typedef struct {
     GLuint u_model;
 } AppData;
 
-void on_render(App *app)
+void on_render(Walrus_App *app)
 {
-    AppData *data = app_get_userdata(app);
+    AppData *data = walrus_app_userdata(app);
 
     glUniformMatrix4fv(data->u_model, 1, false, data->model[0]);
 
@@ -116,30 +116,30 @@ void on_render(App *app)
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void on_tick(App *app, float dt)
+void on_tick(Walrus_App *app, float dt)
 {
-    AppData *data = app_get_userdata(app);
+    AppData *data = walrus_app_userdata(app);
     glm_rotate(data->model, 1.0 * dt, (vec3){0, 1, 0});
 }
 
-void on_event(App *app, Event *e)
+void on_event(Walrus_App *app, Walrus_Event *e)
 {
-    UNUSED(app);
+    walrus_unused(app);
 
-    if (e->type == EVENT_TYPE_BUTTON) {
-        if (e->button.device == INPUT_KEYBOARD && e->button.button == KEYBOARD_ESCAPE) {
-            engine_exit();
+    if (e->type == WR_EVENT_TYPE_BUTTON) {
+        if (e->button.device == WR_INPUT_KEYBOARD && e->button.button == WR_KEY_ESCAPE) {
+            walrus_engine_exit();
         }
     }
 }
 
-AppError on_init(App *app)
+Walrus_AppError on_init(Walrus_App *app)
 {
-    AppError err      = APP_SUCCESS;
-    AppData *app_data = app_get_userdata(app);
-    Window  *window   = engine_get_window();
-    i32      width    = window_get_width(window);
-    i32      height   = window_get_height(window);
+    Walrus_AppError err      = WR_APP_SUCCESS;
+    AppData        *app_data = walrus_app_userdata(app);
+    Walrus_Window  *window   = walrus_engine_window();
+    i32 const       width    = walrus_window_width(window);
+    i32 const       height   = walrus_window_height(window);
 
     glViewport(0, 0, width, height);
     glEnable(GL_DEPTH_TEST);
@@ -211,9 +211,9 @@ AppError on_init(App *app)
     app_data->u_texture  = glGetUniformLocation(app_data->shader, "u_texture");
     app_data->u_viewproj = glGetUniformLocation(app_data->shader, "u_viewproj");
     app_data->u_model    = glGetUniformLocation(app_data->shader, "u_model");
-    log_trace("uniform \"u_texture\" loc: %d", app_data->u_texture);
-    log_trace("uniform \"u_viewproj\" loc: %d", app_data->u_viewproj);
-    log_trace("uniform \"u_model\" loc: %d", app_data->u_model);
+    walrus_trace("uniform \"u_texture\" loc: %d", app_data->u_texture);
+    walrus_trace("uniform \"u_viewproj\" loc: %d", app_data->u_viewproj);
+    walrus_trace("uniform \"u_model\" loc: %d", app_data->u_model);
 
     glUseProgram(app_data->shader);
 
@@ -223,21 +223,21 @@ AppError on_init(App *app)
     glUniformMatrix4fv(app_data->u_viewproj, 1, false, app_data->viewproj[0]);
     glUniformMatrix4fv(app_data->u_model, 1, false, app_data->model[0]);
 
-    i32 const array_len = ARRAY_LEN(app_data->textures);
+    i32 const array_len = walrus_array_len(app_data->textures);
     glGenTextures(array_len, app_data->textures);
 
     for (int i = 0; i < array_len; ++i) {
-        log_trace("texture: %d", app_data->textures[i]);
+        walrus_trace("texture: %d", app_data->textures[i]);
     }
 
     /* stbi img test */
     stbi_set_flip_vertically_on_load(true);
     i32 x, y, c;
-    u64 ts  = sysclock(SYS_CLOCK_UNIT_MILLSEC);
+    u64 ts  = walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC);
     u8 *img = stbi_load("imgs/test.png", &x, &y, &c, 4);
-    log_trace("stbi_load time: %llu ms", sysclock(SYS_CLOCK_UNIT_MILLSEC) - ts);
+    walrus_trace("stbi_load time: %llu ms", walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC) - ts);
     if (img != NULL) {
-        log_trace("load image width: %d height: %d channel: %d", x, y, c);
+        walrus_trace("load image width: %d height: %d channel: %d", x, y, c);
         glBindTexture(GL_TEXTURE_2D, app_data->textures[0]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, img);
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -246,48 +246,48 @@ AppError on_init(App *app)
         stbi_image_free(img);
     }
     else {
-        err = APP_INIT_FAIL;
+        err = WR_APP_INIT_FAIL;
 
-        log_error("fail to load image: %s", stbi_failure_reason());
+        walrus_error("fail to load image: %s", stbi_failure_reason());
     }
 
     return err;
 }
 
-void on_shutdown(App *app)
+void on_shutdown(Walrus_App *app)
 {
-    AppData *data = app_get_userdata(app);
-    glDeleteTextures(ARRAY_LEN(data->textures), data->textures);
+    AppData *data = walrus_app_userdata(app);
+    glDeleteTextures(walrus_array_len(data->textures), data->textures);
     glDeleteBuffers(1, &data->vbo);
     glDeleteVertexArrays(1, &data->vao);
-    UNUSED(app);
+    walrus_unused(app);
 }
 
 int main(int argc, char *argv[])
 {
-    UNUSED(argc) UNUSED(argv);
+    walrus_unused(argc) walrus_unused(argv);
 
     // cglm test
     vec3 ve = {1.0, 0, 0};
-    log_trace("before rotate: %f, %f, %f", ve[0], ve[1], ve[2]);
+    walrus_trace("before rotate: %f, %f, %f", ve[0], ve[1], ve[2]);
     glm_vec3_rotate(ve, glm_rad(45), (vec3){0, 0, 1.0});
-    log_trace("after rotate: %f, %f, %f", ve[0], ve[1], ve[2]);
+    walrus_trace("after rotate: %f, %f, %f", ve[0], ve[1], ve[2]);
 
-    EngineOption opt;
+    Walrus_EngineOption opt;
     opt.window_title  = "Rotate Cube";
     opt.window_width  = 640;
     opt.window_height = 480;
-    opt.window_flags  = WINDOW_FLAG_ASYNC;
+    opt.window_flags  = WR_WINDOW_FLAG_ASYNC | WR_WINDOW_FLAG_OPENGL;
     opt.minfps        = 30.f;
 
-    App *app = app_alloc(malloc(sizeof(AppData)));
-    app_set_init(app, on_init);
-    app_set_shutdown(app, on_shutdown);
-    app_set_tick(app, on_tick);
-    app_set_render(app, on_render);
-    app_set_event(app, on_event);
+    Walrus_App *app = walrus_app_alloc(malloc(sizeof(AppData)));
+    walrus_app_set_init(app, on_init);
+    walrus_app_set_shutdown(app, on_shutdown);
+    walrus_app_set_tick(app, on_tick);
+    walrus_app_set_render(app, on_render);
+    walrus_app_set_event(app, on_event);
 
-    engine_init_run(&opt, app);
+    walrus_engine_init_run(&opt, app);
 
     return 0;
 }
