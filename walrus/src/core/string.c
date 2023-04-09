@@ -33,16 +33,15 @@ static bool check_str_valid(char const *str)
     return str && get_const_header(str)->magic_number == STR_MAGIC_NUMBER;
 }
 
-char *walrus_str_alloc(char const *str)
+char *walrus_str_dup(char const *str)
 {
-    u64 len = strlen(str);
-    return walrus_str_alloc_sub(str, len);
+    return walrus_str_substr(str, 0, walrus_str_len(str));
 }
 
-char *walrus_str_alloc_sub(char const *str, u64 len)
+char *walrus_str_substr(char const *str, i32 start, u64 len)
 {
-    char *alloc_str = walrus_str_alloc_empty(len);
-    walrus_str_nappend(&alloc_str, str, len);
+    char *alloc_str = walrus_str_alloc(len);
+    walrus_str_nappend(&alloc_str, str + start, len);
 
     return alloc_str;
 }
@@ -63,11 +62,10 @@ static char *str_storage_realloc(void *ptr, u64 size)
     header->capacity     = size;
     header->magic_number = STR_MAGIC_NUMBER;
 
-    walrus_assert(check_str_valid(str));
     return str;
 }
 
-char *walrus_str_alloc_empty(u64 size)
+char *walrus_str_alloc(u64 size)
 {
     return str_storage_realloc(NULL, size);
 }
@@ -140,4 +138,21 @@ void walrus_str_nappend(char **pdst, const char *src, u64 src_len)
     }
 
     *pdst = dst;
+}
+
+Walrus_StringView walrus_str_substrview(const char *str, i32 start, u64 len)
+{
+    Walrus_StringView string_view;
+    string_view.str = NULL;
+    string_view.len = 0;
+    if (start > 0) {
+        i32 str_len   = strlen(str);
+        start         = walrus_min(start, str_len);
+        u64 avail_len = str_len - start;
+
+        string_view.str = str + start;
+        string_view.len = walrus_min(avail_len, len);
+    }
+
+    return string_view;
 }

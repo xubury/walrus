@@ -2,16 +2,21 @@
 
 #include "type.h"
 
+typedef struct {
+    const char *str;
+    u64         len;
+} Walrus_StringView;
+
 bool walrus_str_equal(char const *s1, char const *s2);
 
 // Allocate from a null-termiate string
-char *walrus_str_alloc(char const *str);
+char *walrus_str_dup(char const *str);
 
 // Allocate a substr from a null-termiate string
-char *walrus_str_alloc_sub(char const *str, u64 len);
+char *walrus_str_substr(char const *str, i32 start, u64 len);
 
 // Allocate an empty null-termiate string of capacity size
-char *walrus_str_alloc_empty(u64 size);
+char *walrus_str_alloc(u64 size);
 
 // Free a allocated string, return false if it is malformed
 bool walrus_str_free(char *str);
@@ -27,3 +32,5 @@ void walrus_str_append(char **pdst, const char *src);
 
 // Append substring of src to the end of dst, dst must be allocated by walrus_alloc_str()
 void walrus_str_nappend(char **pdst, const char *src, u64 src_len);
+
+Walrus_StringView walrus_str_substrview(char const *str, i32 start, u64 len);
