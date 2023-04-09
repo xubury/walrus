@@ -18,12 +18,14 @@ static Walrus_AppError dummyinit(Walrus_App *app)
 
 static void dummytick(Walrus_App *app, f32 t)
 {
-    walrus_unused(app) walrus_unused(t);
+    walrus_unused(app);
+    walrus_unused(t);
 }
 
 static void dummyevent(Walrus_App *app, Walrus_Event *e)
 {
-    walrus_unused(app) walrus_unused(e);
+    walrus_unused(app);
+    walrus_unused(e);
 }
 
 Walrus_App *walrus_app_create(void *userdata)

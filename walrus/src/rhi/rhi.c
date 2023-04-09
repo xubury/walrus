@@ -10,6 +10,18 @@ static char const* no_backend_str = "No render backend specifed";
 static Walrus_RhiContext* s_ctx   = NULL;
 static Walrus_RhiVTable*  s_table = NULL;
 
+static void init_handles(void)
+{
+    s_ctx->shaders  = walrus_handle_create(WR_RHI_MAX_SHADERS);
+    s_ctx->programs = walrus_handle_create(WR_RHI_MAX_PROGRAMS);
+}
+
+static void shutdown_handles(void)
+{
+    walrus_handle_destroy(s_ctx->shaders);
+    walrus_handle_destroy(s_ctx->programs);
+}
+
 Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags)
 {
     s_ctx = malloc(sizeof(Walrus_RhiContext));
@@ -33,11 +45,15 @@ Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags)
     else {
         walrus_assert_msg(false, no_backend_str);
     }
+
+    init_handles();
+
     return s_ctx->err;
 }
 
 void walrus_rhi_shutdown(void)
 {
+    shutdown_handles();
     shutdown_gl_backend();
 
     free(s_ctx);
@@ -70,13 +86,14 @@ void walrus_rhi_frame(void)
     s_table->submit_fn(frame);
 }
 
-void walrus_rhi_submit(i16 view_id)
+void walrus_rhi_submit(i16 view_id, Walrus_ProgramHandle program)
 {
     Walrus_RenderFrame* frame = &s_ctx->submit_frame;
 
     u32 const render_item_idx = frame->num_render_items;
     frame->num_render_items   = fmin(WR_RHI_MAX_DRAW_CALLS, frame->num_render_items + 1);
 
+    frame->program[render_item_idx]           = program;
     frame->view_ids[render_item_idx]          = view_id;
     frame->render_items[render_item_idx].draw = s_ctx->draw;
 }
@@ -114,4 +131,37 @@ void walrus_rhi_set_view_clear(i16 view_id, u16 flags, u32 rgba, f32 depth, u8 s
     clear->flags   = flags;
     clear->depth   = depth;
     clear->stencil = stencil;
+}
+
+Walrus_ShaderHandle walrus_rhi_create_shader(Walrus_ShaderType type, char const* source)
+{
+    Walrus_ShaderHandle handle = {walrus_handle_alloc(s_ctx->shaders)};
+    if (handle.id == WR_INVALID_HANDLE) {
+        s_ctx->err = WR_RHI_ALLOC_HADNLE_ERROR;
+        return handle;
+    }
+
+    s_table->create_shader_fn(type, handle, source);
+
+    return handle;
+}
+
+void walrus_rhi_destroy_shader(Walrus_ShaderHandle handle)
+{
+    s_table->destroy_shader_fn(handle);
+
+    walrus_handle_free(s_ctx->shaders, handle.id);
+}
+
+Walrus_ProgramHandle walrus_rhi_create_program(Walrus_ShaderHandle vs, Walrus_ShaderHandle fs)
+{
+    Walrus_ProgramHandle handle = {walrus_handle_alloc(s_ctx->programs)};
+    if (handle.id == WR_INVALID_HANDLE) {
+        s_ctx->err = WR_RHI_ALLOC_HADNLE_ERROR;
+        return handle;
+    }
+
+    s_table->create_program_fn(handle, vs, fs, (Walrus_ShaderHandle){WR_INVALID_HANDLE});
+
+    return handle;
 }

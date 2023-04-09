@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rhi/rhi_defines.h>
+#include <rhi/type.h>
 
 #include "view.h"
 
@@ -34,7 +35,9 @@ typedef struct {
 
     u16               num_render_items;
     Walrus_RenderItem render_items[WR_RHI_MAX_DRAW_CALLS];
-    u16               view_ids[WR_RHI_MAX_DRAW_CALLS];
+
+    u16                  view_ids[WR_RHI_MAX_DRAW_CALLS];
+    Walrus_ProgramHandle program[WR_RHI_MAX_DRAW_CALLS];
 
     Walrus_Resolution resolution;
 } Walrus_RenderFrame;

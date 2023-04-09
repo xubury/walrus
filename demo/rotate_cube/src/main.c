@@ -10,6 +10,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include "core/hash.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -41,53 +42,10 @@ char const *fs_src =
     "    fragColor = texture(u_texture, v_uv) * vec4(v_pos, 1.0, 1.0);"
     "}";
 
-static GLuint compile_shader(GLenum type, char const *source)
-{
-    GLuint shader = glCreateShader(type);
-    glShaderSource(shader, 1, &source, NULL);
-    glCompileShader(shader);
-
-    GLint succ;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &succ);
-    if (!succ) {
-        GLint logSize;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logSize);
-
-        char *infoLog    = (char *)malloc(logSize);
-        infoLog[logSize] = 0;
-        glGetShaderInfoLog(shader, logSize, NULL, infoLog);
-        walrus_error("Shader compile error: %s", infoLog);
-        free(infoLog);
-    }
-    return shader;
-}
-
-static GLuint link_program(GLuint vs, GLuint fs)
-{
-    GLuint prog = glCreateProgram();
-    glAttachShader(prog, vs);
-    glAttachShader(prog, fs);
-    glLinkProgram(prog);
-
-    GLint succ;
-    glGetProgramiv(prog, GL_LINK_STATUS, &succ);
-    if (!succ) {
-        GLint logSize = 0;
-        glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &logSize);
-
-        char *infoLog    = (char *)malloc(logSize);
-        infoLog[logSize] = 0;
-        glGetProgramInfoLog(prog, logSize, NULL, infoLog);
-        walrus_error("Failed to link shader program: %s", infoLog);
-        free(infoLog);
-    }
-    return prog;
-}
-
 typedef struct {
-    GLuint shader;
-    GLuint textures[2];
-    GLuint vbo;
+    Walrus_ProgramHandle shader;
+    GLuint               textures[2];
+    GLuint               vbo;
 
     mat4 viewproj;
     mat4 model;
@@ -102,17 +60,14 @@ void on_render(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
 
-    glUniformMatrix4fv(data->u_model, 1, false, data->model[0]);
-
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glUseProgram(data->shader);
     glBindTexture(GL_TEXTURE_2D, data->textures[0]);
     glActiveTexture(GL_TEXTURE0);
-    glUniform1i(data->u_texture, 0);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
-    glBindTexture(GL_TEXTURE_2D, 0);
 
-    walrus_rhi_submit(0);
+    walrus_rhi_submit(0, data->shader);
+    glUniform1i(data->u_texture, 0);
+    glUniformMatrix4fv(data->u_model, 1, false, data->model[0]);
+    glUniformMatrix4fv(data->u_viewproj, 1, false, data->viewproj[0]);
+    glUniformMatrix4fv(data->u_model, 1, false, data->model[0]);
 }
 
 void on_tick(Walrus_App *app, float dt)
@@ -132,8 +87,19 @@ void on_event(Walrus_App *app, Walrus_Event *e)
     }
 }
 
+bool i32_equal(void const *a, void const *b)
+{
+    return *(i32 *)a == *(i32 *)b;
+}
+
+u32 i32_hash(void const *a)
+{
+    return *(i32 *)a;
+}
+
 Walrus_AppError on_init(Walrus_App *app)
 {
+    // Handle test
     Walrus_HandleAlloc *alloc   = walrus_handle_create(1234);
     Walrus_Handle       handle0 = walrus_handle_alloc(alloc);
     Walrus_Handle       handle1 = walrus_handle_alloc(alloc);
@@ -143,6 +109,16 @@ Walrus_AppError on_init(Walrus_App *app)
     /* walrus_handle_free(alloc, handle1); */
     Walrus_Handle handle3 = walrus_handle_alloc(alloc);
     walrus_trace("handle alloc: %d, %d, %d, %d", handle0, handle1, handle2, handle3);
+
+    Walrus_HashTable *table = walrus_hash_table_create(i32_hash, i32_equal);
+
+    // Hash table test
+    i32 i = 123;
+    walrus_hash_table_add(table, &i);
+    walrus_assert(walrus_hash_table_contains(table, &i));
+    walrus_hash_table_remove(table, &i);
+    walrus_assert(!walrus_hash_table_contains(table, &i));
+    walrus_hash_table_destroy(table);
 
     Walrus_AppError err      = WR_APP_SUCCESS;
     AppData        *app_data = walrus_app_userdata(app);
@@ -154,7 +130,7 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_COLOR | WR_RHI_CLEAR_DEPTH, 0xffffffff, 1.0, 0);
 
     // clang-format off
-    float vertices[] = {
+    f32 vertices[] = {
         -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
          0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
          0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
@@ -211,29 +187,25 @@ Walrus_AppError on_init(Walrus_App *app)
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    GLuint vs        = compile_shader(GL_VERTEX_SHADER, vs_src);
-    GLuint fs        = compile_shader(GL_FRAGMENT_SHADER, fs_src);
-    app_data->shader = link_program(vs, fs);
+    Walrus_ShaderHandle vs = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, vs_src);
+    Walrus_ShaderHandle fs = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
+    app_data->shader       = walrus_rhi_create_program(vs, fs);
 
-    app_data->u_texture  = glGetUniformLocation(app_data->shader, "u_texture");
-    app_data->u_viewproj = glGetUniformLocation(app_data->shader, "u_viewproj");
-    app_data->u_model    = glGetUniformLocation(app_data->shader, "u_model");
+    app_data->u_texture  = glGetUniformLocation(3, "u_texture");
+    app_data->u_viewproj = glGetUniformLocation(3, "u_viewproj");
+    app_data->u_model    = glGetUniformLocation(3, "u_model");
     walrus_trace("uniform \"u_texture\" loc: %d", app_data->u_texture);
     walrus_trace("uniform \"u_viewproj\" loc: %d", app_data->u_viewproj);
     walrus_trace("uniform \"u_model\" loc: %d", app_data->u_model);
 
-    glUseProgram(app_data->shader);
-
     glm_perspective(glm_rad(45.0), (float)width / height, 0.1, 100, app_data->viewproj);
     glm_mat4_identity(app_data->model);
     glm_translate(app_data->model, (vec3){0, 0, -2});
-    glUniformMatrix4fv(app_data->u_viewproj, 1, false, app_data->viewproj[0]);
-    glUniformMatrix4fv(app_data->u_model, 1, false, app_data->model[0]);
 
     i32 const array_len = walrus_array_len(app_data->textures);
     glGenTextures(array_len, app_data->textures);
 
-    for (int i = 0; i < array_len; ++i) {
+    for (i32 i = 0; i < array_len; ++i) {
         walrus_trace("texture: %d", app_data->textures[i]);
     }
 
@@ -270,7 +242,8 @@ void on_shutdown(Walrus_App *app)
 
 int main(int argc, char *argv[])
 {
-    walrus_unused(argc) walrus_unused(argv);
+    walrus_unused(argc);
+    walrus_unused(argv);
 
     // cglm test
     vec3 ve = {1.0, 0, 0};
