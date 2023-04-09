@@ -16,6 +16,16 @@ void* walrus_malloc0(u64 size)
     return ptr;
 }
 
+void walrus_free(void* ptr)
+{
+    free(ptr);
+}
+
+void* walrus_realloc(void* ptr, u64 size)
+{
+    return realloc(ptr, size);
+}
+
 void* walrus_memdup(void const* ptr, u64 size)
 {
     void* new_mem = NULL;

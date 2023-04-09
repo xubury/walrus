@@ -25,3 +25,5 @@
 #define walrus_ptr_to_u32(x) (u32)(u64)(x)
 
 #define walrus_max(a, b) (a > b ? a : b)
+
+#define walrus_min(a, b) (a < b ? a : b)

@@ -35,11 +35,11 @@ enum {
 #define walrus_error(...) walrus_log(WR_LOG_ERROR, __FILE__, __LINE__, __VA_ARGS__)
 #define walrus_fatal(...) walrus_log(WR_LOG_FATAL, __FILE__, __LINE__, __VA_ARGS__)
 
-char const *walrus_level_string(i32 level);
-void        walrus_set_lock(Walrus_LogLockFn fn, void *udata);
-void        walrus_set_level(i32 level);
-void        walrus_set_quiet(bool enable);
-i32         walrus_add_callback(Walrus_LogFn fn, void *udata, i32 level);
-i32         walrus_add_fp(FILE *fp, i32 level);
+char const *walrus_log_level_string(i32 level);
+void        walrus_log_set_lock(Walrus_LogLockFn fn, void *udata);
+void        walrus_log_set_level(i32 level);
+void        walrus_log_set_quiet(bool enable);
+i32         walrus_log_add_callback(Walrus_LogFn fn, void *udata, i32 level);
+i32         walrus_log_add_fp(FILE *fp, i32 level);
 
 void walrus_log(i32 level, char const *file, i32 line, char const *fmt, ...);

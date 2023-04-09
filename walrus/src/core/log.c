@@ -61,28 +61,28 @@ static void unlock(void)
     }
 }
 
-char const *walrus_level_string(i32 level)
+char const *walrus_log_level_string(i32 level)
 {
     return level_strings[level];
 }
 
-void walrus_set_lock(Walrus_LogLockFn fn, void *udata)
+void walrus_log_set_lock(Walrus_LogLockFn fn, void *udata)
 {
     L.lock  = fn;
     L.udata = udata;
 }
 
-void walrus_set_level(i32 level)
+void walrus_log_set_level(i32 level)
 {
     L.level = level;
 }
 
-void walrus_set_quiet(bool enable)
+void walrus_log_set_quiet(bool enable)
 {
     L.quiet = enable;
 }
 
-i32 walrus_add_callback(Walrus_LogFn fn, void *udata, i32 level)
+i32 walrus_log_add_callback(Walrus_LogFn fn, void *udata, i32 level)
 {
     for (i32 i = 0; i < MAX_CALLBACKS; i++) {
         if (!L.callbacks[i].fn) {
@@ -93,9 +93,9 @@ i32 walrus_add_callback(Walrus_LogFn fn, void *udata, i32 level)
     return -1;
 }
 
-i32 walrus_add_fp(FILE *fp, i32 level)
+i32 walrus_log_add_fp(FILE *fp, i32 level)
 {
-    return walrus_add_callback(file_callback, fp, level);
+    return walrus_log_add_callback(file_callback, fp, level);
 }
 
 static void init_event(Walrus_LogEvent *ev, void *udata)

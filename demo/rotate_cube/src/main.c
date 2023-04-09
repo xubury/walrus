@@ -3,6 +3,7 @@
 #include <core/macro.h>
 #include <core/log.h>
 #include <core/handle_alloc.h>
+#include <core/string.h>
 
 #include <engine/engine.h>
 #include <rhi/rhi.h>
@@ -119,6 +120,19 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_hash_table_remove(table, &i);
     walrus_assert(!walrus_hash_table_contains(table, &i));
     walrus_hash_table_destroy(table);
+
+    // String test
+    char *str = walrus_str_alloc_empty(0);
+    walrus_str_append(&str, "hello world");
+    walrus_trace("str:%s, len:%d", str, walrus_str_len(str));
+    walrus_str_append(&str, "yes yes");
+    walrus_trace("str:%s, len:%d", str, walrus_str_len(str));
+    char *sub = walrus_str_alloc_sub("hello world", 5);
+    walrus_trace("substr:%s, len:%d", sub, walrus_str_len(sub));
+    walrus_str_resize(&sub, 6);
+    walrus_str_append(&sub, "1");
+    walrus_trace("substr:%s, len:%d", sub, walrus_str_len(sub));
+    walrus_assert(walrus_str_free(str));
 
     Walrus_AppError err      = WR_APP_SUCCESS;
     AppData        *app_data = walrus_app_userdata(app);

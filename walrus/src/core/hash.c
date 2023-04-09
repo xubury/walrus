@@ -213,7 +213,7 @@ static inline bool hash_table_maybe_make_big(void** a_p, void* v, u32 size)
             a_new[i] = walrus_u32_to_ptr(a[i]);
         }
 
-        free(a);
+        walrus_free(a);
         *a_p = a_new;
         return true;
     }
@@ -363,10 +363,10 @@ void hash_table_remove_all_nodes(Walrus_HashTable* table, bool notify, bool dest
     }
 
     /* Destroy old storage space. */
-    if (old_keys != old_values) free(old_values);
+    if (old_keys != old_values) walrus_free(old_values);
 
-    free(old_keys);
-    free(old_hashes);
+    walrus_free(old_keys);
+    walrus_free(old_hashes);
 }
 
 Walrus_HashTable* walrus_hash_table_create(Walrus_HashFunc hash, Walrus_EqualFunc equal)
@@ -398,10 +398,10 @@ static void hash_table_unref(Walrus_HashTable* hash_table)
 {
     {
         hash_table_remove_all_nodes(hash_table, true, true);
-        if (hash_table->keys != hash_table->values) free(hash_table->values);
-        free(hash_table->keys);
-        free(hash_table->hashes);
-        free(hash_table);
+        if (hash_table->keys != hash_table->values) walrus_free(hash_table->values);
+        walrus_free(hash_table->keys);
+        walrus_free(hash_table->hashes);
+        walrus_free(hash_table);
     }
 }
 void walrus_hash_table_destroy(Walrus_HashTable* table)
@@ -694,4 +694,20 @@ void walrus_hash_table_remove_all(Walrus_HashTable* table)
 {
     hash_table_remove_all_nodes(table, true, false);
     hash_table_maybe_resize(table);
+}
+
+u32 walrus_direct_hash(void const* p)
+{
+    return walrus_ptr_to_u32(p);
+}
+
+u32 walrus_str_hash(void const* p)
+{
+    u32 h = 5381;
+
+    for (char const* c = p; *c != '\0'; ++c) {
+        h = (h << 5) + h + *c;
+    }
+
+    return h;
 }
