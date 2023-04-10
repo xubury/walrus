@@ -1,5 +1,6 @@
 #include <engine/input_device.h>
 #include <core/macro.h>
+#include <core/memory.h>
 
 #include <string.h>
 
@@ -19,16 +20,16 @@ struct _Walrus_InputDevice {
 
 Walrus_InputDevice* walrus_input_create(i16 num_btns, i8 num_axes)
 {
-    Walrus_InputDevice* device = malloc(sizeof(Walrus_InputDevice));
+    Walrus_InputDevice* device = walrus_malloc(sizeof(Walrus_InputDevice));
 
     if (device) {
         device->num_buttons = num_btns;
-        device->state       = malloc(num_btns * sizeof(bool));
-        device->last_state  = malloc(num_btns * sizeof(bool));
+        device->state       = walrus_malloc(num_btns * sizeof(bool));
+        device->last_state  = walrus_malloc(num_btns * sizeof(bool));
         device->modifiers   = 0;
         device->num_axes    = num_axes;
-        device->axis        = malloc(num_axes * sizeof(vec3));
-        device->last_axis   = malloc(num_axes * sizeof(vec3));
+        device->axis        = walrus_malloc(num_axes * sizeof(vec3));
+        device->last_axis   = walrus_malloc(num_axes * sizeof(vec3));
 
         memset(device->first_buttons, 0, walrus_array_len(device->first_buttons) * sizeof(u16));
         memset(device->state, 0, num_btns * sizeof(bool));
@@ -42,11 +43,11 @@ Walrus_InputDevice* walrus_input_create(i16 num_btns, i8 num_axes)
 
 void walrus_input_destroy(Walrus_InputDevice* device)
 {
-    free(device->state);
-    free(device->last_state);
-    free(device->axis);
-    free(device->last_axis);
-    free(device);
+    walrus_free(device->state);
+    walrus_free(device->last_state);
+    walrus_free(device->axis);
+    walrus_free(device->last_axis);
+    walrus_free(device);
 }
 
 bool walrus_input_pressed(Walrus_InputDevice* device, i16 id)

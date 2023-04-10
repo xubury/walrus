@@ -1,8 +1,7 @@
 #include <engine/window.h>
 #include <core/macro.h>
 #include <core/platform.h>
-
-#include <stdlib.h>
+#include <core/memory.h>
 
 struct _Walrus_Window {
     u32   width;
@@ -20,7 +19,7 @@ void wajs_create_window(char const *title, i32 width, i32 height);
 
 Walrus_Window *walrus_window_create(char const *title, i32 width, i32 height, i32 flags)
 {
-    Walrus_Window *win = malloc(sizeof(Walrus_Window));
+    Walrus_Window *win = walrus_malloc(sizeof(Walrus_Window));
     win->width  = width;
     win->height = height;
     win->flags  = flags;
@@ -46,7 +45,7 @@ void walrus_window_destroy(Walrus_Window *win)
             glfw_destroy_window(win->handle);
         }
 #endif
-        free(win);
+        walrus_free(win);
     }
 }
 

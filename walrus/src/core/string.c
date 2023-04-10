@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool walrus_str_equal(char const *s1, char const *s2)
+bool walrus_str_equal(void const *s1, void const *s2)
 {
     return strcmp(s1, s2) == 0;
 }
@@ -70,15 +70,10 @@ char *walrus_str_alloc(u64 size)
     return str_storage_realloc(NULL, size);
 }
 
-bool walrus_str_free(char *str)
+void walrus_str_free(char *str)
 {
-    if (check_str_valid(str)) {
-        walrus_free(str - sizeof(Walrus_StringHeader));
-
-        return true;
-    }
-
-    return false;
+    walrus_assert(check_str_valid(str));
+    walrus_free(str - sizeof(Walrus_StringHeader));
 }
 
 u64 walrus_str_len(char const *str)
@@ -129,13 +124,13 @@ void walrus_str_nappend(char **pdst, char const *src, u64 src_len)
 
     bool can_append = new_len <= dst_header->capacity;
     if (!can_append) {
-        can_append   = walrus_str_resize(&dst, new_len);
-        dst[new_len] = 0;
+        can_append = walrus_str_resize(&dst, new_len);
     }
 
     if (can_append) {
         memcpy(dst + dst_len, src, src_len);
         get_header(dst)->len = new_len;
+        dst[new_len]         = 0;
     }
 
     *pdst = dst;

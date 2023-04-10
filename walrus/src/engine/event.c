@@ -1,19 +1,19 @@
 #include <engine/event.h>
 #include <core/queue.h>
+#include <core/memory.h>
 
-#include <stdlib.h>
 #include <string.h>
 
 static Walrus_Queue *s_event_queue = NULL;
 
 static Walrus_Event *event_alloc(void)
 {
-    return (Walrus_Event *)malloc(sizeof(Walrus_Event));
+    return (Walrus_Event *)walrus_malloc(sizeof(Walrus_Event));
 }
 
 static void event_free(Walrus_Event *event)
 {
-    free(event);
+    walrus_free(event);
 }
 
 void walrus_event_init(void)

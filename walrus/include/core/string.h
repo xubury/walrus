@@ -7,7 +7,7 @@ typedef struct {
     u64         len;
 } Walrus_StringView;
 
-bool walrus_str_equal(char const *s1, char const *s2);
+bool walrus_str_equal(void const *s1, void const *s2);
 
 // Allocate from a null-termiate string
 char *walrus_str_dup(char const *str);
@@ -18,8 +18,8 @@ char *walrus_str_substr(char const *str, i32 start, u64 len);
 // Allocate an empty null-termiate string of capacity size
 char *walrus_str_alloc(u64 size);
 
-// Free a allocated string, return false if it is malformed
-bool walrus_str_free(char *str);
+// Free a allocated string
+void walrus_str_free(char *str);
 
 // Get the length of a string, the string must be either allocated by walrus_alloc_str() or NULL-terminated
 u64 walrus_str_len(char const *str);

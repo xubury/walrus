@@ -1,9 +1,9 @@
 #include <core/queue.h>
-#include <stdlib.h>
+#include <core/memory.h>
 
 Walrus_Queue *walrus_queue_alloc(void)
 {
-    Walrus_Queue *new  = malloc(sizeof(Walrus_Queue));
+    Walrus_Queue *new  = walrus_malloc(sizeof(Walrus_Queue));
     new->head   = NULL;
     new->tail   = NULL;
     new->length = 0;
@@ -14,7 +14,7 @@ Walrus_Queue *walrus_queue_alloc(void)
 void walrus_queue_free(Walrus_Queue *queue)
 {
     walrus_list_free(queue->head);
-    free(queue);
+    walrus_free(queue);
 }
 
 void walrus_queue_push(Walrus_Queue *queue, void *data)

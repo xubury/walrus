@@ -6,10 +6,10 @@
 #include <core/log.h>
 #include <core/macro.h>
 #include <core/platform.h>
+#include <core/memory.h>
 
 #include "app_impl.h"
 
-#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -177,7 +177,7 @@ void walrus_engine_init_run(Walrus_EngineOption *opt, Walrus_App *app)
 
 Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
 {
-    s_engine = malloc(sizeof(Walrus_Engine));
+    s_engine = walrus_malloc(sizeof(Walrus_Engine));
     if (opt != NULL) {
         memcpy(&s_engine->opt, opt, sizeof(Walrus_EngineOption));
     }
@@ -208,7 +208,7 @@ void walrus_engine_shutdown(void)
 
     release_service();
 
-    free(s_engine);
+    walrus_free(s_engine);
     s_engine = NULL;
 }
 

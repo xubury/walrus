@@ -1,6 +1,5 @@
 #include <core/handle_alloc.h>
-
-#include <stdlib.h>
+#include <core/memory.h>
 
 struct _Walrus_HandleAlloc {
     Walrus_Handle num_handles;
@@ -30,7 +29,7 @@ static void reset(Walrus_HandleAlloc *alloc)
 
 Walrus_HandleAlloc *walrus_handle_create(i32 capacity)
 {
-    Walrus_HandleAlloc *alloc = malloc(sizeof(Walrus_HandleAlloc) + capacity * 2 * sizeof(Walrus_Handle));
+    Walrus_HandleAlloc *alloc = walrus_malloc(sizeof(Walrus_HandleAlloc) + capacity * 2 * sizeof(Walrus_Handle));
 
     if (alloc) {
         alloc->max_handles = capacity;
@@ -41,7 +40,7 @@ Walrus_HandleAlloc *walrus_handle_create(i32 capacity)
 
 void walrus_handle_destroy(Walrus_HandleAlloc *alloc)
 {
-    free(alloc);
+    walrus_free(alloc);
 }
 
 Walrus_Handle walrus_handle_alloc(Walrus_HandleAlloc *alloc)

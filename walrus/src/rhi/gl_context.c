@@ -3,8 +3,7 @@
 
 #include <core/macro.h>
 #include <core/log.h>
-
-#include <stdlib.h>
+#include <core/memory.h>
 
 GLenum glew_init(void);
 
@@ -88,7 +87,7 @@ static void init_ctx(Walrus_RhiContext *rhi)
 #else
     wajs_setup_gl_context();
 #endif
-    g_ctx = malloc(sizeof(Walrus_GlContext));
+    g_ctx = walrus_malloc(sizeof(Walrus_GlContext));
     if (g_ctx == NULL) {
         rhi->err     = WR_RHI_ALLOC_ERROR;
         rhi->err_msg = WR_RHI_GL_ALLOC_FAIL_STR;
@@ -108,22 +107,17 @@ static void init_api(Walrus_RhiVTable *vtable)
     vtable->destroy_program_fn = gl_destroy_program;
 }
 
-void init_gl_backend(Walrus_RhiContext *ctx, Walrus_RhiVTable *vtable)
+void init_gl_backend(Walrus_RhiContext *rhi, Walrus_RhiVTable *vtable)
 {
-    if (ctx) {
-        init_ctx(ctx);
-    }
-
-    if (vtable) {
-        init_api(vtable);
-    }
+    init_ctx(rhi);
+    init_api(vtable);
 }
 
 void shutdown_gl_backend(void)
 {
     if (g_ctx) {
         glDeleteVertexArrays(1, &g_ctx->vao);
-        free(g_ctx);
+        walrus_free(g_ctx);
         g_ctx = NULL;
     }
 }

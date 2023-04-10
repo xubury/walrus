@@ -534,7 +534,7 @@ static bool hash_table_insert_node(Walrus_HashTable* table, u32 node_id, u32 key
     }
     else {
         table->hashes[node_id] = key_hash;
-        key_to_keep             = new_key;
+        key_to_keep            = new_key;
     }
     /* Resize key/value arrays and split table as necessary */
     hash_table_ensure_keyval_fits(table, key_to_keep, new_value);
@@ -553,10 +553,10 @@ static bool hash_table_insert_node(Walrus_HashTable* table, u32 node_id, u32 key
     }
 
     if (already_exists) {
-        if (table->key_destroy_fn && !reusing_key) {
+        if (table->key_destroy_fn && !reusing_key && key_to_free != key_to_keep) {
             table->key_destroy_fn(key_to_free);
         }
-        if (table->val_destroy_fn) {
+        if (table->val_destroy_fn && value_to_free != new_value) {
             table->val_destroy_fn(value_to_free);
         }
     }
@@ -580,7 +580,7 @@ static u32 hash_table_lookup_node(Walrus_HashTable* table, void const* key, u32*
         *out_hash = hash_val;
     }
 
-    node_id  = hash_table_hash_to_index(table, hash_val);
+    node_id   = hash_table_hash_to_index(table, hash_val);
     node_hash = table->hashes[node_id];
     while (!HASH_IS_UNUSED(node_hash)) {
         if (node_hash == hash_val) {
@@ -656,7 +656,7 @@ void* walrus_hash_table_lookup(Walrus_HashTable* table, void* key)
     node_id = hash_table_lookup_node(table, key, NULL);
 
     return HASH_IS_REAL(table->hashes[node_id]) ? hash_table_fetch(table->values, node_id, table->has_big_values)
-                                                 : NULL;
+                                                : NULL;
 }
 
 bool walrus_hash_table_add(Walrus_HashTable* table, void* key)
@@ -710,4 +710,21 @@ u32 walrus_str_hash(void const* p)
     }
 
     return h;
+}
+
+u32 walrus_i32_hash(const void* p)
+{
+    return *(u32*)p;
+}
+
+u32 walrus_i64_hash(void const* p)
+{
+    const u64* bits = p;
+    return ((*bits >> 32) ^ (*bits & 0xffffffffU));
+}
+
+u32 walrus_double_hash(void const* p)
+{
+    const u64* bits = p;
+    return ((*bits >> 32) ^ (*bits & 0xffffffffU));
 }

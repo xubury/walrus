@@ -1,9 +1,9 @@
 #include "rhi_p.h"
 #include <core/macro.h>
+#include <core/memory.h>
 
 #include <math.h>
 #include <string.h>
-#include <stdlib.h>
 
 static char const* no_backend_str = "No render backend specifed";
 
@@ -24,12 +24,12 @@ static void shutdown_handles(void)
 
 Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags)
 {
-    s_ctx = malloc(sizeof(Walrus_RhiContext));
+    s_ctx = walrus_malloc(sizeof(Walrus_RhiContext));
     if (s_ctx == NULL) {
         return WR_RHI_ALLOC_ERROR;
     }
 
-    s_table = malloc(sizeof(Walrus_RhiVTable));
+    s_table = walrus_malloc(sizeof(Walrus_RhiVTable));
     if (s_table == NULL) {
         return WR_RHI_ALLOC_ERROR;
     }
@@ -56,8 +56,8 @@ void walrus_rhi_shutdown(void)
     shutdown_handles();
     shutdown_gl_backend();
 
-    free(s_ctx);
-    free(s_table);
+    walrus_free(s_ctx);
+    walrus_free(s_table);
     s_ctx   = NULL;
     s_table = NULL;
 }

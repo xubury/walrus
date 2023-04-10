@@ -21,7 +21,7 @@ void *walrus_hash_table_lookup(Walrus_HashTable *table, void *key);
 // Use hash table as a set
 bool walrus_hash_table_add(Walrus_HashTable *table, void *key);
 
-// Insert a key value pair to hash table
+// Insert a key value pair to hash table, return false if key already exists
 bool walrus_hash_table_insert(Walrus_HashTable *table, void *key, void *value);
 
 // Remove a key value pair from hash table
@@ -31,3 +31,7 @@ void walrus_hash_table_remove_all(Walrus_HashTable *table);
 u32 walrus_direct_hash(void const *p);
 
 u32 walrus_str_hash(void const *p);
+
+u32 walrus_i32_hash(void const *p);
+u32 walrus_i64_hash(void const *p);
+u32 walrus_double_hash(void const *p);

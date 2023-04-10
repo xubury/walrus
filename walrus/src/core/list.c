@@ -1,10 +1,9 @@
 #include <core/list.h>
-
-#include <stdlib.h>
+#include <core/memory.h>
 
 void walrus_list_free1(Walrus_List *list)
 {
-    free(list);
+    walrus_free(list);
 }
 
 static void walrus_list_free_chain(Walrus_List *list)
@@ -52,7 +51,7 @@ static Walrus_List *walrus_list_remove_link(Walrus_List *list, Walrus_List *link
 
 Walrus_List *walrus_list_alloc(void)
 {
-    Walrus_List *new = (Walrus_List *)malloc(sizeof(Walrus_List));
+    Walrus_List *new = (Walrus_List *)walrus_malloc(sizeof(Walrus_List));
     new->data = NULL;
     new->next = NULL;
     new->prev = NULL;

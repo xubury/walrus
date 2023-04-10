@@ -3,13 +3,13 @@
 #include <core/macro.h>
 #include <core/log.h>
 #include <core/handle_alloc.h>
+#include <core/memory.h>
 #include <core/string.h>
 
 #include <engine/engine.h>
 #include <rhi/rhi.h>
 
 #include <math.h>
-#include <stdlib.h>
 #include <string.h>
 #include "core/hash.h"
 
@@ -121,19 +121,36 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_assert(!walrus_hash_table_contains(table, &i));
     walrus_hash_table_destroy(table);
 
-    // String test
-    char *str = walrus_str_alloc(0);
-    walrus_str_append(&str, "hello world");
-    walrus_trace("str:%s, len:%d", str, walrus_str_len(str));
-    walrus_str_append(&str, "yes yes");
-    walrus_trace("str:%s, len:%d", str, walrus_str_len(str));
-    char *sub = walrus_str_dup("hello world");
-    walrus_trace("substr:%s, len:%d", sub, walrus_str_len(sub));
-    walrus_str_resize(&sub, 6);
-    walrus_str_append(&sub, "1");
-    walrus_trace("substr:%s, len:%d", sub, walrus_str_len(sub));
-    walrus_assert(walrus_str_free(str));
-    walrus_assert(walrus_str_free(sub));
+    {
+        // String test
+        char *str = walrus_str_alloc(0);
+        walrus_str_append(&str, "hello world");
+        walrus_trace("str:%s, len:%d", str, walrus_str_len(str));
+        walrus_str_append(&str, "yes yes");
+        walrus_trace("str:%s, len:%d", str, walrus_str_len(str));
+        char *sub = walrus_str_dup("hello world");
+        walrus_trace("substr:%s, len:%d", sub, walrus_str_len(sub));
+        walrus_str_resize(&sub, 6);
+        walrus_str_append(&sub, "1");
+        walrus_trace("substr:%s, len:%d", sub, walrus_str_len(sub));
+        walrus_str_free(str);
+        walrus_str_free(sub);
+    }
+    {
+        // String hash table test
+        Walrus_HashTable *table = NULL;
+        table = walrus_hash_table_create_full(walrus_str_hash, walrus_str_equal, (Walrus_KeyDestroyFunc)walrus_str_free,
+                                              (Walrus_KeyDestroyFunc)walrus_str_free);
+        char *key    = walrus_str_dup("Hello");
+        char *value  = walrus_str_dup("World");
+        char *value2 = walrus_str_dup("World2");
+        walrus_hash_table_insert(table, key, value);
+        walrus_trace("hash key: %s value: %s", key, walrus_hash_table_lookup(table, key));
+        walrus_assert(!walrus_hash_table_insert(table, key, value2));
+        walrus_assert(walrus_hash_table_contains(table, key));
+        walrus_trace("hash key: %s value: %s", key, walrus_hash_table_lookup(table, key));
+        walrus_hash_table_destroy(table);
+    }
 
     Walrus_AppError err      = WR_APP_SUCCESS;
     AppData        *app_data = walrus_app_userdata(app);
@@ -273,7 +290,7 @@ int main(int argc, char *argv[])
     opt.window_flags  = WR_WINDOW_FLAG_ASYNC | WR_WINDOW_FLAG_OPENGL;
     opt.minfps        = 30.f;
 
-    Walrus_App *app = walrus_app_create(malloc(sizeof(AppData)));
+    Walrus_App *app = walrus_app_create(walrus_malloc(sizeof(AppData)));
     walrus_app_set_init(app, on_init);
     walrus_app_set_shutdown(app, on_shutdown);
     walrus_app_set_tick(app, on_tick);

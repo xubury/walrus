@@ -1,8 +1,7 @@
 #include <engine/app.h>
 #include <core/macro.h>
+#include <core/memory.h>
 #include "app_impl.h"
-
-#include <stdlib.h>
 
 static void dummy(Walrus_App *app)
 {
@@ -30,7 +29,7 @@ static void dummyevent(Walrus_App *app, Walrus_Event *e)
 
 Walrus_App *walrus_app_create(void *userdata)
 {
-    Walrus_App *app = malloc(sizeof(Walrus_App));
+    Walrus_App *app = walrus_malloc(sizeof(Walrus_App));
 
     app->init     = dummyinit;
     app->shutdown = dummy;
@@ -45,7 +44,7 @@ Walrus_App *walrus_app_create(void *userdata)
 
 void walrus_app_destroy(Walrus_App *app)
 {
-    free(app);
+    walrus_free(app);
 }
 
 void walrus_app_set_userdata(Walrus_App *app, void *userdata)
