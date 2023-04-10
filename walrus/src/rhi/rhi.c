@@ -11,14 +11,14 @@ static char const* no_backend_str = "No render backend specifed";
 static Walrus_RhiContext* s_ctx   = NULL;
 static Walrus_RhiVTable*  s_table = NULL;
 
-static void init_handles(void)
+static void handles_init(void)
 {
     s_ctx->shaders  = walrus_handle_create(WR_RHI_MAX_SHADERS);
     s_ctx->programs = walrus_handle_create(WR_RHI_MAX_PROGRAMS);
     s_ctx->uniforms = walrus_handle_create(WR_RHI_MAX_UNIFORMS);
 }
 
-static void shutdown_handles(void)
+static void handles_shutdown(void)
 {
     walrus_handle_destroy(s_ctx->uniforms);
     walrus_handle_destroy(s_ctx->shaders);
@@ -61,21 +61,19 @@ Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags)
 
     s_ctx->flags = flags;
 
-    s_ctx->submit_frame.num_render_items = 0;
-    s_ctx->submit_frame.num_views        = 0;
+    frame_init(&s_ctx->submit_frame);
 
-    s_ctx->submit_frame.uniforms = uniform_buffer_create(1 << 20);
-    s_ctx->uniform_begin         = 0;
-    s_ctx->uniform_end           = 0;
+    s_ctx->uniform_begin = 0;
+    s_ctx->uniform_end   = 0;
 
     if (s_ctx->flags & WR_RHI_FLAG_OPENGL) {
-        init_gl_backend(s_ctx, s_table);
+        gl_backend_init(s_ctx, s_table);
     }
     else {
         walrus_assert_msg(false, no_backend_str);
     }
 
-    init_handles();
+    handles_init();
 
     s_ctx->uniform_map = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
     for (u32 i = 0; i < WR_RHI_MAX_UNIFORMS; ++i) {
@@ -89,8 +87,10 @@ void walrus_rhi_shutdown(void)
 {
     walrus_hash_table_destroy(s_ctx->uniform_map);
 
-    shutdown_handles();
-    shutdown_gl_backend();
+    handles_shutdown();
+    gl_backend_shutdown();
+
+    frame_shutdown(&s_ctx->submit_frame);
 
     walrus_free(s_ctx);
     walrus_free(s_table);
@@ -119,13 +119,14 @@ void walrus_rhi_frame(void)
     Walrus_RenderFrame* frame = &s_ctx->submit_frame;
     memcpy(frame->views, s_ctx->views, sizeof(s_ctx->views));
 
+    frame_finish(frame);
+
     s_table->submit_fn(frame);
 
     s_ctx->uniform_begin = 0;
     s_ctx->uniform_end   = 0;
 
-    frame->num_render_items = 0;
-    uniform_buffer_start(frame->uniforms, 0);
+    frame_start(frame);
 }
 
 void walrus_rhi_submit(i16 view_id, Walrus_ProgramHandle program)

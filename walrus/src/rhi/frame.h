@@ -50,3 +50,11 @@ typedef struct {
 
     UniformBuffer *uniforms;
 } Walrus_RenderFrame;
+
+void frame_init(Walrus_RenderFrame *frame);
+
+void frame_shutdown(Walrus_RenderFrame *frame);
+
+void frame_start(Walrus_RenderFrame *frame);
+
+void frame_finish(Walrus_RenderFrame *frame);

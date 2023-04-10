@@ -112,10 +112,10 @@ void gl_destroy_shader(Walrus_ShaderHandle handle)
 void gl_create_program(Walrus_ProgramHandle handle, Walrus_ShaderHandle shader0, Walrus_ShaderHandle shader1,
                        Walrus_ShaderHandle shader2)
 {
-    GLuint            id   = glCreateProgram();
+    GLuint     id   = glCreateProgram();
     GlProgram *prog = &g_ctx->programs[handle.id];
-    prog->id               = id;
-    prog->buffer           = NULL;
+    prog->id        = id;
+    prog->buffer    = NULL;
 
     if (shader0.id != WR_INVALID_HANDLE) {
         glAttachShader(id, g_ctx->shaders[shader0.id]);
@@ -220,6 +220,9 @@ void gl_create_program(Walrus_ProgramHandle handle, Walrus_ShaderHandle shader0,
                 walrus_trace("uniform \"%s\" not found in registry.", name);
             }
         }
+    }
+    if (prog->buffer) {
+        uniform_buffer_finish(prog->buffer);
     }
 }
 

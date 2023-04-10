@@ -86,7 +86,8 @@ void uniform_buffer_write_uniform(UniformBuffer *buffer, Walrus_UniformType type
 void uniform_buffer_write_uniform_handle(UniformBuffer *buffer, Walrus_UniformType type, u32 loc,
                                          Walrus_UniformHandle handle, u8 num)
 {
-    uniform_buffer_write_value(buffer, uniform_encode_op(type, loc, num));
+    u64 op = uniform_encode_op(type, loc, num);
+    uniform_buffer_write_value(buffer, op);
     uniform_buffer_write(buffer, &handle, sizeof(handle));
 }
 

@@ -65,6 +65,6 @@ typedef struct {
 
 void renderer_update_uniforms(UniformBuffer *uniform, u32 begin, u32 end);
 
-void init_gl_backend(Walrus_RhiContext *ctx, Walrus_RhiVTable *vtable);
+void gl_backend_init(Walrus_RhiContext *ctx, Walrus_RhiVTable *vtable);
 
-void shutdown_gl_backend(void);
+void gl_backend_shutdown(void);

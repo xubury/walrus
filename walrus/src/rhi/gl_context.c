@@ -41,44 +41,44 @@ static void commit(GlProgram *program)
             case WR_RHI_UNIFORM_BOOL:
             case WR_RHI_UNIFORM_UINT: {
                 if (num > 1) {
-                    glUniform1uiv(loc, num, (uint32_t *)data);
+                    glUniform1uiv(loc, num, (GLuint const *)data);
                 }
                 else {
-                    glUniform1ui(loc, *(uint32_t *)data);
+                    glUniform1ui(loc, *(GLuint const *)data);
                 }
             } break;
             case WR_RHI_UNIFORM_INT: {
                 if (num > 1) {
-                    glUniform1iv(loc, num, (int32_t *)data);
+                    glUniform1iv(loc, num, (int32_t const *)data);
                 }
                 else {
-                    glUniform1i(loc, *(int32_t *)data);
+                    glUniform1i(loc, *(int32_t const *)data);
                 }
             } break;
             case WR_RHI_UNIFORM_FLOAT: {
-                glUniform1fv(loc, num, (float *)data);
+                glUniform1fv(loc, num, (GLfloat *)data);
             } break;
             case WR_RHI_UNIFORM_VEC2: {
-                glUniform2fv(loc, num, (const GLfloat *)data);
+                glUniform2fv(loc, num, (GLfloat const *)data);
             } break;
             case WR_RHI_UNIFORM_VEC3: {
-                glUniform3fv(loc, num, (const GLfloat *)data);
+                glUniform3fv(loc, num, (GLfloat const *)data);
             } break;
             case WR_RHI_UNIFORM_VEC4: {
-                glUniform4fv(loc, num, (const GLfloat *)data);
+                glUniform4fv(loc, num, (GLfloat const *)data);
             } break;
             case WR_RHI_UNIFORM_MAT3: {
-                glUniformMatrix3fv(loc, num, GL_FALSE, (const GLfloat *)data);
+                glUniformMatrix3fv(loc, num, GL_FALSE, (GLfloat const *)data);
             } break;
             case WR_RHI_UNIFORM_MAT4: {
-                glUniformMatrix4fv(loc, num, GL_FALSE, (const GLfloat *)data);
+                glUniformMatrix4fv(loc, num, GL_FALSE, (GLfloat const *)data);
             } break;
             case WR_RHI_UNIFORM_SAMPLER: {
                 if (num > 1) {
-                    glUniform1iv(loc, num, (int32_t *)data);
+                    glUniform1iv(loc, num, (GLint *)data);
                 }
                 else {
-                    glUniform1i(loc, *(int32_t *)data);
+                    glUniform1i(loc, *(GLint *)data);
                 }
             } break;
             case WR_RHI_UNIFORM_COUNT:
@@ -143,6 +143,7 @@ static void submit(Walrus_RenderFrame *frame)
             glUseProgram(g_ctx->programs[current_prog.id].id);
         }
 
+        renderer_update_uniforms(frame->uniforms, draw->uniform_begin, draw->uniform_end);
         bool const constants_changed = draw->uniform_begin < draw->uniform_end;
         if (current_prog.id != WR_INVALID_HANDLE) {
             GlProgram *program = &g_ctx->programs[current_prog.id];
@@ -221,13 +222,13 @@ static void init_api(Walrus_RhiVTable *vtable)
     vtable->update_uniform_fn  = gl_update_uniform;
 }
 
-void init_gl_backend(Walrus_RhiContext *rhi, Walrus_RhiVTable *vtable)
+void gl_backend_init(Walrus_RhiContext *rhi, Walrus_RhiVTable *vtable)
 {
     init_ctx(rhi);
     init_api(vtable);
 }
 
-void shutdown_gl_backend(void)
+void gl_backend_shutdown(void)
 {
     if (g_ctx) {
         walrus_hash_table_destroy(g_ctx->uniform_registry);
