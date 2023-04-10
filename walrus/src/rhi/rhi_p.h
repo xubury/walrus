@@ -5,7 +5,7 @@
 #include "frame.h"
 
 typedef void (*Walrus_RhiSubmitFn)(Walrus_RenderFrame *frame);
-typedef void (*Walrus_RhiCreateShaderFn)(Walrus_ShaderType type, Walrus_ShaderHandle handle, const char *source);
+typedef void (*Walrus_RhiCreateShaderFn)(Walrus_ShaderType type, Walrus_ShaderHandle handle, char const *source);
 typedef void (*Walrus_RhiDestroyShaderFn)(Walrus_ShaderHandle handle);
 typedef void (*Walrus_RhiCreateProgramFn)(Walrus_ProgramHandle handle, Walrus_ShaderHandle shader0,
                                           Walrus_ShaderHandle shader1, Walrus_ShaderHandle shader2);

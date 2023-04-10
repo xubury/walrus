@@ -4,7 +4,6 @@
 
 #include <GL/glew.h>
 
-
 static void dbg_callback(GLenum p0, GLenum p1, GLuint p2, GLenum severity, i32 p3, char const *message, void const *p4)
 {
     walrus_unused(p0);

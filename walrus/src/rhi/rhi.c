@@ -90,12 +90,12 @@ void walrus_rhi_submit(i16 view_id, Walrus_ProgramHandle program)
 {
     Walrus_RenderFrame* frame = &s_ctx->submit_frame;
 
-    u32 const render_item_idx = frame->num_render_items;
+    u32 const render_item_id = frame->num_render_items;
     frame->num_render_items   = fmin(WR_RHI_MAX_DRAW_CALLS, frame->num_render_items + 1);
 
-    frame->program[render_item_idx]           = program;
-    frame->view_ids[render_item_idx]          = view_id;
-    frame->render_items[render_item_idx].draw = s_ctx->draw;
+    frame->program[render_item_id]           = program;
+    frame->view_ids[render_item_id]          = view_id;
+    frame->render_items[render_item_id].draw = s_ctx->draw;
 }
 
 u32 walrus_rhi_compose_rgba(u8 r, u8 g, u8 b, u8 a)

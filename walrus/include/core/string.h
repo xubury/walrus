@@ -3,7 +3,7 @@
 #include "type.h"
 
 typedef struct {
-    const char *str;
+    char const *str;
     u64         len;
 } Walrus_StringView;
 
@@ -28,9 +28,9 @@ u64 walrus_str_len(char const *str);
 bool walrus_str_resize(char **pstr, u64 len);
 
 // Append entire src to the end of dst, dst must be allocated by walrus_alloc_str()
-void walrus_str_append(char **pdst, const char *src);
+void walrus_str_append(char **pdst, char const *src);
 
 // Append substring of src to the end of dst, dst must be allocated by walrus_alloc_str()
-void walrus_str_nappend(char **pdst, const char *src, u64 src_len);
+void walrus_str_nappend(char **pdst, char const *src, u64 src_len);
 
 Walrus_StringView walrus_str_substrview(char const *str, i32 start, u64 len);

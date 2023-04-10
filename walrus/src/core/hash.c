@@ -64,9 +64,9 @@ static inline u32 hash_table_hash_to_index(Walrus_HashTable* table, u32 hash_val
     return (hash_value * 11) % table->mod;
 }
 
-static inline void* hash_table_fetch(void* p, u32 idx, bool is_big)
+static inline void* hash_table_fetch(void* p, u32 id, bool is_big)
 {
-    return is_big ? *((void**)(p) + idx) : walrus_u32_to_ptr(*((u32*)(p) + idx));
+    return is_big ? *((void**)(p) + id) : walrus_u32_to_ptr(*((u32*)(p) + id));
 }
 
 static inline void hash_table_assign(void* a, u32 index, bool is_big, void* v)
@@ -487,7 +487,7 @@ static void hash_table_maybe_resize(Walrus_HashTable* hash_table)
         hash_table_resize(hash_table);
 }
 
-static bool hash_table_insert_node(Walrus_HashTable* table, u32 node_idx, u32 key_hash, void* new_key, void* new_value,
+static bool hash_table_insert_node(Walrus_HashTable* table, u32 node_id, u32 key_hash, void* new_key, void* new_value,
                                    bool keep_new_key, bool reusing_key)
 {
     bool  already_exists;
@@ -496,7 +496,7 @@ static bool hash_table_insert_node(Walrus_HashTable* table, u32 node_idx, u32 ke
     void* key_to_keep   = NULL;
     void* value_to_free = NULL;
 
-    old_hash       = table->hashes[node_idx];
+    old_hash       = table->hashes[node_id];
     already_exists = HASH_IS_REAL(old_hash);
 
     /* Proceed in three steps.  First, deal with the key because it is the
@@ -522,26 +522,26 @@ static bool hash_table_insert_node(Walrus_HashTable* table, u32 node_idx, u32 ke
          * because we might change the value in the event that the two
          * arrays are shared.
          */
-        value_to_free = hash_table_fetch(table->values, node_idx, table->has_big_values);
+        value_to_free = hash_table_fetch(table->values, node_id, table->has_big_values);
         if (keep_new_key) {
-            key_to_free = hash_table_fetch(table->keys, node_idx, table->has_big_keys);
+            key_to_free = hash_table_fetch(table->keys, node_id, table->has_big_keys);
             key_to_keep = new_key;
         }
         else {
             key_to_free = new_key;
-            key_to_keep = hash_table_fetch(table->keys, node_idx, table->has_big_keys);
+            key_to_keep = hash_table_fetch(table->keys, node_id, table->has_big_keys);
         }
     }
     else {
-        table->hashes[node_idx] = key_hash;
+        table->hashes[node_id] = key_hash;
         key_to_keep             = new_key;
     }
     /* Resize key/value arrays and split table as necessary */
     hash_table_ensure_keyval_fits(table, key_to_keep, new_value);
-    hash_table_assign(table->keys, node_idx, table->has_big_keys, key_to_keep);
+    hash_table_assign(table->keys, node_id, table->has_big_keys, key_to_keep);
 
     /* Step 3: Actually do the write */
-    hash_table_assign(table->values, node_idx, table->has_big_values, new_value);
+    hash_table_assign(table->values, node_id, table->has_big_values, new_value);
 
     if (!already_exists) {
         ++table->nnodes;
@@ -565,7 +565,7 @@ static bool hash_table_insert_node(Walrus_HashTable* table, u32 node_idx, u32 ke
 
 static u32 hash_table_lookup_node(Walrus_HashTable* table, void const* key, u32* out_hash)
 {
-    u32  node_idx;
+    u32  node_id;
     u32  node_hash;
     u32  hash_val;
     u32  first_tombstone = 0;
@@ -580,35 +580,35 @@ static u32 hash_table_lookup_node(Walrus_HashTable* table, void const* key, u32*
         *out_hash = hash_val;
     }
 
-    node_idx  = hash_table_hash_to_index(table, hash_val);
-    node_hash = table->hashes[node_idx];
+    node_id  = hash_table_hash_to_index(table, hash_val);
+    node_hash = table->hashes[node_id];
     while (!HASH_IS_UNUSED(node_hash)) {
         if (node_hash == hash_val) {
-            void* node_key = hash_table_fetch(table->keys, node_idx, table->has_big_keys);
+            void* node_key = hash_table_fetch(table->keys, node_id, table->has_big_keys);
             if (table->key_equal_fn) {
                 if (table->key_equal_fn(node_key, key)) {
-                    return node_idx;
+                    return node_id;
                 }
             }
             else if (node_key == key) {
-                return node_idx;
+                return node_id;
             }
         }
         else if (HASH_IS_TOMBSTONE(node_hash) && !have_tombstone) {
-            first_tombstone = node_idx;
+            first_tombstone = node_id;
             have_tombstone  = true;
         }
 
         ++step;
-        node_idx += step;
-        node_idx &= table->mask;
-        node_hash = table->hashes[node_idx];
+        node_id += step;
+        node_id &= table->mask;
+        node_hash = table->hashes[node_id];
     }
 
     if (have_tombstone) {
         return first_tombstone;
     }
-    return node_idx;
+    return node_id;
 }
 
 static bool hash_table_insert_internal(Walrus_HashTable* table, void* key, void* value, bool keep_new_key)
@@ -644,18 +644,18 @@ static void hash_table_remove_node(Walrus_HashTable* hash_table, u32 i, bool not
 
 bool walrus_hash_table_contains(Walrus_HashTable* table, void* key)
 {
-    u32 node_idx;
-    node_idx = hash_table_lookup_node(table, key, NULL);
+    u32 node_id;
+    node_id = hash_table_lookup_node(table, key, NULL);
 
-    return HASH_IS_REAL(table->hashes[node_idx]);
+    return HASH_IS_REAL(table->hashes[node_id]);
 }
 
 void* walrus_hash_table_lookup(Walrus_HashTable* table, void* key)
 {
-    u32 node_idx;
-    node_idx = hash_table_lookup_node(table, key, NULL);
+    u32 node_id;
+    node_id = hash_table_lookup_node(table, key, NULL);
 
-    return HASH_IS_REAL(table->hashes[node_idx]) ? hash_table_fetch(table->values, node_idx, table->has_big_values)
+    return HASH_IS_REAL(table->hashes[node_id]) ? hash_table_fetch(table->values, node_id, table->has_big_values)
                                                  : NULL;
 }
 
@@ -671,15 +671,15 @@ bool walrus_hash_table_insert(Walrus_HashTable* table, void* key, void* value)
 
 static bool hash_table_remove_internal(Walrus_HashTable* table, void* key, bool notify)
 {
-    u32 node_idx;
+    u32 node_id;
 
-    node_idx = hash_table_lookup_node(table, key, NULL);
+    node_id = hash_table_lookup_node(table, key, NULL);
 
-    if (!HASH_IS_REAL(table->hashes[node_idx])) {
+    if (!HASH_IS_REAL(table->hashes[node_id])) {
         return false;
     }
 
-    hash_table_remove_node(table, node_idx, notify);
+    hash_table_remove_node(table, node_id, notify);
     hash_table_maybe_resize(table);
 
     return true;

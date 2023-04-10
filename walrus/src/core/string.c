@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool walrus_str_equal(const char *s1, const char *s2)
+bool walrus_str_equal(char const *s1, char const *s2)
 {
     return strcmp(s1, s2) == 0;
 }
@@ -81,7 +81,7 @@ bool walrus_str_free(char *str)
     return false;
 }
 
-u64 walrus_str_len(const char *str)
+u64 walrus_str_len(char const *str)
 {
     if (check_str_valid(str)) {
         return get_const_header(str)->len;
@@ -110,13 +110,13 @@ bool walrus_str_resize(char **pstr, u64 size)
     return true;
 }
 
-void walrus_str_append(char **pdst, const char *src)
+void walrus_str_append(char **pdst, char const *src)
 {
     u64 const src_len = walrus_str_len(src);
     walrus_str_nappend(pdst, src, src_len);
 }
 
-void walrus_str_nappend(char **pdst, const char *src, u64 src_len)
+void walrus_str_nappend(char **pdst, char const *src, u64 src_len)
 {
     char *dst = *pdst;
     if (!check_str_valid(dst)) {
@@ -129,7 +129,8 @@ void walrus_str_nappend(char **pdst, const char *src, u64 src_len)
 
     bool can_append = new_len <= dst_header->capacity;
     if (!can_append) {
-        can_append = walrus_str_resize(&dst, new_len);
+        can_append   = walrus_str_resize(&dst, new_len);
+        dst[new_len] = 0;
     }
 
     if (can_append) {
@@ -140,7 +141,7 @@ void walrus_str_nappend(char **pdst, const char *src, u64 src_len)
     *pdst = dst;
 }
 
-Walrus_StringView walrus_str_substrview(const char *str, i32 start, u64 len)
+Walrus_StringView walrus_str_substrview(char const *str, i32 start, u64 len)
 {
     Walrus_StringView string_view;
     string_view.str = NULL;
