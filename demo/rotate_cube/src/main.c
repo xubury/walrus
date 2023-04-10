@@ -45,6 +45,7 @@ char const *fs_src =
 
 typedef struct {
     Walrus_ProgramHandle shader;
+    Walrus_UniformHandle texture_handle;
     GLuint               textures[2];
     GLuint               vbo;
 
@@ -147,8 +148,8 @@ Walrus_AppError on_init(Walrus_App *app)
         walrus_hash_table_insert(table, key, value);
         walrus_trace("hash key: %s value: %s", key, walrus_hash_table_lookup(table, key));
         walrus_assert(!walrus_hash_table_insert(table, key, value2));
-        walrus_assert(walrus_hash_table_contains(table, key));
-        walrus_trace("hash key: %s value: %s", key, walrus_hash_table_lookup(table, key));
+        walrus_assert(walrus_hash_table_contains(table, "Hello"));
+        walrus_trace("hash key: %s value: %s", key, walrus_hash_table_lookup(table, "Hello"));
         walrus_hash_table_destroy(table);
     }
 
@@ -219,6 +220,8 @@ Walrus_AppError on_init(Walrus_App *app)
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
+    app_data->texture_handle = walrus_rhi_create_uniform("u_texture", WR_RHI_UNIFORM_SAMPLER, 1);
+
     Walrus_ShaderHandle vs = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, vs_src);
     Walrus_ShaderHandle fs = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
     app_data->shader       = walrus_rhi_create_program(vs, fs);
@@ -226,9 +229,6 @@ Walrus_AppError on_init(Walrus_App *app)
     app_data->u_texture  = glGetUniformLocation(3, "u_texture");
     app_data->u_viewproj = glGetUniformLocation(3, "u_viewproj");
     app_data->u_model    = glGetUniformLocation(3, "u_model");
-    walrus_trace("uniform \"u_texture\" loc: %d", app_data->u_texture);
-    walrus_trace("uniform \"u_viewproj\" loc: %d", app_data->u_viewproj);
-    walrus_trace("uniform \"u_model\" loc: %d", app_data->u_model);
 
     glm_perspective(glm_rad(45.0), (float)width / height, 0.1, 100, app_data->viewproj);
     glm_mat4_identity(app_data->model);
@@ -268,6 +268,8 @@ Walrus_AppError on_init(Walrus_App *app)
 void on_shutdown(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
+    walrus_rhi_destroy_uniform(data->texture_handle);
+
     glDeleteTextures(walrus_array_len(data->textures), data->textures);
     glDeleteBuffers(1, &data->vbo);
 }

@@ -26,3 +26,9 @@ Walrus_ShaderHandle walrus_rhi_create_shader(Walrus_ShaderType type, char const*
 void                walrus_rhi_destroy_shader(Walrus_ShaderHandle handle);
 
 Walrus_ProgramHandle walrus_rhi_create_program(Walrus_ShaderHandle vs, Walrus_ShaderHandle fs);
+void                 walrus_rhi_destroy_program(Walrus_ProgramHandle handle);
+
+Walrus_UniformHandle walrus_rhi_create_uniform(char const* name, Walrus_UniformType type, i8 num);
+void                 walrus_rhi_destroy_uniform(Walrus_UniformHandle handle);
+
+void walrus_rhi_set_uniform(Walrus_UniformHandle handle, u32 offset, u32 size, void const* data);

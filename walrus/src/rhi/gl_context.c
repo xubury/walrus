@@ -4,12 +4,88 @@
 #include <core/macro.h>
 #include <core/log.h>
 #include <core/memory.h>
+#include <core/string.h>
+
+#include <string.h>
 
 GLenum glew_init(void);
 
 void wajs_setup_gl_context(void);
 
 Walrus_GlContext *g_ctx = NULL;
+
+static void commit(GlProgram *program)
+{
+    UniformBuffer *buffer = program->buffer;
+    if (buffer == NULL) {
+        return;
+    }
+
+    uniform_buffer_start(buffer, 0);
+
+    while (true) {
+        u64 op = uniform_buffer_read_value(buffer);
+        if (op == UNIFORM_BUFFER_END) {
+            break;
+        }
+
+        Walrus_UniformHandle handle;
+        memcpy(&handle, uniform_buffer_read(buffer, sizeof(Walrus_UniformHandle)), sizeof(Walrus_UniformHandle));
+        void *data = g_ctx->uniforms[handle.id];
+
+        Walrus_UniformType type;
+        u32                loc;
+        u8                 num;
+        uniform_decode_op(&type, &loc, &num, op);
+        switch (type) {
+            case WR_RHI_UNIFORM_BOOL:
+            case WR_RHI_UNIFORM_UINT: {
+                if (num > 1) {
+                    glUniform1uiv(loc, num, (uint32_t *)data);
+                }
+                else {
+                    glUniform1ui(loc, *(uint32_t *)data);
+                }
+            } break;
+            case WR_RHI_UNIFORM_INT: {
+                if (num > 1) {
+                    glUniform1iv(loc, num, (int32_t *)data);
+                }
+                else {
+                    glUniform1i(loc, *(int32_t *)data);
+                }
+            } break;
+            case WR_RHI_UNIFORM_FLOAT: {
+                glUniform1fv(loc, num, (float *)data);
+            } break;
+            case WR_RHI_UNIFORM_VEC2: {
+                glUniform2fv(loc, num, (const GLfloat *)data);
+            } break;
+            case WR_RHI_UNIFORM_VEC3: {
+                glUniform3fv(loc, num, (const GLfloat *)data);
+            } break;
+            case WR_RHI_UNIFORM_VEC4: {
+                glUniform4fv(loc, num, (const GLfloat *)data);
+            } break;
+            case WR_RHI_UNIFORM_MAT3: {
+                glUniformMatrix3fv(loc, num, GL_FALSE, (const GLfloat *)data);
+            } break;
+            case WR_RHI_UNIFORM_MAT4: {
+                glUniformMatrix4fv(loc, num, GL_FALSE, (const GLfloat *)data);
+            } break;
+            case WR_RHI_UNIFORM_SAMPLER: {
+                if (num > 1) {
+                    glUniform1iv(loc, num, (int32_t *)data);
+                }
+                else {
+                    glUniform1i(loc, *(int32_t *)data);
+                }
+            } break;
+            case WR_RHI_UNIFORM_COUNT:
+                break;
+        }
+    }
+}
 
 static void submit(Walrus_RenderFrame *frame)
 {
@@ -64,13 +140,21 @@ static void submit(Walrus_RenderFrame *frame)
         bool const programChanged = prog.id != WR_INVALID_HANDLE && current_prog.id != prog.id;
         if (programChanged) {
             current_prog = prog;
-            glUseProgram(g_ctx->programs[current_prog.id]);
+            glUseProgram(g_ctx->programs[current_prog.id].id);
         }
 
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        bool const constants_changed = draw->uniform_begin < draw->uniform_end;
+        if (current_prog.id != WR_INVALID_HANDLE) {
+            GlProgram *program = &g_ctx->programs[current_prog.id];
+            if (programChanged || constants_changed) {
+                commit(program);
+            }
+        }
 
         walrus_unused(draw);
         walrus_unused(compute);
+
+        glDrawArrays(GL_TRIANGLES, 0, 36);
     }
 }
 
@@ -94,17 +178,47 @@ static void init_ctx(Walrus_RhiContext *rhi)
         return;
     }
 
+    g_ctx->uniform_registry = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
+
     glGenVertexArrays(1, &g_ctx->vao);
     glBindVertexArray(g_ctx->vao);
 }
 
+static void gl_create_uniform(Walrus_UniformHandle handle, const char *name, i32 size)
+{
+    g_ctx->uniforms[handle.id]      = walrus_malloc0(size);
+    g_ctx->uniform_names[handle.id] = walrus_str_dup(name);
+    walrus_hash_table_insert(g_ctx->uniform_registry, g_ctx->uniform_names[handle.id], walrus_u32_to_ptr(handle.id));
+}
+
+static void gl_destroy_uniform(Walrus_UniformHandle handle)
+{
+    walrus_hash_table_remove(g_ctx->uniform_registry, g_ctx->uniform_names[handle.id]);
+    walrus_free(g_ctx->uniforms[handle.id]);
+    walrus_str_free(g_ctx->uniform_names[handle.id]);
+
+    g_ctx->uniforms[handle.id]      = NULL;
+    g_ctx->uniform_names[handle.id] = NULL;
+}
+
+static void gl_update_uniform(Walrus_UniformHandle handle, u32 offset, u32 size, void const *data)
+{
+    memcpy((u8 *)&g_ctx->uniforms[handle.id] + offset, data, size);
+}
+
 static void init_api(Walrus_RhiVTable *vtable)
 {
-    vtable->submit_fn          = submit;
-    vtable->create_shader_fn   = gl_create_shader;
-    vtable->destroy_shader_fn  = gl_destroy_shader;
+    vtable->submit_fn = submit;
+
+    vtable->create_shader_fn  = gl_create_shader;
+    vtable->destroy_shader_fn = gl_destroy_shader;
+
     vtable->create_program_fn  = gl_create_program;
     vtable->destroy_program_fn = gl_destroy_program;
+
+    vtable->create_uniform_fn  = gl_create_uniform;
+    vtable->destroy_uniform_fn = gl_destroy_uniform;
+    vtable->update_uniform_fn  = gl_update_uniform;
 }
 
 void init_gl_backend(Walrus_RhiContext *rhi, Walrus_RhiVTable *vtable)
@@ -116,6 +230,7 @@ void init_gl_backend(Walrus_RhiContext *rhi, Walrus_RhiVTable *vtable)
 void shutdown_gl_backend(void)
 {
     if (g_ctx) {
+        walrus_hash_table_destroy(g_ctx->uniform_registry);
         glDeleteVertexArrays(1, &g_ctx->vao);
         walrus_free(g_ctx);
         g_ctx = NULL;

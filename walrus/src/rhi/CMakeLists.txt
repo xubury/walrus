@@ -1,4 +1,4 @@
-add_library(walrus_rhi STATIC rhi.c gl_context.c gl_shader.c)
+add_library(walrus_rhi STATIC rhi.c gl_context.c gl_shader.c uniform_buffer.c)
 
 if(NOT WASM)
   target_sources(walrus_rhi PRIVATE glew.c)

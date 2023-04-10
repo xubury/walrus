@@ -14,9 +14,9 @@ Walrus_HashTable *walrus_hash_table_create_full(Walrus_HashFunc hash, Walrus_Equ
                                                 Walrus_KeyDestroyFunc key_destroy, Walrus_ValueDestroyFunc val_destroy);
 void              walrus_hash_table_destroy(Walrus_HashTable *table);
 
-bool walrus_hash_table_contains(Walrus_HashTable *table, void *key);
+bool walrus_hash_table_contains(Walrus_HashTable *table, void const *key);
 
-void *walrus_hash_table_lookup(Walrus_HashTable *table, void *key);
+void *walrus_hash_table_lookup(Walrus_HashTable *table, void const *key);
 
 // Use hash table as a set
 bool walrus_hash_table_add(Walrus_HashTable *table, void *key);
@@ -28,7 +28,8 @@ bool walrus_hash_table_insert(Walrus_HashTable *table, void *key, void *value);
 bool walrus_hash_table_remove(Walrus_HashTable *table, void *key);
 void walrus_hash_table_remove_all(Walrus_HashTable *table);
 
-u32 walrus_direct_hash(void const *p);
+bool walrus_direct_equal(void const *p1, void const *p2);
+u32  walrus_direct_hash(void const *p);
 
 u32 walrus_str_hash(void const *p);
 

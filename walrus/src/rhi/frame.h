@@ -3,6 +3,7 @@
 #include <rhi/rhi_defines.h>
 #include <rhi/type.h>
 
+#include "uniform_buffer.h"
 #include "view.h"
 
 typedef struct {
@@ -16,12 +17,18 @@ typedef struct {
 
 typedef struct {
     Walrus_VertexStream stream[WR_RHI_MAX_VERTEX_STREAM];
+
+    u32 uniform_begin;
+    u32 uniform_end;
 } Walrus_RenderDraw;
 
 typedef struct {
     u32 num_x;
     u32 num_y;
     u32 num_z;
+
+    u32 uniform_begin;
+    u32 uniform_end;
 } Walrus_RenderCompute;
 
 typedef struct {
@@ -40,4 +47,6 @@ typedef struct {
     Walrus_ProgramHandle program[WR_RHI_MAX_DRAW_CALLS];
 
     Walrus_Resolution resolution;
+
+    UniformBuffer *uniforms;
 } Walrus_RenderFrame;

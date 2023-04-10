@@ -642,7 +642,7 @@ static void hash_table_remove_node(Walrus_HashTable* hash_table, u32 i, bool not
     }
 }
 
-bool walrus_hash_table_contains(Walrus_HashTable* table, void* key)
+bool walrus_hash_table_contains(Walrus_HashTable* table, void const* key)
 {
     u32 node_id;
     node_id = hash_table_lookup_node(table, key, NULL);
@@ -650,7 +650,7 @@ bool walrus_hash_table_contains(Walrus_HashTable* table, void* key)
     return HASH_IS_REAL(table->hashes[node_id]);
 }
 
-void* walrus_hash_table_lookup(Walrus_HashTable* table, void* key)
+void* walrus_hash_table_lookup(Walrus_HashTable* table, void const* key)
 {
     u32 node_id;
     node_id = hash_table_lookup_node(table, key, NULL);
@@ -694,6 +694,11 @@ void walrus_hash_table_remove_all(Walrus_HashTable* table)
 {
     hash_table_remove_all_nodes(table, true, false);
     hash_table_maybe_resize(table);
+}
+
+bool walrus_direct_equal(void const* p1, void const* p2)
+{
+    return p1 == p2;
 }
 
 u32 walrus_direct_hash(void const* p)

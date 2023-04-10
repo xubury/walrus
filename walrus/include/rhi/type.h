@@ -31,5 +31,24 @@ typedef enum {
     WR_RHI_SHADER_COUNT
 } Walrus_ShaderType;
 
+typedef enum {
+    WR_RHI_UNIFORM_SAMPLER = 0,
+
+    WR_RHI_UNIFORM_BOOL,
+
+    WR_RHI_UNIFORM_INT,
+    WR_RHI_UNIFORM_UINT,
+    WR_RHI_UNIFORM_FLOAT,
+
+    WR_RHI_UNIFORM_VEC2,
+    WR_RHI_UNIFORM_VEC3,
+    WR_RHI_UNIFORM_VEC4,
+    WR_RHI_UNIFORM_MAT3,
+    WR_RHI_UNIFORM_MAT4,
+
+    WR_RHI_UNIFORM_COUNT,
+} Walrus_UniformType;
+
 WR_RHI_HANDLE(Walrus_ShaderHandle);
 WR_RHI_HANDLE(Walrus_ProgramHandle);
+WR_RHI_HANDLE(Walrus_UniformHandle);
