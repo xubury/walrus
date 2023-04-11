@@ -39,7 +39,7 @@ char *walrus_str_dup(char const *str)
     return walrus_str_substr(str, 0, walrus_str_len(str));
 }
 
-char *walrus_str_substr(char const *str, i32 start, u64 len)
+char *walrus_str_substr(char const *str, u32 start, u64 len)
 {
     char *alloc_str = walrus_str_alloc(len);
     walrus_str_nappend(&alloc_str, str + start, len);
@@ -137,19 +137,16 @@ void walrus_str_nappend(char **pdst, char const *src, u64 src_len)
     *pdst = dst;
 }
 
-Walrus_StringView walrus_str_substrview(char const *str, i32 start, u64 len)
+Walrus_StringView walrus_str_substrview(char const *str, u32 start, u64 len)
 {
     Walrus_StringView string_view;
-    string_view.str = NULL;
-    string_view.len = 0;
-    if (start > 0) {
-        i32 str_len   = strlen(str);
-        start         = walrus_min(start, str_len);
-        u64 avail_len = str_len - start;
 
-        string_view.str = str + start;
-        string_view.len = walrus_min(avail_len, len);
-    }
+    u32 str_len   = strlen(str);
+    start         = walrus_min(start, str_len);
+    u64 avail_len = str_len - start;
+
+    string_view.str = str + start;
+    string_view.len = walrus_min(avail_len, len);
 
     return string_view;
 }

@@ -65,9 +65,14 @@ void draw_clear(RenderDraw *draw, u8 flags)
         draw->num_matrices = 0;
     }
     if (flags & WR_RHI_DISCARD_VERTEX_STREAMS) {
+        draw->num_vertices                = UINT32_MAX;
         draw->stream_mask                 = 0;
         draw->streams[0].offset           = 0;
         draw->streams[0].handle.id        = WR_INVALID_HANDLE;
         draw->streams[0].layout_handle.id = WR_INVALID_HANDLE;
+    }
+    if (flags & WR_RHI_DISCARD_INDEX_BUFFER) {
+        draw->num_indices     = UINT32_MAX;
+        draw->index_buffer.id = WR_INVALID_HANDLE;
     }
 }

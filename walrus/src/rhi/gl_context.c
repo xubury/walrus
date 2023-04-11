@@ -6,6 +6,7 @@
 #include <core/log.h>
 #include <core/memory.h>
 #include <core/string.h>
+#include <core/math.h>
 
 #include <string.h>
 #include <cglm/cglm.h>
@@ -17,7 +18,54 @@ void wajs_setup_gl_context(void);
 
 GlContext *g_ctx = NULL;
 
-static void commit(GlProgram *program)
+static const GLenum s_gl_attribute_type[WR_RHI_ATTR_COUNT] = {
+    GL_BYTE,            // Int8
+    GL_UNSIGNED_BYTE,   // Uint8
+    GL_SHORT,           // Int16
+    GL_UNSIGNED_SHORT,  // Uint16
+    GL_INT,             // Int32
+    GL_UNSIGNED_INT,    // Uint32
+    GL_FLOAT,           // Float
+};
+
+static u64 s_vao_current_enabled = 0;
+static u64 s_vao_pending_disable = 0;
+static u64 s_vao_pending_enable  = 0;
+
+void lazy_enable_vertex_attribute(GLuint index)
+{
+    u64 const mask = UINT64_C(1) << index;
+    s_vao_pending_enable |= mask & (~s_vao_current_enabled);
+    s_vao_pending_disable &= ~mask;
+}
+
+void lazy_disable_vertex_attribute(GLuint index)
+{
+    u64 const mask = UINT64_C(1) << index;
+    s_vao_pending_disable |= mask & s_vao_current_enabled;
+    s_vao_pending_enable &= ~mask;
+}
+
+void apply_lazy_enabled_vertex_attribute(void)
+{
+    while (s_vao_pending_disable) {
+        u32 index = walrus_u32cnttz(s_vao_pending_disable);
+        u64 mask  = ~(UINT64_C(1) << index);
+        s_vao_pending_disable &= mask;
+        s_vao_current_enabled &= mask;
+        glDisableVertexAttribArray(index);
+    }
+
+    while (s_vao_pending_enable) {
+        u32 index = walrus_u32cnttz(s_vao_pending_enable);
+        u64 mask  = UINT64_C(1) << index;
+        s_vao_pending_enable &= ~mask;
+        s_vao_current_enabled |= mask;
+        glEnableVertexAttribArray(index);
+    }
+}
+
+static void commit(GlProgram const *program)
 {
     UniformBuffer *buffer = program->buffer;
     if (buffer == NULL) {
@@ -44,44 +92,44 @@ static void commit(GlProgram *program)
             case WR_RHI_UNIFORM_BOOL:
             case WR_RHI_UNIFORM_UINT: {
                 if (num > 1) {
-                    glUniform1uiv(loc, num, (uint32_t *)data);
+                    glUniform1uiv(loc, num, (u32 const *)data);
                 }
                 else {
-                    glUniform1ui(loc, *(uint32_t *)data);
+                    glUniform1ui(loc, *(u32 const *)data);
                 }
             } break;
             case WR_RHI_UNIFORM_INT: {
                 if (num > 1) {
-                    glUniform1iv(loc, num, (int32_t *)data);
+                    glUniform1iv(loc, num, (i32 const *)data);
                 }
                 else {
-                    glUniform1i(loc, *(int32_t *)data);
+                    glUniform1i(loc, *(i32 const *)data);
                 }
             } break;
             case WR_RHI_UNIFORM_FLOAT: {
-                glUniform1fv(loc, num, (float *)data);
+                glUniform1fv(loc, num, (f32 const *)data);
             } break;
             case WR_RHI_UNIFORM_VEC2: {
-                glUniform2fv(loc, num, (const GLfloat *)data);
+                glUniform2fv(loc, num, (f32 const *)data);
             } break;
             case WR_RHI_UNIFORM_VEC3: {
-                glUniform3fv(loc, num, (const GLfloat *)data);
+                glUniform3fv(loc, num, (f32 const *)data);
             } break;
             case WR_RHI_UNIFORM_VEC4: {
-                glUniform4fv(loc, num, (const GLfloat *)data);
+                glUniform4fv(loc, num, (f32 const *)data);
             } break;
             case WR_RHI_UNIFORM_MAT3: {
-                glUniformMatrix3fv(loc, num, GL_FALSE, (const GLfloat *)data);
+                glUniformMatrix3fv(loc, num, GL_FALSE, (f32 const *)data);
             } break;
             case WR_RHI_UNIFORM_MAT4: {
-                glUniformMatrix4fv(loc, num, GL_FALSE, (const GLfloat *)data);
+                glUniformMatrix4fv(loc, num, GL_FALSE, (f32 const *)data);
             } break;
             case WR_RHI_UNIFORM_SAMPLER: {
                 if (num > 1) {
-                    glUniform1iv(loc, num, (int32_t *)data);
+                    glUniform1iv(loc, num, (i32 const *)data);
                 }
                 else {
-                    glUniform1i(loc, *(int32_t *)data);
+                    glUniform1i(loc, *(i32 const *)data);
                 }
             } break;
             case WR_RHI_UNIFORM_COUNT:
@@ -90,25 +138,25 @@ static void commit(GlProgram *program)
     }
 }
 
-static void set_predefineds(GlProgram *prog, RenderFrame const *frame, RenderView const *view, u32 start_matrix,
+static void set_predefineds(GlProgram const *prog, RenderFrame const *frame, RenderView const *view, u32 start_matrix,
                             u32 num_matrices)
 {
     walrus_unused(start_matrix);
     walrus_unused(num_matrices);
     walrus_unused(frame);
     for (u8 i = 0; i < prog->num_predefineds; ++i) {
-        PredefinedUniform *uni = &prog->predefineds[i];
-        switch (uni->type) {
+        PredefinedUniform const *u = &prog->predefineds[i];
+        switch (u->type) {
             case PREDEFINED_VIEW:
-                glUniformMatrix4fv(uni->loc, 1, GL_FALSE, &view->view[0][0]);
+                glUniformMatrix4fv(u->loc, 1, GL_FALSE, &view->view[0][0]);
                 break;
             case PREDEFINED_VIEWPROJ: {
                 mat4 viewproj;
                 glm_mat4_mul((vec4 *)view->view, (vec4 *)view->projection, viewproj);
-                glUniformMatrix4fv(uni->loc, 1, GL_FALSE, &viewproj[0][0]);
+                glUniformMatrix4fv(u->loc, 1, GL_FALSE, &viewproj[0][0]);
             } break;
             case PREDEFINED_MODEL:
-                glUniformMatrix4fv(uni->loc, num_matrices, GL_FALSE, &frame->matrix_cache[start_matrix][0][0]);
+                glUniformMatrix4fv(u->loc, num_matrices, GL_FALSE, &frame->matrix_cache[start_matrix][0][0]);
                 break;
             case PREDEFINED_COUNT:
                 break;
@@ -127,6 +175,9 @@ static void submit(RenderFrame *frame)
     Walrus_ProgramHandle current_prog = {WR_INVALID_HANDLE};
 
     glEnable(GL_DEPTH_TEST);
+
+    RenderDraw current_state;
+    draw_clear(&current_state, WR_RHI_DISCARD_ALL);
 
     for (u32 i = 0; i < frame->num_render_items; ++i) {
         RenderItem const          *render_item = &frame->render_items[i];
@@ -167,25 +218,130 @@ static void submit(RenderFrame *frame)
             }
         }
 
-        bool const programChanged = prog.id != WR_INVALID_HANDLE && current_prog.id != prog.id;
-        if (programChanged) {
+        bool const program_changed = prog.id != WR_INVALID_HANDLE && current_prog.id != prog.id;
+        if (program_changed) {
             current_prog = prog;
             glUseProgram(g_ctx->programs[current_prog.id].id);
         }
 
         bool const constants_changed = draw->uniform_begin < draw->uniform_end;
         if (current_prog.id != WR_INVALID_HANDLE) {
-            GlProgram *program = &g_ctx->programs[current_prog.id];
-            if (programChanged || constants_changed) {
+            GlProgram const *program = &g_ctx->programs[current_prog.id];
+            if (program_changed || constants_changed) {
                 commit(program);
             }
             set_predefineds(program, frame, view, draw->start_matrix, draw->num_matrices);
+
+            bool bind_attributes = false;
+            u32  num_vertices    = draw->num_vertices;
+            if (draw->stream_mask != UINT16_MAX) {
+                for (u32 id = 0, stream_mask = draw->stream_mask; 0 != stream_mask; stream_mask >>= 1, ++id) {
+                    u32 const ntz = walrus_u32cnttz(stream_mask);
+                    stream_mask >>= ntz;
+                    id += ntz;
+
+                    VertexStream const *stream = &draw->streams[id];
+                    if (current_state.streams[id].handle.id != stream->handle.id) {
+                        bind_attributes = true;
+                    }
+                    if (current_state.streams[id].offset != stream->offset) {
+                        bind_attributes = true;
+                    }
+
+                    if (stream->handle.id != WR_INVALID_HANDLE) {
+                        GlBuffer const vb = g_ctx->buffers[stream->handle.id];
+
+                        Walrus_LayoutHandle const layout_handle = stream->layout_handle;
+                        if (layout_handle.id != WR_INVALID_HANDLE) {
+                            Walrus_VertexLayout const *layout = &g_ctx->vertex_layouts[layout_handle.id];
+
+                            num_vertices = walrus_min(num_vertices, vb.size / layout->stride);
+                        }
+                    }
+                }
+            }
+
+            if (program_changed || current_state.stream_mask != draw->stream_mask) {
+                current_state.stream_mask = draw->stream_mask;
+
+                bind_attributes = true;
+            }
+
+            if (current_state.index_buffer.id != draw->index_buffer.id) {
+                current_state.index_buffer.id = draw->index_buffer.id;
+
+                if (draw->index_buffer.id != WR_INVALID_HANDLE) {
+                    GlBuffer const *ib = &g_ctx->buffers[draw->index_buffer.id];
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->id);
+                }
+                else {
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+                }
+            }
+
+            if (draw->stream_mask != UINT16_MAX && bind_attributes) {
+                for (u8 i = 0; i < WR_RHI_MAX_VERTEX_ATTRIBUTES; ++i) {
+                    lazy_disable_vertex_attribute(i);
+                }
+                for (u32 id = 0, stream_mask = draw->stream_mask; 0 != stream_mask; stream_mask >>= 1, ++id) {
+                    u32 const ntz = walrus_u32cnttz(stream_mask);
+                    stream_mask >>= ntz;
+                    id += ntz;
+                    VertexStream const *stream = &draw->streams[id];
+                    if (stream->handle.id != WR_INVALID_HANDLE) {
+                        GlBuffer const vb = g_ctx->buffers[stream->handle.id];
+
+                        Walrus_LayoutHandle const layout_handle = stream->layout_handle;
+                        if (layout_handle.id != WR_INVALID_HANDLE) {
+                            glBindBuffer(GL_ARRAY_BUFFER, vb.id);
+                            Walrus_VertexLayout const *layout = &g_ctx->vertex_layouts[layout_handle.id];
+                            for (u8 i = 0; i < layout->num_attributes; ++i) {
+                                Walrus_Attribute type;
+                                u8               attr_id;
+                                u8               num;
+                                bool             normalized;
+                                bool             as_int;
+                                walrus_vertex_layout_decode(layout, i, &attr_id, &num, &type, &normalized, &as_int);
+                                lazy_enable_vertex_attribute(attr_id);
+                                if (as_int) {
+                                    glVertexAttribIPointer(attr_id, num, s_gl_attribute_type[type], layout->stride,
+                                                           (void const *)(layout->offsets[i] + stream->offset));
+                                }
+                                else {
+                                    glVertexAttribPointer(attr_id, num, s_gl_attribute_type[type],
+                                                          normalized ? GL_TRUE : GL_FALSE, layout->stride,
+                                                          (void const *)(layout->offsets[i] + stream->offset));
+                                }
+                            }
+                            glBindBuffer(GL_ARRAY_BUFFER, 0);
+                        }
+                    }
+                }
+                apply_lazy_enabled_vertex_attribute();
+            }
+
+            if (draw->index_buffer.id != WR_INVALID_HANDLE) {
+                static GLenum const gl_index_type[5] = {GL_ZERO, GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT, GL_ZERO,
+                                                        GL_UNSIGNED_INT};
+
+                GlBuffer const *ib = &g_ctx->buffers[draw->index_buffer.id];
+
+                u32 num_indices = draw->num_indices;
+                if (num_indices == UINT32_MAX) {
+                    num_indices = ib->size / draw->index_size;
+                }
+                glDrawElements(GL_TRIANGLES, num_indices, gl_index_type[draw->index_size], (void *)draw->index_offset);
+            }
+            else if (num_vertices != UINT32_MAX) {
+                glDrawArrays(GL_TRIANGLES, 0, num_vertices);
+            }
         }
 
         walrus_unused(compute);
-
-        glDrawArrays(GL_TRIANGLES, 0, 36);
     }
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 static void init_ctx(RhiContext *rhi)
@@ -211,17 +367,16 @@ static void init_ctx(RhiContext *rhi)
     g_ctx->uniform_registry = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
 
     glGenVertexArrays(1, &g_ctx->vao);
-    glBindVertexArray(g_ctx->vao);
 }
 
-static void gl_create_uniform(Walrus_UniformHandle handle, const char *name, i32 size)
+static void gl_uniform_create(Walrus_UniformHandle handle, const char *name, u32 size)
 {
     g_ctx->uniforms[handle.id]      = walrus_malloc0(size);
     g_ctx->uniform_names[handle.id] = walrus_str_dup(name);
     walrus_hash_table_insert(g_ctx->uniform_registry, g_ctx->uniform_names[handle.id], walrus_u32_to_ptr(handle.id));
 }
 
-static void gl_destroy_uniform(Walrus_UniformHandle handle)
+static void gl_uniform_destroy(Walrus_UniformHandle handle)
 {
     walrus_hash_table_remove(g_ctx->uniform_registry, g_ctx->uniform_names[handle.id]);
     walrus_free(g_ctx->uniforms[handle.id]);
@@ -231,24 +386,61 @@ static void gl_destroy_uniform(Walrus_UniformHandle handle)
     g_ctx->uniform_names[handle.id] = NULL;
 }
 
-static void gl_update_uniform(Walrus_UniformHandle handle, u32 offset, u32 size, void const *data)
+static void gl_uniform_update(Walrus_UniformHandle handle, u32 offset, u32 size, void const *data)
 {
     memcpy((u8 *)&g_ctx->uniforms[handle.id] + offset, data, size);
+}
+
+static void gl_vertex_layout_create(Walrus_LayoutHandle handle, Walrus_VertexLayout const *layout)
+{
+    memcpy(&g_ctx->vertex_layouts[handle.id], layout, sizeof(Walrus_VertexLayout));
+}
+
+static void gl_vertex_layout_destroy(Walrus_LayoutHandle handle)
+{
+    walrus_unused(handle);
+}
+
+static void gl_buffer_create(Walrus_BufferHandle handle, void const *data, u64 size, u16 flags)
+{
+    walrus_unused(flags);
+
+    GLuint vbo = 0;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
+    g_ctx->buffers[handle.id].id   = vbo;
+    g_ctx->buffers[handle.id].size = size;
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+static void gl_buffer_destroy(Walrus_BufferHandle handle)
+{
+    glDeleteBuffers(1, &g_ctx->buffers[handle.id].id);
+    g_ctx->buffers[handle.id].id   = 0;
+    g_ctx->buffers[handle.id].size = 0;
 }
 
 static void init_api(RhiVTable *vtable)
 {
     vtable->submit_fn = submit;
 
-    vtable->create_shader_fn  = gl_shader_create;
-    vtable->destroy_shader_fn = gl_shader_destroy;
+    vtable->shader_create_fn  = gl_shader_create;
+    vtable->shader_destroy_fn = gl_shader_destroy;
 
-    vtable->create_program_fn  = gl_program_create;
-    vtable->destroy_program_fn = gl_program_destroy;
+    vtable->program_create_fn  = gl_program_create;
+    vtable->program_destroy_fn = gl_program_destroy;
 
-    vtable->create_uniform_fn  = gl_create_uniform;
-    vtable->destroy_uniform_fn = gl_destroy_uniform;
-    vtable->update_uniform_fn  = gl_update_uniform;
+    vtable->uniform_create_fn  = gl_uniform_create;
+    vtable->uniform_destroy_fn = gl_uniform_destroy;
+    vtable->uniform_update_fn  = gl_uniform_update;
+
+    vtable->vertex_layout_create_fn  = gl_vertex_layout_create;
+    vtable->vertex_layout_destroy_fn = gl_vertex_layout_destroy;
+
+    vtable->buffer_create_fn  = gl_buffer_create;
+    vtable->buffer_destroy_fn = gl_buffer_destroy;
 }
 
 void gl_backend_init(RhiContext *rhi, RhiVTable *vtable)

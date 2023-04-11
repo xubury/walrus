@@ -9,7 +9,7 @@ typedef u32 Walrus_Handle;
 typedef struct _Walrus_HandleAlloc Walrus_HandleAlloc;
 
 // Create a handle allocator
-Walrus_HandleAlloc *walrus_handle_create(i32 capacity);
+Walrus_HandleAlloc *walrus_handle_create(u32 capacity);
 
 // Destroy given allocator
 void walrus_handle_destroy(Walrus_HandleAlloc *alloc);

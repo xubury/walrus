@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/handle_alloc.h>
+#include <rhi/vertex_layout.h>
 
 #define WR_RHI_HANDLE(name) \
     typedef struct {        \
@@ -53,4 +54,4 @@ WR_RHI_HANDLE(Walrus_ShaderHandle);
 WR_RHI_HANDLE(Walrus_ProgramHandle);
 WR_RHI_HANDLE(Walrus_UniformHandle);
 WR_RHI_HANDLE(Walrus_BufferHandle);
-WR_RHI_HANDLE(Walrus_VertexLayoutHandle);
+WR_RHI_HANDLE(Walrus_LayoutHandle);

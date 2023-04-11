@@ -32,6 +32,7 @@ bool walrus_direct_equal(void const *p1, void const *p2);
 u32  walrus_direct_hash(void const *p);
 
 u32 walrus_str_hash(void const *p);
+u32 walrus_array_hash(void const *p, u32 n);
 
 u32 walrus_i32_hash(void const *p);
 u32 walrus_i64_hash(void const *p);

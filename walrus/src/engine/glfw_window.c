@@ -298,7 +298,7 @@ static void mousebtn_callback(GLFWwindow *window, i32 btn, i32 action, i32 mods)
     e.button.mods   = mods;
 }
 
-void *glfw_create_window(char const *title, i32 width, i32 height, i32 flags)
+void *glfw_create_window(char const *title, u32 width, u32 height, u32 flags)
 {
     walrus_assert_msg(glfwInit(), "Cannot initialize glfw!");
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);

@@ -1,31 +1,43 @@
 #pragma once
 
 #ifndef WR_RHI_MAX_VIEWS
-#define WR_RHI_MAX_VIEWS 25
+#define WR_RHI_MAX_VIEWS (25)
 #endif
 
 #ifndef WR_RHI_MAX_DRAW_CALLS
-#define WR_RHI_MAX_DRAW_CALLS 65536
+#define WR_RHI_MAX_DRAW_CALLS (65536)
 #endif
 
 #ifndef WR_RHI_MAX_VERTEX_STREAM
-#define WR_RHI_MAX_VERTEX_STREAM 8
+#define WR_RHI_MAX_VERTEX_STREAM (8)
 #endif
 
 #ifndef WR_RHI_MAX_SHADERS
-#define WR_RHI_MAX_SHADERS 256
+#define WR_RHI_MAX_SHADERS (256)
 #endif
 
 #ifndef WR_RHI_MAX_PROGRAMS
-#define WR_RHI_MAX_PROGRAMS 256
+#define WR_RHI_MAX_PROGRAMS (256)
 #endif
 
 #ifndef WR_RHI_MAX_UNIFORMS
-#define WR_RHI_MAX_UNIFORMS 256
+#define WR_RHI_MAX_UNIFORMS (256)
 #endif
 
 #ifndef WR_RHI_MAX_MATRIX_CACHE
 #define WR_RHI_MAX_MATRIX_CACHE (WR_RHI_MAX_DRAW_CALLS + 1)
+#endif
+
+#ifndef WR_RHI_MAX_VERTEX_LAYOUTS
+#define WR_RHI_MAX_VERTEX_LAYOUTS (128)
+#endif
+
+#ifndef WR_RHI_MAX_BUFFERS
+#define WR_RHI_MAX_BUFFERS (4096)
+#endif
+
+#ifndef WR_RHI_MAX_VERTEX_ATTRIBUTES
+#define WR_RHI_MAX_VERTEX_ATTRIBUTES (16)
 #endif
 
 #define WR_RHI_CLEAR_NONE            UINT16_C(0x0000)  //!< No clear flags.

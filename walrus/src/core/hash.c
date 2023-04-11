@@ -718,6 +718,18 @@ u32 walrus_str_hash(void const* p)
     return h;
 }
 
+u32 walrus_array_hash(void const* p, u32 n)
+{
+    u32         h = 5381;
+    char const* c = p;
+
+    for (u32 i = 0; i < n; ++c, ++i) {
+        h = (h << 5) + h + *c;
+    }
+
+    return h;
+}
+
 u32 walrus_i32_hash(const void* p)
 {
     return *(u32*)p;

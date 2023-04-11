@@ -24,19 +24,28 @@ static RhiVTable*  s_table = NULL;
 
 static void handles_init(void)
 {
-    s_ctx->shaders  = walrus_handle_create(WR_RHI_MAX_SHADERS);
-    s_ctx->programs = walrus_handle_create(WR_RHI_MAX_PROGRAMS);
-    s_ctx->uniforms = walrus_handle_create(WR_RHI_MAX_UNIFORMS);
+    s_ctx->shaders        = walrus_handle_create(WR_RHI_MAX_SHADERS);
+    s_ctx->programs       = walrus_handle_create(WR_RHI_MAX_PROGRAMS);
+    s_ctx->uniforms       = walrus_handle_create(WR_RHI_MAX_UNIFORMS);
+    s_ctx->vertex_layouts = walrus_handle_create(WR_RHI_MAX_VERTEX_LAYOUTS);
+    s_ctx->buffers        = walrus_handle_create(WR_RHI_MAX_BUFFERS);
 }
 
 static void handles_shutdown(void)
 {
+    walrus_handle_destroy(s_ctx->buffers);
+    walrus_handle_destroy(s_ctx->vertex_layouts);
     walrus_handle_destroy(s_ctx->uniforms);
-    walrus_handle_destroy(s_ctx->shaders);
     walrus_handle_destroy(s_ctx->programs);
+    walrus_handle_destroy(s_ctx->shaders);
 }
 
-void renderer_update_uniforms(UniformBuffer* uniform, u32 begin, u32 end)
+static void discard(u8 flags)
+{
+    draw_clear(&s_ctx->draw, flags);
+}
+
+void renderer_uniform_updates(UniformBuffer* uniform, u32 begin, u32 end)
 {
     uniform_buffer_start(uniform, begin);
     while (uniform->pos < end) {
@@ -53,7 +62,7 @@ void renderer_update_uniforms(UniformBuffer* uniform, u32 begin, u32 end)
         u32         size   = uniform_buffer_read_value(uniform);
         void const* data   = uniform_buffer_read(uniform, size);
         if (type < WR_RHI_UNIFORM_COUNT) {
-            s_table->update_uniform_fn(handle, offset, size, data);
+            s_table->uniform_update_fn(handle, offset, size, data);
         }
     }
 }
@@ -96,11 +105,17 @@ Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags)
     frame_init(s_ctx->submit_frame);
     handles_init();
 
-    s_ctx->uniform_map = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
+    s_ctx->uniform_map             = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
+    s_ctx->vertex_layout_ref.table = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
 
     for (u32 i = 0; i < WR_RHI_MAX_UNIFORMS; ++i) {
         s_ctx->uniform_refs[i].ref_count = 0;
     }
+    for (u32 i = 0; i < WR_RHI_MAX_VERTEX_LAYOUTS; ++i) {
+        s_ctx->vertex_layout_ref.ref_count[i] = 0;
+    }
+
+    discard(WR_RHI_DISCARD_ALL);
 
     return s_ctx->err;
 }
@@ -131,7 +146,7 @@ char const* walrus_rhi_error_msg(void)
     }
 }
 
-void walrus_rhi_set_resolution(i32 width, i32 height)
+void walrus_rhi_set_resolution(u32 width, u32 height)
 {
     s_ctx->submit_frame->resolution.width  = width;
     s_ctx->submit_frame->resolution.height = height;
@@ -152,7 +167,7 @@ void walrus_rhi_frame(void)
     frame_start(frame);
 }
 
-void walrus_rhi_submit(i16 view_id, Walrus_ProgramHandle program, u8 flags)
+void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u8 flags)
 {
     RenderFrame* frame = s_ctx->submit_frame;
 
@@ -163,8 +178,26 @@ void walrus_rhi_submit(i16 view_id, Walrus_ProgramHandle program, u8 flags)
     s_ctx->draw.uniform_begin = s_ctx->uniform_begin;
     s_ctx->draw.uniform_end   = s_ctx->uniform_end;
 
-    frame->program[render_item_id]           = program;
-    frame->view_ids[render_item_id]          = view_id;
+    frame->program[render_item_id]  = program;
+    frame->view_ids[render_item_id] = view_id;
+
+    u16 stream_mask = s_ctx->draw.stream_mask;
+    if (stream_mask != UINT16_MAX) {
+        u32 num_vertices = UINT32_MAX;
+
+        for (u32 id = 0; 0 != stream_mask; stream_mask >>= 1, ++id) {
+            u32 const ntz = walrus_u32cnttz(stream_mask);
+            stream_mask >>= ntz;
+            id += ntz;
+
+            num_vertices = walrus_min(num_vertices, s_ctx->num_vertices[id]);
+        }
+        s_ctx->draw.num_vertices = num_vertices;
+    }
+    else {
+        s_ctx->draw.num_vertices = s_ctx->num_vertices[0];
+    }
+
     frame->render_items[render_item_id].draw = s_ctx->draw;
 
     draw_clear(&s_ctx->draw, flags);
@@ -187,7 +220,7 @@ void walrus_rhi_decompose_rgba(u32 rgba, u8* r, u8* g, u8* b, u8* a)
     *a = (u8)(rgba >> 24);
 }
 
-void walrus_rhi_set_view_rect(i16 view_id, i32 x, i32 y, i32 width, i32 height)
+void walrus_rhi_set_view_rect(u16 view_id, i32 x, i32 y, u32 width, u32 height)
 {
     width            = walrus_max(width, 1);
     height           = walrus_max(height, 1);
@@ -199,7 +232,7 @@ void walrus_rhi_set_view_rect(i16 view_id, i32 x, i32 y, i32 width, i32 height)
     view->viewport.height = height;
 }
 
-void walrus_rhi_set_view_clear(i16 view_id, u16 flags, u32 rgba, f32 depth, u8 stencil)
+void walrus_rhi_set_view_clear(u16 view_id, u16 flags, u32 rgba, f32 depth, u8 stencil)
 {
     Walrus_RenderClear* clear = &s_ctx->views[view_id].clear;
 
@@ -209,7 +242,7 @@ void walrus_rhi_set_view_clear(i16 view_id, u16 flags, u32 rgba, f32 depth, u8 s
     clear->stencil = stencil;
 }
 
-void walrus_rhi_set_view_transform(i16 view_id, mat4 view, mat4 projection)
+void walrus_rhi_set_view_transform(u16 view_id, mat4 view, mat4 projection)
 {
     RenderView* v = &s_ctx->views[view_id];
     glm_mat4_copy(view, v->view);
@@ -231,14 +264,18 @@ Walrus_ShaderHandle walrus_rhi_create_shader(Walrus_ShaderType type, char const*
         return handle;
     }
 
-    s_table->create_shader_fn(type, handle, source);
+    s_table->shader_create_fn(type, handle, source);
 
     return handle;
 }
 
 void walrus_rhi_destroy_shader(Walrus_ShaderHandle handle)
 {
-    s_table->destroy_shader_fn(handle);
+    if (handle.id == WR_INVALID_HANDLE) {
+        return;
+    }
+
+    s_table->shader_destroy_fn(handle);
 
     walrus_handle_free(s_ctx->shaders, handle.id);
 }
@@ -251,13 +288,17 @@ Walrus_ProgramHandle walrus_rhi_create_program(Walrus_ShaderHandle vs, Walrus_Sh
         return handle;
     }
 
-    s_table->create_program_fn(handle, vs, fs, (Walrus_ShaderHandle){WR_INVALID_HANDLE});
+    s_table->program_create_fn(handle, vs, fs, (Walrus_ShaderHandle){WR_INVALID_HANDLE});
 
     return handle;
 }
 void walrus_rhi_destroy_program(Walrus_ProgramHandle handle)
 {
-    s_table->destroy_program_fn(handle);
+    if (handle.id == WR_INVALID_HANDLE) {
+        return;
+    }
+
+    s_table->program_destroy_fn(handle);
     walrus_handle_free(s_ctx->programs, handle.id);
 }
 
@@ -315,7 +356,7 @@ Walrus_UniformHandle walrus_rhi_create_uniform(char const* name, Walrus_UniformT
         ref->ref_count  = 1;
         walrus_hash_table_insert(s_ctx->uniform_map, ref->name, walrus_u32_to_ptr(handle.id));
 
-        s_table->create_uniform_fn(handle, name, size);
+        s_table->uniform_create_fn(handle, name, size);
     }
 
     return handle;
@@ -323,6 +364,10 @@ Walrus_UniformHandle walrus_rhi_create_uniform(char const* name, Walrus_UniformT
 
 void walrus_rhi_destroy_uniform(Walrus_UniformHandle handle)
 {
+    if (handle.id == WR_INVALID_HANDLE) {
+        return;
+    }
+
     UniformRef* ref = &s_ctx->uniform_refs[handle.id];
     if (ref->ref_count > 0) {
         --ref->ref_count;
@@ -332,7 +377,7 @@ void walrus_rhi_destroy_uniform(Walrus_UniformHandle handle)
             walrus_str_free(ref->name);
             walrus_handle_free(s_ctx->uniforms, handle.id);
 
-            s_table->destroy_uniform_fn(handle);
+            s_table->uniform_destroy_fn(handle);
         }
     }
 }
@@ -347,4 +392,112 @@ void walrus_rhi_set_uniform(Walrus_UniformHandle handle, u32 offset, u32 size, v
     else {
         walrus_error("Cannot find valid uniform!");
     }
+}
+
+static Walrus_LayoutHandle find_or_create_vertex_layout(Walrus_VertexLayout const* layout, bool ref_on_create)
+{
+    Walrus_LayoutHandle handle;
+    if (walrus_hash_table_contains(s_ctx->vertex_layout_ref.table, walrus_u32_to_ptr(layout->hash))) {
+        handle.id = walrus_ptr_to_u32(
+            walrus_hash_table_lookup(s_ctx->vertex_layout_ref.table, walrus_u32_to_ptr(layout->hash)));
+        return handle;
+    }
+
+    handle = (Walrus_LayoutHandle){walrus_handle_alloc(s_ctx->vertex_layouts)};
+    if (handle.id == WR_INVALID_HANDLE) {
+        s_ctx->err = WR_RHI_ALLOC_HADNLE_ERROR;
+        return handle;
+    }
+
+    s_table->vertex_layout_create_fn(handle, layout);
+
+    if (ref_on_create) {
+        walrus_hash_table_insert(s_ctx->vertex_layout_ref.table, walrus_u32_to_ptr(layout->hash),
+                                 walrus_u32_to_ptr(handle.id));
+        ++s_ctx->vertex_layout_ref.ref_count[handle.id];
+    }
+
+    return handle;
+}
+
+Walrus_LayoutHandle walrus_rhi_create_vertex_layout(Walrus_VertexLayout const* layout)
+{
+    Walrus_LayoutHandle handle = find_or_create_vertex_layout(layout, false);
+    if (handle.id == WR_INVALID_HANDLE) {
+        s_ctx->err = WR_RHI_ALLOC_HADNLE_ERROR;
+        return handle;
+    }
+
+    walrus_hash_table_insert(s_ctx->vertex_layout_ref.table, walrus_u32_to_ptr(layout->hash),
+                             walrus_u32_to_ptr(handle.id));
+    ++s_ctx->vertex_layout_ref.ref_count[handle.id];
+
+    return handle;
+}
+
+void walrus_rhi_destroy_vertex_layout(Walrus_LayoutHandle handle)
+{
+    s_table->vertex_layout_destroy_fn(handle);
+}
+
+Walrus_BufferHandle walrus_rhi_create_buffer(void const* data, u64 size, u16 flags)
+{
+    Walrus_BufferHandle handle = {walrus_handle_alloc(s_ctx->buffers)};
+    if (handle.id == WR_INVALID_HANDLE) {
+        s_ctx->err = WR_RHI_ALLOC_HADNLE_ERROR;
+        return handle;
+    }
+
+    s_table->buffer_create_fn(handle, data, size, flags);
+
+    return handle;
+}
+
+void walrus_rhi_destroy_buffer(Walrus_BufferHandle handle)
+{
+    if (handle.id == WR_INVALID_HANDLE) {
+        return;
+    }
+
+    s_table->buffer_destroy_fn(handle);
+
+    walrus_handle_free(s_ctx->buffers, handle.id);
+}
+
+static bool set_stream_bit(RenderDraw* draw, u8 stream, Walrus_BufferHandle handle)
+{
+    const uint16_t bit  = 1 << stream;
+    const uint16_t mask = draw->stream_mask & ~bit;
+    const uint16_t tmp  = handle.id != WR_INVALID_HANDLE ? bit : 0;
+    draw->stream_mask   = mask | tmp;
+    return tmp != 0;
+}
+
+void walrus_rhi_set_vertex_buffer(u8 stream_id, Walrus_BufferHandle handle, Walrus_LayoutHandle layout_handle,
+                                  u32 offset, u32 num_vertices)
+{
+    walrus_assert(handle.id != WR_INVALID_HANDLE);
+    if (set_stream_bit(&s_ctx->draw, stream_id, handle)) {
+        VertexStream* stream           = &s_ctx->draw.streams[stream_id];
+        stream->offset                 = offset;
+        stream->handle                 = handle;
+        stream->layout_handle          = layout_handle;
+        s_ctx->num_vertices[stream_id] = num_vertices;
+    }
+}
+
+void walrus_rhi_set_index_buffer(Walrus_BufferHandle handle, u32 offset, u32 num_indices)
+{
+    s_ctx->draw.index_buffer = handle;
+    s_ctx->draw.index_size   = sizeof(u16);
+    s_ctx->draw.index_offset = offset;
+    s_ctx->draw.num_indices  = num_indices;
+}
+
+void walrus_rhi_set_index32_buffer(Walrus_BufferHandle handle, u32 offset, u32 num_indices)
+{
+    s_ctx->draw.index_buffer = handle;
+    s_ctx->draw.index_size   = sizeof(u32);
+    s_ctx->draw.index_offset = offset;
+    s_ctx->draw.num_indices  = num_indices;
 }

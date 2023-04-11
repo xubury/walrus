@@ -12,7 +12,7 @@ typedef enum {
     WR_WINDOW_FLAG_OPENGL = 1 << 1
 } WindowFlag;
 
-Walrus_Window *walrus_window_create(char const *title, i32 width, i32 height, i32 flags);
+Walrus_Window *walrus_window_create(char const *title, u32 width, u32 height, u32 flags);
 
 void walrus_window_destroy(Walrus_Window *win);
 

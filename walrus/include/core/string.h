@@ -13,7 +13,7 @@ bool walrus_str_equal(void const *s1, void const *s2);
 char *walrus_str_dup(char const *str);
 
 // Allocate a substr from a null-termiate string
-char *walrus_str_substr(char const *str, i32 start, u64 len);
+char *walrus_str_substr(char const *str, u32 start, u64 len);
 
 // Allocate an empty null-termiate string of capacity size
 char *walrus_str_alloc(u64 size);
@@ -33,4 +33,4 @@ void walrus_str_append(char **pdst, char const *src);
 // Append substring of src to the end of dst, dst must be allocated by walrus_alloc_str()
 void walrus_str_nappend(char **pdst, char const *src, u64 src_len);
 
-Walrus_StringView walrus_str_substrview(char const *str, i32 start, u64 len);
+Walrus_StringView walrus_str_substrview(char const *str, u32 start, u64 len);

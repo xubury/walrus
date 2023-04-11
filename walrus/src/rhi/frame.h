@@ -12,9 +12,9 @@ typedef struct {
 } Resolution;
 
 typedef struct {
-    Walrus_BufferHandle       handle;
-    Walrus_VertexLayoutHandle layout_handle;
-    u32                       offset;
+    Walrus_BufferHandle handle;
+    Walrus_LayoutHandle layout_handle;
+    u64                 offset;
 } VertexStream;
 
 typedef struct {
@@ -26,6 +26,10 @@ typedef struct {
 
     u32 uniform_begin;
     u32 uniform_end;
+
+    Walrus_BufferHandle index_buffer;
+    u8                  index_size;
+    u64                 index_offset;
 
     u32 start_matrix;
     u32 num_matrices;

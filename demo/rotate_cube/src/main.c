@@ -46,10 +46,13 @@ char const *fs_src =
 typedef struct {
     Walrus_ProgramHandle shader;
     Walrus_UniformHandle texture_handle;
+    Walrus_BufferHandle  buffer;
+    Walrus_BufferHandle  uv_buffer;
+    Walrus_BufferHandle  index_buffer;
+    Walrus_LayoutHandle  pos_layout;
+    Walrus_LayoutHandle  uv_layout;
     GLuint               textures[2];
-    GLuint               vbo;
 
-    mat4 viewproj;
     mat4 model;
 
     // Uniforms
@@ -64,6 +67,9 @@ void on_render(Walrus_App *app)
     glActiveTexture(GL_TEXTURE0);
 
     walrus_rhi_set_transform(data->model);
+    walrus_rhi_set_vertex_buffer(0, data->buffer, data->pos_layout, 0, UINT32_MAX);
+    walrus_rhi_set_vertex_buffer(1, data->uv_buffer, data->uv_layout, 0, UINT32_MAX);
+    walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
     walrus_rhi_submit(0, data->shader, WR_RHI_DISCARD_ALL);
     glUniform1i(data->u_texture, 0);
 }
@@ -85,16 +91,6 @@ void on_event(Walrus_App *app, Walrus_Event *e)
     }
 }
 
-bool i32_equal(void const *a, void const *b)
-{
-    return *(i32 *)a == *(i32 *)b;
-}
-
-u32 i32_hash(void const *a)
-{
-    return *(i32 *)a;
-}
-
 Walrus_AppError on_init(Walrus_App *app)
 {
     // Handle test
@@ -107,16 +103,6 @@ Walrus_AppError on_init(Walrus_App *app)
     /* walrus_handle_free(alloc, handle1); */
     Walrus_Handle handle3 = walrus_handle_alloc(alloc);
     walrus_trace("handle alloc: %d, %d, %d, %d", handle0, handle1, handle2, handle3);
-
-    Walrus_HashTable *table = walrus_hash_table_create(i32_hash, i32_equal);
-
-    // Hash table test
-    i32 i = 123;
-    walrus_hash_table_add(table, &i);
-    walrus_assert(walrus_hash_table_contains(table, &i));
-    walrus_hash_table_remove(table, &i);
-    walrus_assert(!walrus_hash_table_contains(table, &i));
-    walrus_hash_table_destroy(table);
 
     {
         // String test
@@ -158,67 +144,119 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_rhi_set_view_rect(0, 0, 0, width, height);
     walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_COLOR | WR_RHI_CLEAR_DEPTH, 0xffffffff, 1.0, 0);
 
-    glm_perspective(glm_rad(45.0), (float)width / height, 0.1, 100, app_data->viewproj);
+    mat4 projection;
     mat4 view = GLM_MAT4_IDENTITY_INIT;
-    walrus_rhi_set_view_transform(0, view, app_data->viewproj);
+    glm_perspective(glm_rad(45.0), (float)width / height, 0.1, 100, projection);
+    walrus_rhi_set_view_transform(0, view, projection);
 
     // clang-format off
     f32 vertices[] = {
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
 
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,
+         0.5f, -0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
 
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
 
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
 
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f,  0.5f,
+         0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f, -0.5f,
 
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+        -0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f,
+    };
+    f32 uvs[] = {
+         0.0f, 0.0f,
+         1.0f, 0.0f,
+         1.0f, 1.0f,
+         1.0f, 1.0f,
+         0.0f, 1.0f,
+         0.0f, 0.0f,
+
+         0.0f, 0.0f,
+         1.0f, 0.0f,
+         1.0f, 1.0f,
+         1.0f, 1.0f,
+         0.0f, 1.0f,
+         0.0f, 0.0f,
+
+         1.0f, 0.0f,
+         1.0f, 1.0f,
+         0.0f, 1.0f,
+         0.0f, 1.0f,
+         0.0f, 0.0f,
+         1.0f, 0.0f,
+
+         1.0f, 0.0f,
+         1.0f, 1.0f,
+         0.0f, 1.0f,
+         0.0f, 1.0f,
+         0.0f, 0.0f,
+         1.0f, 0.0f,
+
+         0.0f, 1.0f,
+         1.0f, 1.0f,
+         1.0f, 0.0f,
+         1.0f, 0.0f,
+         0.0f, 0.0f,
+         0.0f, 1.0f,
+
+         0.0f, 1.0f,
+         1.0f, 1.0f,
+         1.0f, 0.0f,
+         1.0f, 0.0f,
+         0.0f, 0.0f,
+         0.0f, 1.0f
     };
     // clang-format on
 
-    glGenBuffers(1, &app_data->vbo);
+    Walrus_VertexLayout layout;
+    walrus_vertex_layout_begin(&layout);
+    walrus_vertex_layout_add(&layout, 0, 3, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_end(&layout);
+    app_data->pos_layout = walrus_rhi_create_vertex_layout(&layout);
+    app_data->pos_layout = walrus_rhi_create_vertex_layout(&layout);
 
-    glBindBuffer(GL_ARRAY_BUFFER, app_data->vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    walrus_vertex_layout_begin(&layout);
+    walrus_vertex_layout_add(&layout, 1, 2, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_end(&layout);
+    app_data->uv_layout = walrus_rhi_create_vertex_layout(&layout);
 
-    // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0);
-    // texture coord attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
+    u16 indices[] = {
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17,
+        18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+    };
+    app_data->buffer       = walrus_rhi_create_buffer(vertices, sizeof(vertices), 0);
+    app_data->uv_buffer    = walrus_rhi_create_buffer(uvs, sizeof(uvs), 0);
+    app_data->index_buffer = walrus_rhi_create_buffer(indices, sizeof(indices), 0);
 
     app_data->texture_handle = walrus_rhi_create_uniform("u_texture", WR_RHI_UNIFORM_SAMPLER, 1);
 
@@ -268,7 +306,6 @@ void on_shutdown(Walrus_App *app)
     walrus_rhi_destroy_uniform(data->texture_handle);
 
     glDeleteTextures(walrus_array_len(data->textures), data->textures);
-    glDeleteBuffers(1, &data->vbo);
 }
 
 int main(int argc, char *argv[])

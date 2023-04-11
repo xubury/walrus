@@ -27,7 +27,7 @@ static void reset(Walrus_HandleAlloc *alloc)
     }
 }
 
-Walrus_HandleAlloc *walrus_handle_create(i32 capacity)
+Walrus_HandleAlloc *walrus_handle_create(u32 capacity)
 {
     Walrus_HandleAlloc *alloc = walrus_malloc(sizeof(Walrus_HandleAlloc) + capacity * 2 * sizeof(Walrus_Handle));
 

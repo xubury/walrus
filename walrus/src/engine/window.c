@@ -11,13 +11,13 @@ struct _Walrus_Window {
 };
 
 #if WR_PLATFORM == WR_PLATFORM_WASM
-void wajs_create_window(char const *title, i32 width, i32 height);
+void wajs_create_window(char const *title, u32 width, u32 height);
 #else
 #include "glfw_window.h"
 #include <GLFW/glfw3.h>
 #endif
 
-Walrus_Window *walrus_window_create(char const *title, i32 width, i32 height, i32 flags)
+Walrus_Window *walrus_window_create(char const *title, u32 width, u32 height, u32 flags)
 {
     Walrus_Window *win = walrus_malloc(sizeof(Walrus_Window));
     win->width  = width;
