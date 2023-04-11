@@ -1,6 +1,7 @@
 #pragma once
 
 #include <assert.h>
+#include "platform.h"
 #include "type.h"
 #include "log.h"
 
@@ -24,6 +25,8 @@
 
 #define walrus_ptr_to_u32(x) (u32)(u64)(x)
 
-#define walrus_max(a, b) (a > b ? a : b)
-
-#define walrus_min(a, b) (a < b ? a : b)
+#if WR_COMPILER == WR_COMPILER_VC
+#define WR_INLINE __forceinline
+#else
+#define WR_INLINE static inline __attribute((always_inline))
+#endif

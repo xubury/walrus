@@ -1,5 +1,6 @@
 #include <core/hash.h>
 #include <core/macro.h>
+#include <core/math.h>
 #include <core/memory.h>
 
 #include <stdlib.h>

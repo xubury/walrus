@@ -5,6 +5,7 @@
 #include <core/sys.h>
 #include <core/log.h>
 #include <core/macro.h>
+#include <core/math.h>
 #include <core/platform.h>
 #include <core/memory.h>
 
@@ -183,9 +184,9 @@ Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
     }
 
     opt                = &s_engine->opt;
-    opt->minfps        = fmax(opt->minfps, 1.0);
-    opt->window_width  = fmax(opt->window_width, 1);
-    opt->window_height = fmax(opt->window_height, 1);
+    opt->minfps        = walrus_max(opt->minfps, 1.0);
+    opt->window_width  = walrus_max(opt->window_width, 1);
+    opt->window_height = walrus_max(opt->window_height, 1);
 
     s_engine->app  = NULL;
     s_engine->quit = true;

@@ -54,8 +54,6 @@ typedef struct {
 
     // Uniforms
     GLuint u_texture;
-    GLuint u_viewproj;
-    GLuint u_model;
 } AppData;
 
 void on_render(Walrus_App *app)
@@ -65,11 +63,9 @@ void on_render(Walrus_App *app)
     glBindTexture(GL_TEXTURE_2D, data->textures[0]);
     glActiveTexture(GL_TEXTURE0);
 
-    walrus_rhi_submit(0, data->shader);
+    walrus_rhi_set_transform(data->model);
+    walrus_rhi_submit(0, data->shader, WR_RHI_DISCARD_ALL);
     glUniform1i(data->u_texture, 0);
-    glUniformMatrix4fv(data->u_model, 1, false, data->model[0]);
-    glUniformMatrix4fv(data->u_viewproj, 1, false, data->viewproj[0]);
-    glUniformMatrix4fv(data->u_model, 1, false, data->model[0]);
 }
 
 void on_tick(Walrus_App *app, float dt)
@@ -162,6 +158,10 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_rhi_set_view_rect(0, 0, 0, width, height);
     walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_COLOR | WR_RHI_CLEAR_DEPTH, 0xffffffff, 1.0, 0);
 
+    glm_perspective(glm_rad(45.0), (float)width / height, 0.1, 100, app_data->viewproj);
+    mat4 view = GLM_MAT4_IDENTITY_INIT;
+    walrus_rhi_set_view_transform(0, view, app_data->viewproj);
+
     // clang-format off
     f32 vertices[] = {
         -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
@@ -226,11 +226,8 @@ Walrus_AppError on_init(Walrus_App *app)
     Walrus_ShaderHandle fs = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
     app_data->shader       = walrus_rhi_create_program(vs, fs);
 
-    app_data->u_texture  = glGetUniformLocation(3, "u_texture");
-    app_data->u_viewproj = glGetUniformLocation(3, "u_viewproj");
-    app_data->u_model    = glGetUniformLocation(3, "u_model");
+    app_data->u_texture = glGetUniformLocation(3, "u_texture");
 
-    glm_perspective(glm_rad(45.0), (float)width / height, 0.1, 100, app_data->viewproj);
     glm_mat4_identity(app_data->model);
     glm_translate(app_data->model, (vec3){0, 0, -2});
 

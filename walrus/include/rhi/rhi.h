@@ -5,6 +5,8 @@
 
 #include "gl.h"
 
+#include <cglm/types.h>
+
 Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags);
 void            walrus_rhi_shutdown(void);
 
@@ -14,13 +16,16 @@ void walrus_rhi_set_resolution(i32 width, i32 height);
 
 void walrus_rhi_frame(void);
 
-void walrus_rhi_submit(i16 view_id, Walrus_ProgramHandle program);
+void walrus_rhi_submit(i16 view_id, Walrus_ProgramHandle program, u8 flags);
 
 u32  walrus_rhi_compose_rgba(u8 r, u8 g, u8 b, u8 a);
 void walrus_rhi_decompose_rgba(u32 rgba, u8* r, u8* g, u8* b, u8* a);
 
 void walrus_rhi_set_view_rect(i16 view_id, i32 x, i32 y, i32 width, i32 height);
 void walrus_rhi_set_view_clear(i16 view_id, u16 flags, u32 rgba, f32 depth, u8 stencil);
+void walrus_rhi_set_view_transform(i16 view_id, mat4 view, mat4 projection);
+
+void walrus_rhi_set_transform(mat4 const transform);
 
 Walrus_ShaderHandle walrus_rhi_create_shader(Walrus_ShaderType type, char const* source);
 void                walrus_rhi_destroy_shader(Walrus_ShaderHandle handle);

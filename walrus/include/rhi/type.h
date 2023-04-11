@@ -52,3 +52,5 @@ typedef enum {
 WR_RHI_HANDLE(Walrus_ShaderHandle);
 WR_RHI_HANDLE(Walrus_ProgramHandle);
 WR_RHI_HANDLE(Walrus_UniformHandle);
+WR_RHI_HANDLE(Walrus_BufferHandle);
+WR_RHI_HANDLE(Walrus_VertexLayoutHandle);

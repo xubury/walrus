@@ -3,6 +3,7 @@
 #include <core/log.h>
 #include <core/memory.h>
 #include <core/macro.h>
+#include <core/math.h>
 
 #include <string.h>
 
@@ -83,7 +84,7 @@ static Walrus_UniformType conver_gl_type(GLenum type)
 
 static GLenum const s_shader_type[] = {GL_COMPUTE_SHADER, GL_VERTEX_SHADER, GL_GEOMETRY_SHADER, GL_FRAGMENT_SHADER};
 
-void gl_create_shader(Walrus_ShaderType type, Walrus_ShaderHandle handle, char const *source)
+void gl_shader_create(Walrus_ShaderType type, Walrus_ShaderHandle handle, char const *source)
 {
     GLenum shader = glCreateShader(s_shader_type[type]);
     glShaderSource(shader, 1, &source, NULL);
@@ -103,19 +104,20 @@ void gl_create_shader(Walrus_ShaderType type, Walrus_ShaderHandle handle, char c
     g_ctx->shaders[handle.id] = shader;
 }
 
-void gl_destroy_shader(Walrus_ShaderHandle handle)
+void gl_shader_destroy(Walrus_ShaderHandle handle)
 {
     glDeleteShader(g_ctx->shaders[handle.id]);
     g_ctx->shaders[handle.id] = 0;
 }
 
-void gl_create_program(Walrus_ProgramHandle handle, Walrus_ShaderHandle shader0, Walrus_ShaderHandle shader1,
+void gl_program_create(Walrus_ProgramHandle handle, Walrus_ShaderHandle shader0, Walrus_ShaderHandle shader1,
                        Walrus_ShaderHandle shader2)
 {
-    GLuint     id   = glCreateProgram();
-    GlProgram *prog = &g_ctx->programs[handle.id];
-    prog->id        = id;
-    prog->buffer    = NULL;
+    GLuint     id         = glCreateProgram();
+    GlProgram *prog       = &g_ctx->programs[handle.id];
+    prog->id              = id;
+    prog->buffer          = NULL;
+    prog->num_predefineds = 0;
 
     if (shader0.id != WR_INVALID_HANDLE) {
         glAttachShader(id, g_ctx->shaders[shader0.id]);
@@ -208,7 +210,13 @@ void gl_create_program(Walrus_ProgramHandle handle, Walrus_ShaderHandle shader0,
         }
         Walrus_UniformType type = conver_gl_type(gl_type);
         if (type != WR_RHI_UNIFORM_COUNT && loc != 0xffffffff) {
-            if (walrus_hash_table_contains(g_ctx->uniform_registry, name)) {
+            u8 predefined_type = get_predefined_type(name);
+            if (predefined_type != PREDEFINED_COUNT && prog->num_predefineds < PREDEFINED_COUNT) {
+                prog->predefineds[prog->num_predefineds].loc  = loc;
+                prog->predefineds[prog->num_predefineds].type = predefined_type;
+                ++prog->num_predefineds;
+            }
+            else if (walrus_hash_table_contains(g_ctx->uniform_registry, name)) {
                 if (prog->buffer == NULL) {
                     prog->buffer = uniform_buffer_create(1024);
                 }
@@ -226,7 +234,7 @@ void gl_create_program(Walrus_ProgramHandle handle, Walrus_ShaderHandle shader0,
     }
 }
 
-void gl_destroy_program(Walrus_ProgramHandle handle)
+void gl_program_destroy(Walrus_ProgramHandle handle)
 {
     GlProgram *prog = &g_ctx->programs[handle.id];
     glDeleteProgram(prog->id);

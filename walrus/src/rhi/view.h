@@ -2,6 +2,8 @@
 
 #include <core/rect.h>
 
+#include <cglm/types.h>
+
 typedef struct {
     u8  index[8];
     f32 depth;
@@ -12,4 +14,7 @@ typedef struct {
 typedef struct {
     Walrus_RenderClear clear;
     Walrus_Rect        viewport;
-} Walrus_RenderView;
+
+    mat4 view;
+    mat4 projection;
+} RenderView;

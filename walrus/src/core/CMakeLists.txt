@@ -6,6 +6,7 @@ add_library(
   hash.c
   list.c
   log.c
+  math.c
   memory.c
   queue.c
   string.c

@@ -105,9 +105,9 @@ void uniform_buffer_write_uniform_handle(UniformBuffer *buffer, Walrus_UniformTy
 
 u64 uniform_encode_op(Walrus_UniformType type, u32 loc, u8 num)
 {
-    const u64 _type = (u64)(type) << OP_TYPE_SHIFT;
-    const u64 _loc  = (u64)(loc) << OP_LOC_SHIFT;
-    const u64 _num  = (u64)(num) << OP_NUM_SHIFT;
+    const u64 _type = (u64)type << OP_TYPE_SHIFT;
+    const u64 _loc  = (u64)loc << OP_LOC_SHIFT;
+    const u64 _num  = (u64)num << OP_NUM_SHIFT;
     return _type | _loc | _num;
 }
 

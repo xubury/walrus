@@ -1,15 +1,26 @@
 #include "rhi_p.h"
 #include <core/macro.h>
+#include <core/math.h>
 #include <core/memory.h>
 #include <core/string.h>
 
 #include <math.h>
 #include <string.h>
+#include <cglm/mat4.h>
+
+typedef struct {
+    Walrus_UniformType type;
+    const char*        name;
+    u8                 num;
+} UniformAttribute;
+
+static const UniformAttribute s_predefineds[] = {
+    {WR_RHI_UNIFORM_MAT4, "u_view", 1}, {WR_RHI_UNIFORM_MAT4, "u_viewproj", 1}, {WR_RHI_UNIFORM_MAT4, "u_model", 1}};
 
 static char const* no_backend_str = "No render backend specifed";
 
-static Walrus_RhiContext* s_ctx   = NULL;
-static Walrus_RhiVTable*  s_table = NULL;
+static RhiContext* s_ctx   = NULL;
+static RhiVTable*  s_table = NULL;
 
 static void handles_init(void)
 {
@@ -47,21 +58,30 @@ void renderer_update_uniforms(UniformBuffer* uniform, u32 begin, u32 end)
     }
 }
 
+u8 get_predefined_type(const char* name)
+{
+    for (u8 i = 0; i < PREDEFINED_COUNT; ++i) {
+        if (strcmp(s_predefineds[i].name, name) == 0) {
+            return i;
+        }
+    }
+    return PREDEFINED_COUNT;
+}
+
 Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags)
 {
-    s_ctx = walrus_malloc(sizeof(Walrus_RhiContext));
+    s_ctx = walrus_malloc(sizeof(RhiContext));
     if (s_ctx == NULL) {
         return WR_RHI_ALLOC_ERROR;
     }
 
-    s_table = walrus_malloc(sizeof(Walrus_RhiVTable));
+    s_table = walrus_malloc(sizeof(RhiVTable));
     if (s_table == NULL) {
         return WR_RHI_ALLOC_ERROR;
     }
 
-    s_ctx->flags = flags;
-
-    frame_init(&s_ctx->submit_frame);
+    s_ctx->flags        = flags;
+    s_ctx->submit_frame = &s_ctx->frames;
 
     s_ctx->uniform_begin = 0;
     s_ctx->uniform_end   = 0;
@@ -73,9 +93,11 @@ Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags)
         walrus_assert_msg(false, no_backend_str);
     }
 
+    frame_init(s_ctx->submit_frame);
     handles_init();
 
     s_ctx->uniform_map = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
+
     for (u32 i = 0; i < WR_RHI_MAX_UNIFORMS; ++i) {
         s_ctx->uniform_refs[i].ref_count = 0;
     }
@@ -88,12 +110,13 @@ void walrus_rhi_shutdown(void)
     walrus_hash_table_destroy(s_ctx->uniform_map);
 
     handles_shutdown();
-    gl_backend_shutdown();
+    frame_shutdown(s_ctx->submit_frame);
 
-    frame_shutdown(&s_ctx->submit_frame);
+    gl_backend_shutdown();
 
     walrus_free(s_ctx);
     walrus_free(s_table);
+
     s_ctx   = NULL;
     s_table = NULL;
 }
@@ -110,13 +133,13 @@ char const* walrus_rhi_error_msg(void)
 
 void walrus_rhi_set_resolution(i32 width, i32 height)
 {
-    s_ctx->submit_frame.resolution.width  = width;
-    s_ctx->submit_frame.resolution.height = height;
+    s_ctx->submit_frame->resolution.width  = width;
+    s_ctx->submit_frame->resolution.height = height;
 }
 
 void walrus_rhi_frame(void)
 {
-    Walrus_RenderFrame* frame = &s_ctx->submit_frame;
+    RenderFrame* frame = s_ctx->submit_frame;
     memcpy(frame->views, s_ctx->views, sizeof(s_ctx->views));
 
     frame_finish(frame);
@@ -129,12 +152,12 @@ void walrus_rhi_frame(void)
     frame_start(frame);
 }
 
-void walrus_rhi_submit(i16 view_id, Walrus_ProgramHandle program)
+void walrus_rhi_submit(i16 view_id, Walrus_ProgramHandle program, u8 flags)
 {
-    Walrus_RenderFrame* frame = &s_ctx->submit_frame;
+    RenderFrame* frame = s_ctx->submit_frame;
 
     u32 const render_item_id = frame->num_render_items;
-    frame->num_render_items  = fmin(WR_RHI_MAX_DRAW_CALLS, frame->num_render_items + 1);
+    frame->num_render_items  = walrus_min(WR_RHI_MAX_DRAW_CALLS, walrus_u32satadd(frame->num_render_items, 1));
 
     s_ctx->uniform_end        = frame->uniforms->pos;
     s_ctx->draw.uniform_begin = s_ctx->uniform_begin;
@@ -143,6 +166,12 @@ void walrus_rhi_submit(i16 view_id, Walrus_ProgramHandle program)
     frame->program[render_item_id]           = program;
     frame->view_ids[render_item_id]          = view_id;
     frame->render_items[render_item_id].draw = s_ctx->draw;
+
+    draw_clear(&s_ctx->draw, flags);
+
+    if (flags & WR_RHI_DISCARD_STATE) {
+        s_ctx->uniform_begin = s_ctx->uniform_end;
+    }
 }
 
 u32 walrus_rhi_compose_rgba(u8 r, u8 g, u8 b, u8 a)
@@ -160,9 +189,9 @@ void walrus_rhi_decompose_rgba(u32 rgba, u8* r, u8* g, u8* b, u8* a)
 
 void walrus_rhi_set_view_rect(i16 view_id, i32 x, i32 y, i32 width, i32 height)
 {
-    width                   = fmax(width, 1);
-    height                  = fmax(height, 1);
-    Walrus_RenderView* view = &s_ctx->views[view_id];
+    width            = walrus_max(width, 1);
+    height           = walrus_max(height, 1);
+    RenderView* view = &s_ctx->views[view_id];
 
     view->viewport.x      = x;
     view->viewport.y      = y;
@@ -178,6 +207,20 @@ void walrus_rhi_set_view_clear(i16 view_id, u16 flags, u32 rgba, f32 depth, u8 s
     clear->flags   = flags;
     clear->depth   = depth;
     clear->stencil = stencil;
+}
+
+void walrus_rhi_set_view_transform(i16 view_id, mat4 view, mat4 projection)
+{
+    RenderView* v = &s_ctx->views[view_id];
+    glm_mat4_copy(view, v->view);
+    glm_mat4_copy(projection, v->projection);
+}
+
+void walrus_rhi_set_transform(mat4 const transform)
+{
+    u32 num                  = 1;
+    s_ctx->draw.start_matrix = frame_add_matrices(s_ctx->submit_frame, transform, &num);
+    s_ctx->draw.num_matrices = num;
 }
 
 Walrus_ShaderHandle walrus_rhi_create_shader(Walrus_ShaderType type, char const* source)
@@ -250,8 +293,8 @@ Walrus_UniformHandle walrus_rhi_create_uniform(char const* name, Walrus_UniformT
 
     u32 const size = num * get_uniform_size(type);
     if (walrus_hash_table_contains(s_ctx->uniform_map, name)) {
-        handle.id              = walrus_ptr_to_u32(walrus_hash_table_lookup(s_ctx->uniform_map, name));
-        Walrus_UniformRef* ref = &s_ctx->uniform_refs[handle.id];
+        handle.id       = walrus_ptr_to_u32(walrus_hash_table_lookup(s_ctx->uniform_map, name));
+        UniformRef* ref = &s_ctx->uniform_refs[handle.id];
         if (ref->size < size) {
             // resize uniform
         }
@@ -265,11 +308,11 @@ Walrus_UniformHandle walrus_rhi_create_uniform(char const* name, Walrus_UniformT
             return handle;
         }
 
-        Walrus_UniformRef* ref = &s_ctx->uniform_refs[handle.id];
-        ref->name              = walrus_str_dup(name);
-        ref->type              = type;
-        ref->size              = size;
-        ref->ref_count         = 1;
+        UniformRef* ref = &s_ctx->uniform_refs[handle.id];
+        ref->name       = walrus_str_dup(name);
+        ref->type       = type;
+        ref->size       = size;
+        ref->ref_count  = 1;
         walrus_hash_table_insert(s_ctx->uniform_map, ref->name, walrus_u32_to_ptr(handle.id));
 
         s_table->create_uniform_fn(handle, name, size);
@@ -280,7 +323,7 @@ Walrus_UniformHandle walrus_rhi_create_uniform(char const* name, Walrus_UniformT
 
 void walrus_rhi_destroy_uniform(Walrus_UniformHandle handle)
 {
-    Walrus_UniformRef* ref = &s_ctx->uniform_refs[handle.id];
+    UniformRef* ref = &s_ctx->uniform_refs[handle.id];
     if (ref->ref_count > 0) {
         --ref->ref_count;
         if (ref->ref_count == 0) {
@@ -296,10 +339,10 @@ void walrus_rhi_destroy_uniform(Walrus_UniformHandle handle)
 
 void walrus_rhi_set_uniform(Walrus_UniformHandle handle, u32 offset, u32 size, void const* data)
 {
-    Walrus_UniformRef* ref = &s_ctx->uniform_refs[handle.id];
+    UniformRef* ref = &s_ctx->uniform_refs[handle.id];
     if (ref->ref_count > 0) {
-        uniform_buffer_update(&s_ctx->submit_frame.uniforms, 64 << 10, 1 << 20);
-        uniform_buffer_write_uniform(s_ctx->submit_frame.uniforms, ref->type, handle, offset, size, data);
+        uniform_buffer_update(&s_ctx->submit_frame->uniforms, 64 << 10, 1 << 20);
+        uniform_buffer_write_uniform(s_ctx->submit_frame->uniforms, ref->type, handle, offset, size, data);
     }
     else {
         walrus_error("Cannot find valid uniform!");

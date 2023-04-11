@@ -1,6 +1,7 @@
 #include <core/string.h>
 #include <core/memory.h>
 #include <core/macro.h>
+#include <core/math.h>
 
 #include <stdlib.h>
 #include <string.h>
