@@ -34,7 +34,7 @@ char const *vs_src =
 
 char const *fs_src =
     "#version 300 es\n"
-    "precision mediump float;"
+    "precision mediump float;\n"
     "out vec4 fragColor;"
     "in vec2 v_pos;"
     "in vec2 v_uv;"
@@ -64,9 +64,7 @@ void on_render(Walrus_App *app)
     walrus_rhi_set_transform(data->model);
     walrus_rhi_set_vertex_buffer(0, data->buffer, data->pos_layout, 0, UINT32_MAX);
     walrus_rhi_set_vertex_buffer(1, data->uv_buffer, data->uv_layout, 0, UINT32_MAX);
-    walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
-    u32 texture_slot = 0;
-    walrus_rhi_set_uniform(data->u_texture, 0, sizeof(u32), &texture_slot);
+    /* walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX); */
     walrus_rhi_set_texture(0, data->u_texture, data->texture);
     /* walrus_rhi_set_image(0, data->texture, 0, WR_RHI_ACCESS_READ, WR_RHI_FORMAT_RGBA8); */
     walrus_rhi_submit(0, data->shader, WR_RHI_DISCARD_ALL);

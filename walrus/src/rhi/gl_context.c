@@ -288,9 +288,8 @@ static void submit(RenderFrame *frame)
                         GlTexture const *texture = &g_ctx->textures[bind->id];
                         switch (bind->type) {
                             case WR_RHI_BIND_TEXTURE: {
-                                glBindTexture(texture->target, texture->id);
                                 glActiveTexture(GL_TEXTURE0 + unit);
-                                glBindTexture(texture->target, 0);
+                                glBindTexture(texture->target, texture->id);
                             } break;
                             case WR_RHI_BIND_IMAGE: {
                                 glBindImageTexture(unit, texture->id, bind->mip, GL_FALSE, 0, s_access[bind->access],

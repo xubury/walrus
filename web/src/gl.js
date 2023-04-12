@@ -8,6 +8,7 @@ var glUniforms = [];
 var glShaders = [];
 var glTextures = [];
 var glBuffers = [];
+var glRenderBuffers = [];
 var glVertexArrays = [];
 
 const GL_INFO_LOG_LENGTH = 0x8b84
@@ -79,7 +80,7 @@ function getSource(count, string, length) {
 function setupGlContext(canvas, attr) {
     var attr = {
         majorVersion: 3,
-        minorVersion: 0,
+        minorVersion: 2,
         antialias: true,
         alpha: false,
     };
@@ -101,7 +102,7 @@ function setupGlContext(canvas, attr) {
     return true;
 }
 
-function webGlGetTexPixelData(type, format, width, height, pixels, internalFormat)
+function webGlGetTexPixelData(type, format, width, height, pixels)
 {
     var sizePerPixel;
     var numChannels;
@@ -217,6 +218,27 @@ export function importGl(env)
             glCtx.viewport(x, y, w, h);
         },
 
+        glColorMask: function(r, g, b, a) {
+            glCtx.colorMask(r, g, b, a)
+        },
+
+        glClearDepth: function(depth) {
+            glCtx.clearDepth(depth)
+        },
+
+        glDepthMask: function(flag) {
+            glCtx.depthMask(flag);
+        },
+
+        glClearStencil: function(flag) {
+            glCtx.clearStencil(flag)
+        },
+
+        glBindImageTexture: function(unit, texture, level, layered, layer, access, format) {
+            // webgl2.0 not supported yet
+            // glCtx.bindImageTexture(unit, texture, level, layered, layer, access, format)
+        },
+
         glCreateProgram: function () {
             var id = getNewId(glPrograms);
             var program = glCtx.createProgram();
@@ -225,9 +247,19 @@ export function importGl(env)
             return id;
         },
 
+        glDeleteProgram: function (id) {
+            glCtx.deleteProgram(glPrograms[id]);
+            return id;
+        },
+
         glCreateShader: function (shaderType) {
             var id = getNewId(glShaders);
             glShaders[id] = glCtx.createShader(shaderType);
+            return id;
+        },
+
+        glDeleteShader: function (id) {
+            glCtx.deleteShader(glShaders[id]);
             return id;
         },
 
@@ -249,6 +281,23 @@ export function importGl(env)
             }
             var heap = sys.getHeap()
             heap.setInt32(ptr, ret, true);
+        },
+
+        glGetActiveUniform: function(program, index, bufSize, length, size, type, name) {
+            var heap = sys.getHeap()
+            var info = glCtx.getActiveUniform(glPrograms[program], index) 
+            if (length) {
+                heap.setBigUint64(length, info.length, true);
+            }
+            if (size) {
+                heap.setInt32(size, info.size, true);
+            }
+            if (type) {
+                heap.setInt32(type, info.type, true);
+            }
+            if (name) {
+                sys.writeHeapString(info.name, name, bufSize)
+            }
         },
 
         glGetShaderInfoLog: function (shader, bufSize, logSize, ptr) {
@@ -320,32 +369,60 @@ export function importGl(env)
             return -1;
         },
 
-        glUniform1f : function(loc, v0) { glCtx.uniform1f(glUniforms[loc], v0); },
-        glUniform1i : function(loc, v0) { glCtx.uniform1i(glUniforms[loc], v0); },
-        glUniform2f : function(loc, v0, v1) { glCtx.uniform2f(glUniforms[loc], v0, v1); },
-        glUniform3f : function(loc, v0, v1, v2) { glCtx.uniform3f(glUniforms[loc], v0, v1, v2); },
-        glUniformMatrix4fv: function(loc, count, transpose, value) {
-            count <<= 4;
-            var view;
+        glUniform1f: function(loc, v0) { glCtx.uniform1f(glUniforms[loc], v0); },
+        glUniform1fv : function(loc, count, value) { 
             var heap = sys.getHeap()
             var HEAPF32 = new Float32Array(heap.buffer);
-            if (count <= GL_MINI_TEMP_BUFFER_SIZE) {
-                view = GL_miniTempBufferViews[count - 1];
-                for (var ptr = value >> 2, i = 0; i != count; i += 4) {
-                    view[i] = HEAPF32[ptr + i]
-                    view[i + 1] = HEAPF32[ptr + i + 1]
-                    view[i + 2] = HEAPF32[ptr + i + 2]
-                    view[i + 3] = HEAPF32[ptr + i + 3]
-                }
-
-            } else {
-                view = HEAPF32.subarray(value >> 2, (value + count * 4) >> 2)
-            }
-            glCtx.uniformMatrix4fv(glUniforms[loc], !!transpose, view);
+            glCtx.uniform1fv(glUniforms[loc], HEAPF32, value >> 2, count); 
+        },
+        glUniform1i : function(loc, v0) {
+            glCtx.uniform1i(glUniforms[loc], v0);
+        },
+        glUniform1iv: function(loc, count, value) {
+            var heap = sys.getHeap()
+            var HEAP32 = new Int32Array(heap.buffer);
+            glCtx.uniform1iv(glUniforms[loc], v0, HEAP32, value>>2, count);
+        },
+        glUniform1ui : function(loc, v0) { glCtx.uniform1ui(glUniforms[loc], v0); },
+        glUniform1uiv: function(loc, count, value) {
+            var heap = sys.getHeap()
+            var HEAPU32 = new Uint32Array(heap.buffer);
+            glCtx.uniform1uiv(glUniforms[loc], v0, HEAPU32, value >> 2, count);
+        },
+        glUniform2f : function(loc, v0, v1) { glCtx.uniform2f(glUniforms[loc], v0, v1); },
+        glUniform2fv : function(loc, count, value) { 
+            var heap = sys.getHeap()
+            var HEAPF32 = new Float32Array(heap.buffer);
+            glCtx.uniform2fv(glUniforms[loc], HEAPF32, value >> 2, count * 2); 
+        },
+        glUniform3f : function(loc, v0, v1, v2) { glCtx.uniform3f(glUniforms[loc], v0, v1, v2); },
+        glUniform3fv : function(loc, count, value) { 
+            var heap = sys.getHeap()
+            var HEAPF32 = new Float32Array(heap.buffer);
+            glCtx.glUniform3fv(glUniforms[loc], HEAPF32, value >> 2, count * 3); 
+        },
+        glUniform4fv : function(loc, count, value) { 
+            var heap = sys.getHeap()
+            var HEAPF32 = new Float32Array(heap.buffer);
+            glCtx.glUniform4fv(glUniforms[loc], HEAPF32, value >> 2, count * 4); 
+        },
+        glUniformMatrix3fv: function(loc, count, transpose, value) {
+            var heap = sys.getHeap()
+            var HEAPF32 = new Float32Array(heap.buffer);
+            glCtx.uniformMatrix3fv(glUniforms[loc], !!transpose, HEAPF32, value>>2, count*9);
+        },
+        glUniformMatrix4fv: function(loc, count, transpose, value) {
+            var heap = sys.getHeap()
+            var HEAPF32 = new Float32Array(heap.buffer);
+            glCtx.uniformMatrix4fv(glUniforms[loc], !!transpose, HEAPF32, value>>2, count*16);
         },
 
         glDrawArrays: function (mode, first, count) {
             glCtx.drawArrays(mode, first, count);
+        },
+
+        glDrawElements: function(mode, count, type, offset) {
+            glCtx.drawElements(mode, count, type, offset);
         },
 
         glGenTextures: function (n, buffers) {
@@ -367,9 +444,61 @@ export function importGl(env)
         glTexImage2D : function(target, level, internalformat, width, height, border, format, type, data) {
             var pixelData = null;
             if (data) {
-                pixelData = webGlGetTexPixelData(type, format, width, height, data, internalformat);
+                pixelData = webGlGetTexPixelData(type, format, width, height, data);
             }
             glCtx.texImage2D(target, level, internalformat, width, height, border, format, type, pixelData);
+        },
+
+        glTexSubImage2D : function(target, level, x, y, width, height, format, type, data) {
+            var pixelData = null;
+            if (data) {
+                pixelData = webGlGetTexPixelData(type, format, width, height, data);
+            }
+            glCtx.texSubImage2D(target, level, x, y, width, height, format, type, pixelData);
+        },
+
+        glTexSubImage3D : function(target, level, x, y, z, width, height, depth, format, type, data) {
+            var pixelData = null;
+            if (data) {
+                pixelData = webGlGetTexPixelData(type, format, width, height, data);
+            }
+            glCtx.texSubImage2D(target, level, x, y, z, width, height, depth, format, type, pixelData);
+        },
+        glTexStorage3D: function(target, levels, internal, width, height, depth) {
+            glCtx.texStorage3D(target, levels, internal, width, height, depth)
+        },
+        glTexStorage3DMultisample: function(target, msaa, levels, internal, width, height, depth) {
+            glCtx.texStorage3DMultisample(target, msaa, levels, internal, width, height, depth)
+        },
+        glTexStorage2D: function(target, levels, internal, width, height) {
+            glCtx.texStorage2D(target, levels, internal, width, height)
+        },
+        glTexStorage2DMultisample: function(target, msaa, levels, internal, width, height) {
+            glCtx.texStorage2DMultisample(target, msaa, levels, internal, width, height)
+        },
+
+        glGenRenderbuffers: function(n, buffers) {
+            genObjects(n, buffers, "createRenderbuffers", glRenderBuffers);
+        },
+
+        glDeleteRenderbuffers: function(n, buffers) {
+            deleteObjects(n, buffers, "deleteRenderbuffers", glRenderBuffers);
+        },
+
+        glBindRenderbuffer: function(target, buffer) {
+            glCtx.bindRenderbuffer(target, buffer);
+        },
+
+        glRenderbufferStorage: function(target, internal, width, height) {
+            glCtx.renderbufferStorage(target, internal, width, height);
+        },
+
+        glRenderbufferStorageMultisample: function(target, msaa, internal, width, height) {
+            glCtx.renderbufferStorageMultisample(target, msaa, internal, width, height);
+        },
+
+        glPixelStorei: function(pname, v) {
+            glCtx.pixelStorei(pname, v);
         },
 
         glGenerateMipmap : function(target) {
@@ -413,6 +542,10 @@ export function importGl(env)
 
         glEnableVertexAttribArray: function(index) { glCtx.enableVertexAttribArray(index); },
         glDisableVertexAttribArray: function(index) { glCtx.disableVertexAttribArray(index); },
+
+        glVertexAttribIPointer:  function(index, size, type, stride, ptr) { 
+            glCtx.vertexAttribPointer(index, size, type, stride, ptr); 
+        },
 
         glVertexAttribPointer:  function(index, size, type, normalized, stride, ptr) { 
             glCtx.vertexAttribPointer(index, size, type, !!normalized, stride, ptr); 
