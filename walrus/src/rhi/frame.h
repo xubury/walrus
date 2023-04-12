@@ -45,6 +45,24 @@ typedef struct {
 } RenderCompute;
 
 typedef struct {
+    u32 sampler_flags;
+    enum {
+        WR_RHI_BIND_TEXTURE,
+        WR_RHI_BIND_IMAGE,
+
+        WR_RHI_BIND_COUNT
+    } type;
+    Walrus_Handle id;
+    u8            format;
+    u8            access;
+    u8            mip;
+} Binding;
+
+typedef struct {
+    Binding bindings[WR_RHI_MAX_TEXTURE_SAMPLERS];
+} RenderBind;
+
+typedef struct {
     RenderDraw    draw;
     RenderCompute compute;
 } RenderItem;
@@ -54,6 +72,7 @@ typedef struct {
 
     u32        num_render_items;
     RenderItem render_items[WR_RHI_MAX_DRAW_CALLS];
+    RenderBind render_binds[WR_RHI_MAX_DRAW_CALLS];
 
     u16                  view_ids[WR_RHI_MAX_DRAW_CALLS];
     Walrus_ProgramHandle program[WR_RHI_MAX_DRAW_CALLS];
@@ -77,3 +96,5 @@ void frame_finish(RenderFrame *frame);
 u32 frame_add_matrices(RenderFrame *frame, mat4 const mat, u32 *num);
 
 void draw_clear(RenderDraw *draw, u8 flags);
+
+void bind_clear(RenderBind *bind, u8 flags);

@@ -131,7 +131,6 @@ void gl_program_create(Walrus_ProgramHandle handle, Walrus_ShaderHandle shader0,
     glLinkProgram(id);
 
     GLint succ;
-    glUseProgram(id);  // TODO: Delete this?
     glGetProgramiv(id, GL_LINK_STATUS, &succ);
     if (!succ) {
         GLint log_size = 0;

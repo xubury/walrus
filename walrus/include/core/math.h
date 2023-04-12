@@ -21,6 +21,11 @@ WR_INLINE u32 walrus_u32cmplt(u32 a, u32 b)
     return -(a < b);
 }
 
+WR_INLINE u32 walrus_u32cmple(u32 a, u32 b)
+{
+    return -(a <= b);
+}
+
 WR_INLINE u32 walrus_u32or(u32 a, u32 b)
 {
     return a | b;
@@ -51,6 +56,15 @@ WR_INLINE u32 walrus_u32satadd(u32 a, u32 b)
     u32 const add    = walrus_u32add(a, b);
     u32 const lt     = walrus_u32cmplt(add, a);
     u32 const result = walrus_u32or(add, lt);
+    return result;
+}
+
+WR_INLINE uint32_t walrus_u32satsub(uint32_t a, uint32_t b)
+{
+    u32 const sub    = walrus_u32sub(a, b);
+    u32 const le     = walrus_u32cmple(sub, a);
+    u32 const result = walrus_u32and(sub, le);
+
     return result;
 }
 

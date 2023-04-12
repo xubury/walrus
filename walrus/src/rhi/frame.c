@@ -76,3 +76,15 @@ void draw_clear(RenderDraw *draw, u8 flags)
         draw->index_buffer.id = WR_INVALID_HANDLE;
     }
 }
+
+void bind_clear(RenderBind *bind, u8 flags)
+{
+    if (flags & WR_RHI_DISCARD_BINDINGS) {
+        for (u32 i = 0; i < WR_RHI_MAX_TEXTURE_SAMPLERS; ++i) {
+            Binding *binding       = &bind->bindings[i];
+            binding->id            = WR_INVALID_HANDLE;
+            binding->type          = WR_RHI_BIND_IMAGE;
+            binding->sampler_flags = 0;
+        }
+    }
+}

@@ -24,6 +24,9 @@ typedef void (*RhiDestroyVertexLayoutFn)(Walrus_LayoutHandle handle);
 typedef void (*RhiCreateBufferFn)(Walrus_BufferHandle handle, void const *data, u64 size, u16 flags);
 typedef void (*RhiDestroyBufferFn)(Walrus_BufferHandle handle);
 
+typedef void (*RhiCreateTextureFn)(Walrus_TextureHandle handle, Walrus_TextureCreateInfo const *info);
+typedef void (*RhiDestroyTextureFn)(Walrus_TextureHandle handle);
+
 typedef struct {
     RhiSubmitFn submit_fn;
 
@@ -42,6 +45,9 @@ typedef struct {
 
     RhiCreateBufferFn  buffer_create_fn;
     RhiDestroyBufferFn buffer_destroy_fn;
+
+    RhiCreateTextureFn  texture_create_fn;
+    RhiDestroyTextureFn texture_destroy_fn;
 } RhiVTable;
 
 typedef struct {
@@ -61,8 +67,10 @@ typedef struct {
 
     RenderDraw    draw;
     RenderCompute compute;
-    RenderFrame   frames;
-    RenderFrame  *submit_frame;
+    RenderBind    bind;
+
+    RenderFrame  frames;
+    RenderFrame *submit_frame;
 
     RenderView views[WR_RHI_MAX_VIEWS];
 
@@ -74,6 +82,7 @@ typedef struct {
     UniformRef          uniform_refs[WR_RHI_MAX_UNIFORMS];
     Walrus_HandleAlloc *vertex_layouts;
     Walrus_HandleAlloc *buffers;
+    Walrus_HandleAlloc *textures;
 
     Walrus_HashTable *uniform_map;
     u32               uniform_begin;
@@ -102,7 +111,7 @@ typedef struct {
 
 void renderer_uniform_updates(UniformBuffer *uniform, u32 begin, u32 end);
 
-u8 get_predefined_type(const char *name);
+u8 get_predefined_type(char const *name);
 
 void gl_backend_init(RhiContext *ctx, RhiVTable *vtable);
 

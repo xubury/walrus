@@ -10,11 +10,11 @@
 
 typedef struct {
     Walrus_UniformType type;
-    const char*        name;
+    char const*        name;
     u8                 num;
 } UniformAttribute;
 
-static const UniformAttribute s_predefineds[] = {
+static UniformAttribute const s_predefineds[] = {
     {WR_RHI_UNIFORM_MAT4, "u_view", 1}, {WR_RHI_UNIFORM_MAT4, "u_viewproj", 1}, {WR_RHI_UNIFORM_MAT4, "u_model", 1}};
 
 static char const* no_backend_str = "No render backend specifed";
@@ -29,10 +29,12 @@ static void handles_init(void)
     s_ctx->uniforms       = walrus_handle_create(WR_RHI_MAX_UNIFORMS);
     s_ctx->vertex_layouts = walrus_handle_create(WR_RHI_MAX_VERTEX_LAYOUTS);
     s_ctx->buffers        = walrus_handle_create(WR_RHI_MAX_BUFFERS);
+    s_ctx->textures       = walrus_handle_create(WR_RHI_MAX_TEXTURES);
 }
 
 static void handles_shutdown(void)
 {
+    walrus_handle_destroy(s_ctx->textures);
     walrus_handle_destroy(s_ctx->buffers);
     walrus_handle_destroy(s_ctx->vertex_layouts);
     walrus_handle_destroy(s_ctx->uniforms);
@@ -43,6 +45,7 @@ static void handles_shutdown(void)
 static void discard(u8 flags)
 {
     draw_clear(&s_ctx->draw, flags);
+    bind_clear(&s_ctx->bind, flags);
 }
 
 void renderer_uniform_updates(UniformBuffer* uniform, u32 begin, u32 end)
@@ -67,7 +70,7 @@ void renderer_uniform_updates(UniformBuffer* uniform, u32 begin, u32 end)
     }
 }
 
-u8 get_predefined_type(const char* name)
+u8 get_predefined_type(char const* name)
 {
     for (u8 i = 0; i < PREDEFINED_COUNT; ++i) {
         if (strcmp(s_predefineds[i].name, name) == 0) {
@@ -195,12 +198,14 @@ void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u8 flags)
         s_ctx->draw.num_vertices = num_vertices;
     }
     else {
+        // set_vertex_count
         s_ctx->draw.num_vertices = s_ctx->num_vertices[0];
     }
 
     frame->render_items[render_item_id].draw = s_ctx->draw;
 
     draw_clear(&s_ctx->draw, flags);
+    bind_clear(&s_ctx->bind, flags);
 
     if (flags & WR_RHI_DISCARD_STATE) {
         s_ctx->uniform_begin = s_ctx->uniform_end;
@@ -302,7 +307,7 @@ void walrus_rhi_destroy_program(Walrus_ProgramHandle handle)
     walrus_handle_free(s_ctx->programs, handle.id);
 }
 
-static uint16_t get_uniform_size(Walrus_UniformType type)
+static u16 get_uniform_size(Walrus_UniformType type)
 {
     switch (type) {
         case WR_RHI_UNIFORM_SAMPLER:
@@ -466,10 +471,10 @@ void walrus_rhi_destroy_buffer(Walrus_BufferHandle handle)
 
 static bool set_stream_bit(RenderDraw* draw, u8 stream, Walrus_BufferHandle handle)
 {
-    const uint16_t bit  = 1 << stream;
-    const uint16_t mask = draw->stream_mask & ~bit;
-    const uint16_t tmp  = handle.id != WR_INVALID_HANDLE ? bit : 0;
-    draw->stream_mask   = mask | tmp;
+    u16 const bit     = 1 << stream;
+    u16 const mask    = draw->stream_mask & ~bit;
+    u16 const tmp     = handle.id != WR_INVALID_HANDLE ? bit : 0;
+    draw->stream_mask = mask | tmp;
     return tmp != 0;
 }
 
@@ -500,4 +505,103 @@ void walrus_rhi_set_index32_buffer(Walrus_BufferHandle handle, u32 offset, u32 n
     s_ctx->draw.index_size   = sizeof(u32);
     s_ctx->draw.index_offset = offset;
     s_ctx->draw.num_indices  = num_indices;
+}
+
+static u8 calculteMipmap(u16 width, u16 height)
+{
+    return 1 + floor(log2(walrus_max(width, height)));
+}
+
+Walrus_TextureHandle walrus_rhi_create_texture(Walrus_TextureCreateInfo const* info)
+{
+    Walrus_TextureHandle handle = (Walrus_TextureHandle){walrus_handle_alloc(s_ctx->textures)};
+    if (handle.id == WR_INVALID_HANDLE) {
+        s_ctx->err = WR_RHI_ALLOC_HADNLE_ERROR;
+        return handle;
+    }
+
+    Walrus_TextureCreateInfo _info = *info;
+    // if no mip mode is selected, force num_mipmaps to be 1
+    u32 const mip = (_info.flags & WR_RHI_SAMPLER_MIP_MASK) >> WR_RHI_SAMPLER_MIP_SHIFT;
+    if (mip == 0) {
+        _info.num_mipmaps = 1;
+    }
+
+    _info.num_mipmaps = _info.num_mipmaps == 0 ? calculteMipmap(_info.width, _info.height) : _info.num_mipmaps;
+
+    s_table->texture_create_fn(handle, &_info);
+    return handle;
+}
+
+Walrus_TextureHandle walrus_rhi_create_texture2d(u32 width, u32 height, Walrus_PixelFormat format, u8 mipmaps,
+                                                 u64 flags, void const* data, u64 size)
+{
+    Walrus_TextureCreateInfo info;
+    info.width       = width;
+    info.height      = height;
+    info.depth       = 1;
+    info.ratio       = WR_RHI_RATIO_COUNT;
+    info.num_mipmaps = mipmaps;
+    info.num_layers  = 1;
+    info.format      = format;
+    info.data        = data;
+    info.size        = size;
+    info.flags       = flags;
+    return walrus_rhi_create_texture(&info);
+}
+
+Walrus_TextureHandle walrus_rhi_create_texture2d_ratio(Walrus_BackBufferRatio ratio, Walrus_PixelFormat format,
+                                                       u8 mipmaps, u64 flags, void const* data, u64 size)
+{
+    Walrus_TextureCreateInfo info;
+    info.width       = 1;
+    info.height      = 1;
+    info.depth       = 1;
+    info.ratio       = ratio;
+    info.num_mipmaps = mipmaps;
+    info.num_layers  = 1;
+    info.format      = format;
+    info.data        = data;
+    info.size        = size;
+    info.flags       = flags;
+
+    return walrus_rhi_create_texture(&info);
+}
+
+void walrus_rhi_destroy_texture(Walrus_TextureHandle handle)
+{
+    if (handle.id == WR_INVALID_HANDLE) {
+        s_ctx->err = WR_RHI_HANDLE_INVALID_ERROR;
+        return;
+    }
+
+    s_table->texture_destroy_fn(handle);
+}
+
+void walrus_rhi_set_texture(u8 unit, Walrus_UniformHandle sampler, Walrus_TextureHandle texture)
+{
+    if (unit >= WR_RHI_MAX_TEXTURE_SAMPLERS) {
+        s_ctx->err = WR_RHI_TEXTURE_UNIT_ERROR;
+        return;
+    }
+
+    if (sampler.id != WR_INVALID_HANDLE) {
+        u32 _unit = unit;
+        walrus_rhi_set_uniform(sampler, 0, sizeof(_unit), &unit);
+    }
+
+    Binding* bind = &s_ctx->bind.bindings[unit];
+    bind->type    = WR_RHI_BIND_TEXTURE;
+    bind->id      = texture.id;
+}
+
+void walrus_rhi_set_image(uint8_t unit, Walrus_TextureHandle handle, u8 mip, Walrus_DataAccess access,
+                          Walrus_PixelFormat format)
+{
+    Binding* bind = &s_ctx->bind.bindings[unit];
+    bind->type    = WR_RHI_BIND_IMAGE;
+    bind->id      = handle.id;
+    bind->mip     = (uint8_t)(mip);
+    bind->format  = format;
+    bind->access  = (uint8_t)(access);
 }

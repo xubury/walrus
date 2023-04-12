@@ -737,12 +737,12 @@ u32 walrus_i32_hash(const void* p)
 
 u32 walrus_i64_hash(void const* p)
 {
-    const u64* bits = p;
+    u64 const* bits = p;
     return ((*bits >> 32) ^ (*bits & 0xffffffffU));
 }
 
 u32 walrus_double_hash(void const* p)
 {
-    const u64* bits = p;
+    u64 const* bits = p;
     return ((*bits >> 32) ^ (*bits & 0xffffffffU));
 }

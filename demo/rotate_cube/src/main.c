@@ -45,33 +45,31 @@ char const *fs_src =
 
 typedef struct {
     Walrus_ProgramHandle shader;
-    Walrus_UniformHandle texture_handle;
+    Walrus_UniformHandle u_texture;
     Walrus_BufferHandle  buffer;
     Walrus_BufferHandle  uv_buffer;
     Walrus_BufferHandle  index_buffer;
     Walrus_LayoutHandle  pos_layout;
     Walrus_LayoutHandle  uv_layout;
-    GLuint               textures[2];
+    Walrus_TextureHandle texture;
 
     mat4 model;
 
-    // Uniforms
-    GLuint u_texture;
 } AppData;
 
 void on_render(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
 
-    glBindTexture(GL_TEXTURE_2D, data->textures[0]);
-    glActiveTexture(GL_TEXTURE0);
-
     walrus_rhi_set_transform(data->model);
     walrus_rhi_set_vertex_buffer(0, data->buffer, data->pos_layout, 0, UINT32_MAX);
     walrus_rhi_set_vertex_buffer(1, data->uv_buffer, data->uv_layout, 0, UINT32_MAX);
     walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
+    u32 texture_slot = 0;
+    walrus_rhi_set_uniform(data->u_texture, 0, sizeof(u32), &texture_slot);
+    walrus_rhi_set_texture(0, data->u_texture, data->texture);
+    /* walrus_rhi_set_image(0, data->texture, 0, WR_RHI_ACCESS_READ, WR_RHI_FORMAT_RGBA8); */
     walrus_rhi_submit(0, data->shader, WR_RHI_DISCARD_ALL);
-    glUniform1i(data->u_texture, 0);
 }
 
 void on_tick(Walrus_App *app, float dt)
@@ -258,23 +256,14 @@ Walrus_AppError on_init(Walrus_App *app)
     app_data->uv_buffer    = walrus_rhi_create_buffer(uvs, sizeof(uvs), 0);
     app_data->index_buffer = walrus_rhi_create_buffer(indices, sizeof(indices), 0);
 
-    app_data->texture_handle = walrus_rhi_create_uniform("u_texture", WR_RHI_UNIFORM_SAMPLER, 1);
+    app_data->u_texture = walrus_rhi_create_uniform("u_texture", WR_RHI_UNIFORM_SAMPLER, 1);
 
     Walrus_ShaderHandle vs = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, vs_src);
     Walrus_ShaderHandle fs = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
     app_data->shader       = walrus_rhi_create_program(vs, fs);
 
-    app_data->u_texture = glGetUniformLocation(3, "u_texture");
-
     glm_mat4_identity(app_data->model);
     glm_translate(app_data->model, (vec3){0, 0, -2});
-
-    i32 const array_len = walrus_array_len(app_data->textures);
-    glGenTextures(array_len, app_data->textures);
-
-    for (i32 i = 0; i < array_len; ++i) {
-        walrus_trace("texture: %d", app_data->textures[i]);
-    }
 
     /* stbi img test */
     stbi_set_flip_vertically_on_load(true);
@@ -284,10 +273,10 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_trace("stbi_load time: %llu ms", walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC) - ts);
     if (img != NULL) {
         walrus_trace("load image width: %d height: %d channel: %d", x, y, c);
-        glBindTexture(GL_TEXTURE_2D, app_data->textures[0]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, img);
-        glGenerateMipmap(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, 0);
+
+        app_data->texture = walrus_rhi_create_texture2d(
+            x, y, WR_RHI_FORMAT_RGBA8, 0, WR_RHI_SAMPLER_MIN_LINEAR | WR_RHI_SAMPLER_MIP_LINEAR | WR_RHI_TEXTURE_SRGB,
+            img, x * y * 4);
 
         stbi_image_free(img);
     }
@@ -303,21 +292,13 @@ Walrus_AppError on_init(Walrus_App *app)
 void on_shutdown(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
-    walrus_rhi_destroy_uniform(data->texture_handle);
-
-    glDeleteTextures(walrus_array_len(data->textures), data->textures);
+    walrus_rhi_destroy_uniform(data->u_texture);
 }
 
 int main(int argc, char *argv[])
 {
     walrus_unused(argc);
     walrus_unused(argv);
-
-    // cglm test
-    vec3 ve = {1.0, 0, 0};
-    walrus_trace("before rotate: %f, %f, %f", ve[0], ve[1], ve[2]);
-    glm_vec3_rotate(ve, glm_rad(45), (vec3){0, 0, 1.0});
-    walrus_trace("after rotate: %f, %f, %f", ve[0], ve[1], ve[2]);
 
     Walrus_EngineOption opt;
     opt.window_title  = "Rotate Cube";

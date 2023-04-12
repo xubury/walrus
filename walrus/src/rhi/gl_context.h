@@ -18,6 +18,28 @@ typedef struct {
 } GlBuffer;
 
 typedef struct {
+    GLenum internal_format;
+    GLenum internal_srgb_format;
+    GLenum format;
+    GLenum type;
+} GlFormat;
+
+typedef struct {
+    GLuint id;
+    GLenum rbo;
+    GLenum target;
+
+    u32                width;
+    u32                height;
+    u32                depth;
+    u64                flags;
+    Walrus_PixelFormat format;
+
+    GlFormat gl;
+
+} GlTexture;
+
+typedef struct {
     GLuint vao;
 
     GlBuffer buffers[WR_RHI_MAX_BUFFERS];
@@ -30,6 +52,8 @@ typedef struct {
     Walrus_HashTable *uniform_registry;
 
     Walrus_VertexLayout vertex_layouts[WR_RHI_MAX_VERTEX_LAYOUTS];
+
+    GlTexture textures[WR_RHI_MAX_TEXTURES];
 } GlContext;
 
 extern GlContext *g_ctx;

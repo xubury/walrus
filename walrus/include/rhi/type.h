@@ -15,6 +15,8 @@ typedef enum {
     WR_RHI_ALLOC_ERROR,
 
     WR_RHI_ALLOC_HADNLE_ERROR,
+    WR_RHI_HANDLE_INVALID_ERROR,
+    WR_RHI_TEXTURE_UNIT_ERROR,
 } Walrus_RhiError;
 
 typedef enum {
@@ -50,8 +52,87 @@ typedef enum {
     WR_RHI_UNIFORM_COUNT,
 } Walrus_UniformType;
 
+typedef enum {
+    WR_RHI_FORMAT_ALPHA8,
+
+    WR_RHI_FORMAT_R8,
+    WR_RHI_FORMAT_R8S,
+    WR_RHI_FORMAT_R32I,
+    WR_RHI_FORMAT_R32UI,
+    WR_RHI_FORMAT_R16F,
+    WR_RHI_FORMAT_R32F,
+
+    WR_RHI_FORMAT_RG8,
+    WR_RHI_FORMAT_RG8S,
+    WR_RHI_FORMAT_RG32I,
+    WR_RHI_FORMAT_RG32UI,
+    WR_RHI_FORMAT_RG16F,
+    WR_RHI_FORMAT_RG32F,
+
+    WR_RHI_FORMAT_RGB8,
+    WR_RHI_FORMAT_RGB8S,
+    WR_RHI_FORMAT_RGB32I,
+    WR_RHI_FORMAT_RGB32UI,
+    WR_RHI_FORMAT_RGB16F,
+    WR_RHI_FORMAT_RGB32F,
+
+    WR_RHI_FORMAT_RGBA8,
+    WR_RHI_FORMAT_RGBA8S,
+    WR_RHI_FORMAT_RGBA32I,
+    WR_RHI_FORMAT_RGBA32UI,
+    WR_RHI_FORMAT_RGBA16F,
+    WR_RHI_FORMAT_RGBA32F,
+
+    WR_RHI_FORMAT_DEPTH24,
+    WR_RHI_FORMAT_STENCIL8,
+    WR_RHI_FORMAT_DEPTH24STENCIL8,
+
+    WR_RHI_FORMAT_COUNT
+} Walrus_PixelFormat;
+
+typedef enum {
+    WR_RHI_ACCESS_READ,
+    WR_RHI_ACCESS_WRITE,
+    WR_RHI_ACCESS_READWRITE,
+
+    WR_RHI_ACCESS_COUNT
+} Walrus_DataAccess;
+
+typedef enum {
+    WR_RHI_RATIO_DOUBLE,
+    WR_RHI_RATIO_EQUAL,
+    WR_RHI_RATIO_HALF,
+    WR_RHI_RATIO_QUARTER,
+    WR_RHI_RATIO_EIGHTH,
+    WR_RHI_RATIO_SIXTEENTH,
+
+    WR_RHI_RATIO_COUNT
+} Walrus_BackBufferRatio;
+
+typedef struct {
+    u16                    width;
+    u16                    height;
+    u16                    depth;
+    u8                     num_mipmaps;
+    u8                     num_layers;
+    Walrus_PixelFormat     format;
+    Walrus_BackBufferRatio ratio;
+    void const*            data;
+    u64                    size;
+
+    // WR_RHI_SAMPLER_NONE set sampler params to default
+    // Heres the default values:
+    // Wrap: Repeated
+    // MinFilter: Nearest
+    // MagFilter: Linear
+    // MipmapFilter: None.
+    u64  flags;
+    bool cubemap;
+} Walrus_TextureCreateInfo;
+
 WR_RHI_HANDLE(Walrus_ShaderHandle);
 WR_RHI_HANDLE(Walrus_ProgramHandle);
 WR_RHI_HANDLE(Walrus_UniformHandle);
 WR_RHI_HANDLE(Walrus_BufferHandle);
 WR_RHI_HANDLE(Walrus_LayoutHandle);
+WR_RHI_HANDLE(Walrus_TextureHandle);

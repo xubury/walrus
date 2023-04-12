@@ -1,5 +1,6 @@
 #include "rhi_p.h"
 #include "gl_shader.h"
+#include "gl_texture.h"
 #include "frame.h"
 
 #include <core/macro.h>
@@ -18,7 +19,7 @@ void wajs_setup_gl_context(void);
 
 GlContext *g_ctx = NULL;
 
-static const GLenum s_gl_attribute_type[WR_RHI_ATTR_COUNT] = {
+static GLenum const s_gl_attribute_type[WR_RHI_ATTR_COUNT] = {
     GL_BYTE,            // Int8
     GL_UNSIGNED_BYTE,   // Uint8
     GL_SHORT,           // Int16
@@ -26,6 +27,48 @@ static const GLenum s_gl_attribute_type[WR_RHI_ATTR_COUNT] = {
     GL_INT,             // Int32
     GL_UNSIGNED_INT,    // Uint32
     GL_FLOAT,           // Float
+};
+
+static GLenum const s_access[] = {
+    GL_READ_ONLY,
+    GL_WRITE_ONLY,
+    GL_READ_WRITE,
+};
+
+static GLenum const s_image_format[WR_RHI_FORMAT_COUNT] = {
+    GL_ALPHA,  // A8
+
+    GL_R8,        // R8
+    GL_R8_SNORM,  // R8S
+    GL_R32I,      // R32I
+    GL_R32UI,     // R32U
+    GL_R16F,      // R16F
+    GL_R32F,      // R32F
+
+    GL_RG8,        // RG8
+    GL_RG8_SNORM,  // RG8S
+    GL_RG32I,      // RG32I
+    GL_RG32UI,     // RG32U
+    GL_RG16F,      // RG16F
+    GL_RG32F,      // RG32F
+
+    GL_RGB8,        // RGB8
+    GL_RGB8_SNORM,  // RG8S
+    GL_RGB32I,      // RG32I
+    GL_RGB32UI,     // RG32U
+    GL_RGB16F,      // RG16F
+    GL_RGB32F,      // RG32F
+
+    GL_RGBA8,        // BGRA8
+    GL_RGBA8_SNORM,  // RGBA8S
+    GL_RGBA32I,      // RGBA32I
+    GL_RGBA32UI,     // RGBA32U
+    GL_RGBA16F,      // RGBA16F
+    GL_RGBA32F,      // RGBA32F
+
+    GL_ZERO,  // Depth24
+    GL_ZERO,  // Stencil8
+    GL_ZERO,  // Depth24Stencil8
 };
 
 static u64 s_vao_current_enabled = 0;
@@ -179,8 +222,12 @@ static void submit(RenderFrame *frame)
     RenderDraw current_state;
     draw_clear(&current_state, WR_RHI_DISCARD_ALL);
 
+    RenderBind current_bind;
+    bind_clear(&current_bind, WR_RHI_DISCARD_ALL);
+
     for (u32 i = 0; i < frame->num_render_items; ++i) {
         RenderItem const          *render_item = &frame->render_items[i];
+        RenderBind const          *render_bind = &frame->render_binds[i];
         RenderDraw const          *draw        = &render_item->draw;
         RenderCompute const       *compute     = &render_item->compute;
         Walrus_ProgramHandle const prog        = frame->program[i];
@@ -231,10 +278,36 @@ static void submit(RenderFrame *frame)
                 commit(program);
             }
             set_predefineds(program, frame, view, draw->start_matrix, draw->num_matrices);
+            GLbitfield barrier = 0;
+            for (u32 unit = 0; unit < WR_RHI_MAX_TEXTURE_SAMPLERS; ++unit) {
+                Binding const *bind    = &render_bind->bindings[unit];
+                Binding       *current = &current_bind.bindings[unit];
+                if (program_changed || bind->id != current->id || bind->type != current->type ||
+                    bind->sampler_flags != current->sampler_flags) {
+                    if (bind->id != WR_INVALID_HANDLE) {
+                        GlTexture const *texture = &g_ctx->textures[bind->id];
+                        switch (bind->type) {
+                            case WR_RHI_BIND_TEXTURE: {
+                                glBindTexture(texture->target, texture->id);
+                                glActiveTexture(GL_TEXTURE0 + unit);
+                                glBindTexture(texture->target, 0);
+                            } break;
+                            case WR_RHI_BIND_IMAGE: {
+                                glBindImageTexture(unit, texture->id, bind->mip, GL_FALSE, 0, s_access[bind->access],
+                                                   s_image_format[bind->format]);
+                                barrier |= GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+                            } break;
+                            default:
+                                break;
+                        }
+                    }
+                    *current = *bind;
+                }
+            }
+            walrus_unused(barrier);
 
             bool bind_attributes = false;
-            u32  num_vertices    = draw->num_vertices;
-            if (draw->stream_mask != UINT16_MAX) {
+            if (draw->stream_mask != 0) {
                 for (u32 id = 0, stream_mask = draw->stream_mask; 0 != stream_mask; stream_mask >>= 1, ++id) {
                     u32 const ntz = walrus_u32cnttz(stream_mask);
                     stream_mask >>= ntz;
@@ -246,17 +319,6 @@ static void submit(RenderFrame *frame)
                     }
                     if (current_state.streams[id].offset != stream->offset) {
                         bind_attributes = true;
-                    }
-
-                    if (stream->handle.id != WR_INVALID_HANDLE) {
-                        GlBuffer const vb = g_ctx->buffers[stream->handle.id];
-
-                        Walrus_LayoutHandle const layout_handle = stream->layout_handle;
-                        if (layout_handle.id != WR_INVALID_HANDLE) {
-                            Walrus_VertexLayout const *layout = &g_ctx->vertex_layouts[layout_handle.id];
-
-                            num_vertices = walrus_min(num_vertices, vb.size / layout->stride);
-                        }
                     }
                 }
             }
@@ -279,7 +341,7 @@ static void submit(RenderFrame *frame)
                 }
             }
 
-            if (draw->stream_mask != UINT16_MAX && bind_attributes) {
+            if (draw->stream_mask != 0 && bind_attributes) {
                 for (u8 i = 0; i < WR_RHI_MAX_VERTEX_ATTRIBUTES; ++i) {
                     lazy_disable_vertex_attribute(i);
                 }
@@ -320,6 +382,33 @@ static void submit(RenderFrame *frame)
                 apply_lazy_enabled_vertex_attribute();
             }
 
+            u32 num_vertices = draw->num_vertices;
+            if (draw->stream_mask != 0 && num_vertices == UINT32_MAX) {
+                for (u32 id = 0, stream_mask = draw->stream_mask; 0 != stream_mask; stream_mask >>= 1, ++id) {
+                    u32 const ntz = walrus_u32cnttz(stream_mask);
+                    stream_mask >>= ntz;
+                    id += ntz;
+
+                    VertexStream const *stream = &draw->streams[id];
+                    if (current_state.streams[id].handle.id != stream->handle.id) {
+                        bind_attributes = true;
+                    }
+                    if (current_state.streams[id].offset != stream->offset) {
+                        bind_attributes = true;
+                    }
+
+                    if (stream->handle.id != WR_INVALID_HANDLE) {
+                        GlBuffer const vb = g_ctx->buffers[stream->handle.id];
+
+                        Walrus_LayoutHandle const layout_handle = stream->layout_handle;
+                        if (layout_handle.id != WR_INVALID_HANDLE) {
+                            Walrus_VertexLayout const *layout = &g_ctx->vertex_layouts[layout_handle.id];
+
+                            num_vertices = walrus_min(num_vertices, vb.size / layout->stride);
+                        }
+                    }
+                }
+            }
             if (draw->index_buffer.id != WR_INVALID_HANDLE) {
                 static GLenum const gl_index_type[5] = {GL_ZERO, GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT, GL_ZERO,
                                                         GL_UNSIGNED_INT};
@@ -441,6 +530,9 @@ static void init_api(RhiVTable *vtable)
 
     vtable->buffer_create_fn  = gl_buffer_create;
     vtable->buffer_destroy_fn = gl_buffer_destroy;
+
+    vtable->texture_create_fn  = gl_texture_create;
+    vtable->texture_destroy_fn = gl_texture_destroy;
 }
 
 void gl_backend_init(RhiContext *rhi, RhiVTable *vtable)
