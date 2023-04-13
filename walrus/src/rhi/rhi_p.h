@@ -98,6 +98,7 @@ typedef struct {
     enum {
         PREDEFINED_VIEW,
         PREDEFINED_VIEWPROJ,
+        PREDEFINED_PROJECTION,
         PREDEFINED_MODEL,
 
         PREDEFINED_COUNT
@@ -112,6 +113,8 @@ typedef struct {
 void renderer_uniform_updates(UniformBuffer *uniform, u32 begin, u32 end);
 
 u8 get_predefined_type(char const *name);
+
+char const *get_glsl_header(void);
 
 void gl_backend_init(RhiContext *ctx, RhiVTable *vtable);
 

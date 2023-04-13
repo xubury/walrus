@@ -301,7 +301,7 @@ static void mousebtn_callback(GLFWwindow *window, i32 btn, i32 action, i32 mods)
 void *glfw_create_window(char const *title, u32 width, u32 height, u32 flags)
 {
     walrus_assert_msg(glfwInit(), "Cannot initialize glfw!");
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     /* glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); */
@@ -311,8 +311,11 @@ void *glfw_create_window(char const *title, u32 width, u32 height, u32 flags)
     if (handle != NULL) {
         glfwMakeContextCurrent(handle);
 
-        if (flags & WR_WINDOW_FLAG_ASYNC) {
+        if (flags & WR_WINDOW_FLAG_VSYNC) {
             glfwSwapInterval(1);
+        }
+        else {
+            glfwSwapInterval(0);
         }
         glfwSetWindowCloseCallback(handle, window_close_callback);
         glfwSetFramebufferSizeCallback(handle, framebuffer_size_callback);

@@ -127,7 +127,7 @@ typedef struct {
     // MagFilter: Linear
     // MipmapFilter: None.
     u64  flags;
-    bool cubemap;
+    bool cube_map;
 } Walrus_TextureCreateInfo;
 
 WR_RHI_HANDLE(Walrus_ShaderHandle);

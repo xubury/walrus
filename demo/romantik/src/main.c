@@ -1,22 +1,13 @@
-#include <core/type.h>
-#include <core/sys.h>
 #include <core/macro.h>
-#include <core/log.h>
-#include <core/handle_alloc.h>
+#include <core/math.h>
 #include <core/memory.h>
-#include <core/string.h>
-
 #include <engine/engine.h>
 #include <rhi/rhi.h>
-
-#include <math.h>
-#include <string.h>
-#include "core/hash.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <cglm/cglm.h>
+#include "camera.h"
 
 char const *vs_src =
     "layout (location = 0) in vec3 a_pos;\n"
@@ -32,13 +23,13 @@ char const *vs_src =
     "}\n";
 
 char const *fs_src =
-    "out vec4 fragColor;"
-    "in vec2 v_pos;"
-    "in vec2 v_uv;"
-    "uniform sampler2D u_texture;"
-    "void main() { "
-    "    fragColor = texture(u_texture, v_uv) * vec4(v_pos, 1.0, 1.0);"
-    "}";
+    "out vec4 frag_color;\n"
+    "in vec2 v_pos;\n"
+    "in vec2 v_uv;\n"
+    "uniform sampler2D u_texture;\n"
+    "void main() { \n"
+    "    frag_color = texture(u_texture, v_uv) * vec4(0.1, 0.2, 0.3, 1.0);\n"
+    "}\n";
 
 typedef struct {
     Walrus_ProgramHandle shader;
@@ -52,24 +43,29 @@ typedef struct {
 
     mat4 model;
 
+    CameraData cam;
 } AppData;
 
 void on_render(Walrus_App *app)
 {
-    AppData *data = walrus_app_userdata(app);
+    AppData    *data = walrus_app_userdata(app);
+    CameraData *cam  = &data->cam;
+
+    walrus_rhi_set_view_transform(0, cam->view, NULL);
 
     walrus_rhi_set_transform(data->model);
     walrus_rhi_set_vertex_buffer(0, data->buffer, data->pos_layout, 0, UINT32_MAX);
     walrus_rhi_set_vertex_buffer(1, data->uv_buffer, data->uv_layout, 0, UINT32_MAX);
     walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
     walrus_rhi_set_texture(0, data->u_texture, data->texture);
-    /* walrus_rhi_set_image(0, data->texture, 0, WR_RHI_ACCESS_READ, WR_RHI_FORMAT_RGBA8); */
     walrus_rhi_submit(0, data->shader, WR_RHI_DISCARD_ALL);
 }
 
 void on_tick(Walrus_App *app, float dt)
 {
     AppData *data = walrus_app_userdata(app);
+
+    camera_tick(&data->cam, dt);
     glm_rotate(data->model, 1.0 * dt, (vec3){0, 1, 0});
 }
 
@@ -92,108 +88,31 @@ Walrus_AppError on_init(Walrus_App *app)
     i32 const       width    = walrus_window_width(window);
     i32 const       height   = walrus_window_height(window);
 
+    camera_init(&app_data->cam);
+
     walrus_rhi_set_view_rect(0, 0, 0, width, height);
-    walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_COLOR | WR_RHI_CLEAR_DEPTH, 0xffffffff, 1.0, 0);
+    walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_COLOR | WR_RHI_CLEAR_DEPTH, 0xffd580ff, 1.0, 0);
 
     mat4 projection;
-    mat4 view = GLM_MAT4_IDENTITY_INIT;
-    glm_perspective(glm_rad(45.0), (float)width / height, 0.1, 100, projection);
-    walrus_rhi_set_view_transform(0, view, projection);
+    glm_perspective(glm_rad(45.0), (float)width / height, 0.1, 1000.0, projection);
+    walrus_rhi_set_view_transform(0, NULL, projection);
 
-    // clang-format off
-    f32 vertices[] = {
-        -0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-
-        -0.5f, -0.5f,  0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
-
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-
-        -0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f, -0.5f,
-
-        -0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f,
-    };
-    f32 uvs[] = {
-         0.0f, 0.0f,
-         1.0f, 0.0f,
-         1.0f, 1.0f,
-         1.0f, 1.0f,
-         0.0f, 1.0f,
-         0.0f, 0.0f,
-
-         0.0f, 0.0f,
-         1.0f, 0.0f,
-         1.0f, 1.0f,
-         1.0f, 1.0f,
-         0.0f, 1.0f,
-         0.0f, 0.0f,
-
-         1.0f, 0.0f,
-         1.0f, 1.0f,
-         0.0f, 1.0f,
-         0.0f, 1.0f,
-         0.0f, 0.0f,
-         1.0f, 0.0f,
-
-         1.0f, 0.0f,
-         1.0f, 1.0f,
-         0.0f, 1.0f,
-         0.0f, 1.0f,
-         0.0f, 0.0f,
-         1.0f, 0.0f,
-
-         0.0f, 1.0f,
-         1.0f, 1.0f,
-         1.0f, 0.0f,
-         1.0f, 0.0f,
-         0.0f, 0.0f,
-         0.0f, 1.0f,
-
-         0.0f, 1.0f,
-         1.0f, 1.0f,
-         1.0f, 0.0f,
-         1.0f, 0.0f,
-         0.0f, 0.0f,
-         0.0f, 1.0f
-    };
-    // clang-format on
+    vec3 vertices[6];
+    vec2 uvs[6];
+    f32  rad = glm_rad(90);
+    for (u8 i = 0; i < 6; ++i) {
+        vertices[i][0] = cos(rad);
+        vertices[i][1] = 0;
+        vertices[i][2] = sin(rad);
+        uvs[i][0]      = (cos(rad) + 1) * 0.5;
+        uvs[i][1]      = (sin(rad) + 1) * 0.5;
+        rad += glm_rad(60);
+    }
 
     Walrus_VertexLayout layout;
     walrus_vertex_layout_begin(&layout);
     walrus_vertex_layout_add(&layout, 0, 3, WR_RHI_ATTR_FLOAT, false);
     walrus_vertex_layout_end(&layout);
-    app_data->pos_layout = walrus_rhi_create_vertex_layout(&layout);
     app_data->pos_layout = walrus_rhi_create_vertex_layout(&layout);
 
     walrus_vertex_layout_begin(&layout);
@@ -201,10 +120,7 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_vertex_layout_end(&layout);
     app_data->uv_layout = walrus_rhi_create_vertex_layout(&layout);
 
-    u16 indices[] = {
-        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17,
-        18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
-    };
+    u16 indices[]          = {0, 1, 2, 2, 3, 4, 4, 5, 0, 0, 2, 4};
     app_data->buffer       = walrus_rhi_create_buffer(vertices, sizeof(vertices), 0);
     app_data->uv_buffer    = walrus_rhi_create_buffer(uvs, sizeof(uvs), 0);
     app_data->index_buffer = walrus_rhi_create_buffer(indices, sizeof(indices), WR_RHI_BUFFER_INDEX);
@@ -216,14 +132,10 @@ Walrus_AppError on_init(Walrus_App *app)
     app_data->shader       = walrus_rhi_create_program(vs, fs);
 
     glm_mat4_identity(app_data->model);
-    glm_translate(app_data->model, (vec3){0, 0, -2});
 
-    /* stbi img test */
     stbi_set_flip_vertically_on_load(true);
     i32 x, y, c;
-    u64 ts  = walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC);
     u8 *img = stbi_load("imgs/test.png", &x, &y, &c, 4);
-    walrus_trace("stbi_load time: %llu ms", walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC) - ts);
     if (img != NULL) {
         walrus_trace("load image width: %d height: %d channel: %d", x, y, c);
 
@@ -242,19 +154,10 @@ Walrus_AppError on_init(Walrus_App *app)
     return err;
 }
 
-void on_shutdown(Walrus_App *app)
+int main(void)
 {
-    AppData *data = walrus_app_userdata(app);
-    walrus_rhi_destroy_uniform(data->u_texture);
-}
-
-int main(int argc, char *argv[])
-{
-    walrus_unused(argc);
-    walrus_unused(argv);
-
     Walrus_EngineOption opt;
-    opt.window_title  = "Rotate Cube";
+    opt.window_title  = "romantik";
     opt.window_width  = 640;
     opt.window_height = 480;
     opt.window_flags  = WR_WINDOW_FLAG_VSYNC | WR_WINDOW_FLAG_OPENGL;
@@ -262,7 +165,6 @@ int main(int argc, char *argv[])
 
     Walrus_App *app = walrus_app_create(walrus_malloc(sizeof(AppData)));
     walrus_app_set_init(app, on_init);
-    walrus_app_set_shutdown(app, on_shutdown);
     walrus_app_set_tick(app, on_tick);
     walrus_app_set_render(app, on_render);
     walrus_app_set_event(app, on_event);

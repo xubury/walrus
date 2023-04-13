@@ -6,6 +6,8 @@
 
 #define walrus_min(a, b) (a < b ? a : b)
 
+#define walrus_clamp(v, low, high) walrus_min(walrus_max(v, low), high)
+
 WR_INLINE u32 walrus_u32add(u32 a, u32 b)
 {
     return a + b;

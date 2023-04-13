@@ -71,7 +71,7 @@ void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo con
 
     target = msaa_sample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 
-    if (info->cubemap) {
+    if (info->cube_map) {
         target = GL_TEXTURE_CUBE_MAP;
     }
     else if (info->depth > 1) {

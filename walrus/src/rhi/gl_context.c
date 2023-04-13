@@ -184,9 +184,6 @@ static void commit(GlProgram const *program)
 static void set_predefineds(GlProgram const *prog, RenderFrame const *frame, RenderView const *view, u32 start_matrix,
                             u32 num_matrices)
 {
-    walrus_unused(start_matrix);
-    walrus_unused(num_matrices);
-    walrus_unused(frame);
     for (u8 i = 0; i < prog->num_predefineds; ++i) {
         PredefinedUniform const *u = &prog->predefineds[i];
         switch (u->type) {
@@ -195,9 +192,12 @@ static void set_predefineds(GlProgram const *prog, RenderFrame const *frame, Ren
                 break;
             case PREDEFINED_VIEWPROJ: {
                 mat4 viewproj;
-                glm_mat4_mul((vec4 *)view->view, (vec4 *)view->projection, viewproj);
+                glm_mat4_mul((vec4 *)view->projection, (vec4 *)view->view, viewproj);
                 glUniformMatrix4fv(u->loc, 1, GL_FALSE, &viewproj[0][0]);
             } break;
+            case PREDEFINED_PROJECTION:
+                glUniformMatrix4fv(u->loc, 1, GL_FALSE, &view->projection[0][0]);
+                break;
             case PREDEFINED_MODEL:
                 glUniformMatrix4fv(u->loc, num_matrices, GL_FALSE, &frame->matrix_cache[start_matrix][0][0]);
                 break;
@@ -493,10 +493,11 @@ static void gl_buffer_create(Walrus_BufferHandle handle, void const *data, u64 s
 {
     walrus_unused(flags);
 
-    GLuint vbo = 0;
+    GLuint vbo    = 0;
+    GLenum target = flags & WR_RHI_BUFFER_INDEX ? GL_ELEMENT_ARRAY_BUFFER : GL_ARRAY_BUFFER;
     glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
+    glBindBuffer(target, vbo);
+    glBufferData(target, size, data, GL_STATIC_DRAW);
     g_ctx->buffers[handle.id].id   = vbo;
     g_ctx->buffers[handle.id].size = size;
 

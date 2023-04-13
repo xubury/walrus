@@ -164,3 +164,13 @@
 #define WR_RHI_SAMPLER_BITS_MASK                                                                       \
     (WR_RHI_SAMPLER_U_MASK | WR_RHI_SAMPLER_V_MASK | WR_RHI_SAMPLER_W_MASK | WR_RHI_SAMPLER_MIN_MASK | \
      WR_RHI_SAMPLER_MAG_MASK | WR_RHI_SAMPLER_MIP_MASK | WR_RHI_SAMPLER_COMPARE_MASK)
+
+#define WR_RHI_BUFFER_NONE               UINT16_C(0x0000)
+#define WR_RHI_BUFFER_COMPUTE_READ       UINT16_C(0x0100)  //!< Buffer will be read by shader.
+#define WR_RHI_BUFFER_COMPUTE_WRITE      UINT16_C(0x0200)  //!< Buffer will be used for writing.
+#define WR_RHI_BUFFER_DRAW_INDIRECT      UINT16_C(0x0400)  //!< Buffer will be used for storing draw indirect commands.
+#define WR_RHI_BUFFER_ALLOW_RESIZE       UINT16_C(0x0800)  //!< Allow dynamic index/vertex buffer resize during update.
+#define WR_RHI_BUFFER_INDEX              UINT16_C(0x1000)  //!< Index buffer.
+#define WR_RHI_BUFFER_UNIFORM_BLOCK      UINT16_C(0x2000)  //!< Uniform block buffer.
+#define WR_RHI_BUFFER_CLIENT_READ        UINT16_C(0x4000)  //!< Buffer will be read by the application.
+#define WR_RHI_BUFFER_COMPUTE_READ_WRITE (BD_BUFFER_COMPUTE_READ | BD_BUFFER_COMPUTE_WRITE)

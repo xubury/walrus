@@ -86,8 +86,9 @@ static GLenum const s_shader_type[] = {GL_COMPUTE_SHADER, GL_VERTEX_SHADER, GL_G
 
 void gl_shader_create(Walrus_ShaderType type, Walrus_ShaderHandle handle, char const *source)
 {
-    GLenum shader = glCreateShader(s_shader_type[type]);
-    glShaderSource(shader, 1, &source, NULL);
+    char const *sources[] = {get_glsl_header(), source};
+    GLenum      shader    = glCreateShader(s_shader_type[type]);
+    glShaderSource(shader, 2, sources, NULL);
     glCompileShader(shader);
     GLint succ;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &succ);

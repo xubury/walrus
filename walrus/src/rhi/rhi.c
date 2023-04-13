@@ -14,8 +14,12 @@ typedef struct {
     u8                 num;
 } UniformAttribute;
 
-static UniformAttribute const s_predefineds[] = {
-    {WR_RHI_UNIFORM_MAT4, "u_view", 1}, {WR_RHI_UNIFORM_MAT4, "u_viewproj", 1}, {WR_RHI_UNIFORM_MAT4, "u_model", 1}};
+static UniformAttribute const s_predefineds[PREDEFINED_COUNT] = {
+    {WR_RHI_UNIFORM_MAT4, "u_view", 1},
+    {WR_RHI_UNIFORM_MAT4, "u_viewproj", 1},
+    {WR_RHI_UNIFORM_MAT4, "u_projection", 1},
+    {WR_RHI_UNIFORM_MAT4, "u_model", 1},
+};
 
 static char const* no_backend_str = "No render backend specifed";
 
@@ -78,6 +82,15 @@ u8 get_predefined_type(char const* name)
         }
     }
     return PREDEFINED_COUNT;
+}
+
+char const* get_glsl_header(void)
+{
+#if WR_PLATFORM == WR_PLATFORM_WASM
+    return "#version 300 es\n precision mediump float;\n";
+#else
+    return "#version 430 core\n";
+#endif
 }
 
 Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags)
@@ -215,15 +228,15 @@ void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u8 flags)
 
 u32 walrus_rhi_compose_rgba(u8 r, u8 g, u8 b, u8 a)
 {
-    return (u32)(r) | (u32)(g) << 8 | (u32)(b) << 16 | (u32)(a) << 24;
+    return (u32)(r) << 24 | (u32)(g) << 16 | (u32)(b) << 8 | (u32)(a) << 0;
 }
 
 void walrus_rhi_decompose_rgba(u32 rgba, u8* r, u8* g, u8* b, u8* a)
 {
-    *r = (u8)(rgba >> 0);
-    *g = (u8)(rgba >> 8);
-    *b = (u8)(rgba >> 16);
-    *a = (u8)(rgba >> 24);
+    *r = (u8)(rgba >> 24);
+    *g = (u8)(rgba >> 16);
+    *b = (u8)(rgba >> 8);
+    *a = (u8)(rgba >> 0);
 }
 
 void walrus_rhi_set_view_rect(u16 view_id, i32 x, i32 y, u32 width, u32 height)
@@ -251,8 +264,12 @@ void walrus_rhi_set_view_clear(u16 view_id, u16 flags, u32 rgba, f32 depth, u8 s
 void walrus_rhi_set_view_transform(u16 view_id, mat4 view, mat4 projection)
 {
     RenderView* v = &s_ctx->views[view_id];
-    glm_mat4_copy(view, v->view);
-    glm_mat4_copy(projection, v->projection);
+    if (view) {
+        glm_mat4_copy(view, v->view);
+    }
+    if (projection) {
+        glm_mat4_copy(projection, v->projection);
+    }
 }
 
 void walrus_rhi_set_transform(mat4 const transform)
@@ -548,6 +565,7 @@ Walrus_TextureHandle walrus_rhi_create_texture2d(u32 width, u32 height, Walrus_P
     info.data        = data;
     info.size        = size;
     info.flags       = flags;
+    info.cube_map    = false;
     return walrus_rhi_create_texture(&info);
 }
 
@@ -565,6 +583,7 @@ Walrus_TextureHandle walrus_rhi_create_texture2d_ratio(Walrus_BackBufferRatio ra
     info.data        = data;
     info.size        = size;
     info.flags       = flags;
+    info.cube_map    = false;
 
     return walrus_rhi_create_texture(&info);
 }
