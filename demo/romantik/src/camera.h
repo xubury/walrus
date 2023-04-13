@@ -8,7 +8,6 @@ typedef struct {
     vec3 movement;
     f32  speed;
     f32  smoothness;
-    f32  len;
     f32  view_angle;
     f32  view_yangle;
     mat4 view;

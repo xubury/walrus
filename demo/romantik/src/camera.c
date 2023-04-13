@@ -47,11 +47,10 @@ void camera_tick(CameraData *cam, f32 dt)
 
 void camera_init(CameraData *cam)
 {
-    glm_vec3_copy((vec3){1, 3, 1}, cam->pos);
+    glm_vec3_copy((vec3){1, 5, 1}, cam->pos);
     glm_vec3_copy((vec3){0, 0, 0}, cam->movement);
-    cam->len         = 3.0f;
     cam->smoothness  = 10.0f;
     cam->speed       = 10.0f;
     cam->view_angle  = glm_rad(45);
-    cam->view_yangle = glm_rad(60);
+    cam->view_yangle = glm_rad(70);
 }

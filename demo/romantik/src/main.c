@@ -1,4 +1,5 @@
 #include <core/macro.h>
+#include <core/rect.h>
 #include <core/math.h>
 #include <core/memory.h>
 #include <engine/engine.h>
@@ -27,8 +28,28 @@ char const *fs_src =
     "in vec2 v_pos;\n"
     "in vec2 v_uv;\n"
     "uniform sampler2D u_texture;\n"
+    "vec3 acesToneMapping(vec3 color)"
+    "{"
+    "    const float a = 2.51f;"
+    "    const float b = 0.03f;"
+    "    const float c = 2.43f;"
+    "    const float d = 0.59f;"
+    "    const float e = 0.14f;"
+    "    color = color;"
+    "    return clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0, 1);"
+    "}"
+    "vec3 linear_to_srgb(vec3 linear)"
+    "{"
+    "    bvec3 cutoff = lessThan(linear, vec3(0.0031308)); "
+    "    vec3 higher = vec3(1.055) * pow(linear, vec3(1.0 / 2.4)) - vec3(0.055);"
+    "    vec3 lower = linear * vec3(12.92);"
+    "    return mix(higher, lower, cutoff);"
+    "}"
     "void main() { \n"
-    "    frag_color = texture(u_texture, v_uv) * vec4(0.1, 0.2, 0.3, 1.0);\n"
+    "    vec3 color = texture(u_texture, v_uv).rgb; \n"
+    "    color = linear_to_srgb(color) * vec3(0.529411, 0.756862, 1.0);\n"
+    "    // color = acesToneMapping(color);\n"
+    "    frag_color = vec4(color, 1.0);\n"
     "}\n";
 
 typedef struct {
@@ -73,7 +94,13 @@ void on_event(Walrus_App *app, Walrus_Event *e)
 {
     walrus_unused(app);
 
-    if (e->type == WR_EVENT_TYPE_BUTTON) {
+    if (e->type == WR_EVENT_TYPE_RESOLUTION) {
+        walrus_rhi_set_view_rect(0, 0, 0, e->resolution.width, e->resolution.height);
+        mat4 projection;
+        glm_perspective(glm_rad(45.0), (float)e->resolution.width / e->resolution.height, 0.1, 1000.0, projection);
+        walrus_rhi_set_view_transform(0, NULL, projection);
+    }
+    else if (e->type == WR_EVENT_TYPE_BUTTON) {
         if (e->button.device == WR_INPUT_KEYBOARD && e->button.button == WR_KEY_ESCAPE) {
             walrus_engine_exit();
         }
@@ -101,9 +128,9 @@ Walrus_AppError on_init(Walrus_App *app)
     vec2 uvs[6];
     f32  rad = glm_rad(90);
     for (u8 i = 0; i < 6; ++i) {
-        vertices[i][0] = cos(rad);
+        vertices[i][0] = cos(rad) * 0.5;
         vertices[i][1] = 0;
-        vertices[i][2] = sin(rad);
+        vertices[i][2] = sin(rad) * 0.5;
         uvs[i][0]      = (cos(rad) + 1) * 0.5;
         uvs[i][1]      = (sin(rad) + 1) * 0.5;
         rad += glm_rad(60);
