@@ -170,6 +170,11 @@ export async function initSys(wasmBytes, libLoader)
                 WA.wasm.__on_mouse_move(event.clientX, event.clientY, mod)
             })
         }
+        if (WA.wasm.__on_mouse_scroll) {
+            WA.canvas.addEventListener("wheel", event => {
+                WA.wasm.__on_mouse_scroll(Math.sign(event.deltaX), Math.sign(event.deltaY))
+            });
+        }
 
         if (WA.wasm.__on_mouse_down) {
             WA.canvas.addEventListener("mousedown", (event) => {

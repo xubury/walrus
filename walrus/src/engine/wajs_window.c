@@ -219,13 +219,29 @@ void __on_mouse_move(i32 x, i32 y, u8 mods)
     walrus_event_push(&e);
 }
 
+void __on_mouse_scroll(i32 x_offset, i32 y_offset)
+{
+    Walrus_Event e;
+    static f64   x = 0;
+    static f64   y = 0;
+    x += x_offset;
+    y += y_offset;
+    e.type        = WR_EVENT_TYPE_AXIS;
+    e.axis.device = WR_INPUT_MOUSE;
+    e.axis.axis   = WR_MOUSE_AXIS_WHEEL;
+    e.axis.x      = x;
+    e.axis.y      = y;
+    e.axis.z      = 0;
+    walrus_event_push(&e);
+}
+
 void __on_mouse_up(i8 btn, u8 mods)
 {
     Walrus_Event e;
     e.type          = WR_EVENT_TYPE_BUTTON;
     e.button.device = WR_INPUT_MOUSE;
     e.button.button = btn;
-    e.button.state  = true;
+    e.button.state  = false;
     e.button.mods   = mods;
     walrus_event_push(&e);
 }
@@ -236,7 +252,7 @@ void __on_mouse_down(i8 btn, u8 mods)
     e.type          = WR_EVENT_TYPE_BUTTON;
     e.button.device = WR_INPUT_MOUSE;
     e.button.button = btn;
-    e.button.state  = false;
+    e.button.state  = true;
     e.button.mods   = mods;
     walrus_event_push(&e);
 }

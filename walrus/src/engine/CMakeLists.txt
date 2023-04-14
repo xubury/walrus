@@ -16,6 +16,7 @@ if(WASM)
     PUBLIC
     -Wl,-export=__on_exit
     -Wl,-export=__on_mouse_move
+    -Wl,-export=__on_mouse_scroll
     -Wl,-export=__on_mouse_down
     -Wl,-export=__on_mouse_up
     -Wl,-export=__on_key_down

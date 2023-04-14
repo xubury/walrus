@@ -421,8 +421,16 @@ export function importGl(env)
             glCtx.drawArrays(mode, first, count);
         },
 
+        glDrawArraysInstanced: function (mode, first, count, instance) {
+            glCtx.drawArraysInstanced(mode, first, count, instance);
+        },
+
         glDrawElements: function(mode, count, type, offset) {
             glCtx.drawElements(mode, count, type, offset);
+        },
+
+        glDrawElementsInstanced: function(mode, count, type, offset, instance) {
+            glCtx.drawElementsInstanced(mode, count, type, offset, instance);
         },
 
         glGenTextures: function (n, buffers) {
@@ -549,6 +557,10 @@ export function importGl(env)
 
         glVertexAttribPointer:  function(index, size, type, normalized, stride, ptr) { 
             glCtx.vertexAttribPointer(index, size, type, !!normalized, stride, ptr); 
+        },
+
+        glVertexAttribDivisor: function(attr, divisor) {
+            glCtx.vertexAttribDivisor(attr, divisor);
         },
     });
 }
