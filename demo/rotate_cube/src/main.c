@@ -46,7 +46,7 @@ typedef struct {
     Walrus_BufferHandle  buffer;
     Walrus_BufferHandle  uv_buffer;
     Walrus_BufferHandle  index_buffer;
-    Walrus_LayoutHandle  pos_layout;
+    Walrus_LayoutHandle  layout;
     Walrus_LayoutHandle  uv_layout;
     Walrus_TextureHandle texture;
 
@@ -59,7 +59,7 @@ void on_render(Walrus_App *app)
     AppData *data = walrus_app_userdata(app);
 
     walrus_rhi_set_transform(data->model);
-    walrus_rhi_set_vertex_buffer(0, data->buffer, data->pos_layout, 0, UINT32_MAX);
+    walrus_rhi_set_vertex_buffer(0, data->buffer, data->layout, 0, UINT32_MAX);
     walrus_rhi_set_vertex_buffer(1, data->uv_buffer, data->uv_layout, 0, UINT32_MAX);
     walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
     walrus_rhi_set_texture(0, data->u_texture, data->texture);
@@ -193,8 +193,8 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_vertex_layout_begin(&layout);
     walrus_vertex_layout_add(&layout, 0, 3, WR_RHI_ATTR_FLOAT, false);
     walrus_vertex_layout_end(&layout);
-    app_data->pos_layout = walrus_rhi_create_vertex_layout(&layout);
-    app_data->pos_layout = walrus_rhi_create_vertex_layout(&layout);
+    app_data->layout = walrus_rhi_create_vertex_layout(&layout);
+    app_data->layout = walrus_rhi_create_vertex_layout(&layout);
 
     walrus_vertex_layout_begin(&layout);
     walrus_vertex_layout_add(&layout, 1, 2, WR_RHI_ATTR_FLOAT, false);

@@ -26,7 +26,7 @@ char const *hex_src =
     "    v_uv = a_uv;\n"
     "}\n";
 
-char const *hex_instance_src =
+char const *ins_hex_src =
     "layout (location = 0) in vec3 a_pos;\n"
     "layout (location = 1) in vec2 a_uv;\n"
     "layout (location = 2) in mat4 a_model;\n"
@@ -44,17 +44,16 @@ char const *fs_src =
     "in vec2 v_pos;\n"
     "in vec2 v_uv;\n"
     "uniform sampler2D u_texture;\n"
-    "vec3 linear_to_srgb(vec3 linear)"
-    "{"
-    "    bvec3 cutoff = lessThan(linear, vec3(0.0031308)); "
-    "    vec3 higher = vec3(1.055) * pow(linear, vec3(1.0 / 2.4)) - vec3(0.055);"
-    "    vec3 lower = linear * vec3(12.92);"
-    "    return mix(higher, lower, cutoff);"
-    "}"
-    "void main() { \n"
-    "    vec3 color = texture(u_texture, v_uv).rgb; \n"
+    "vec3 linear_to_srgb(vec3 linear)\n"
+    "{\n"
+    "    bvec3 cutoff = lessThan(linear, vec3(0.0031308));\n"
+    "    vec3 higher = vec3(1.055) * pow(linear, vec3(1.0 / 2.4)) - vec3(0.055);\n"
+    "    vec3 lower = linear * vec3(12.92);\n"
+    "    return mix(higher, lower, cutoff);\n"
+    "}\n"
+    "void main() {\n"
+    "    vec3 color = texture(u_texture, v_uv).rgb;\n"
     "    color = linear_to_srgb(color) * vec3(0.529411, 0.756862, 1.0);\n"
-    "    // color = acesToneMapping(color);\n"
     "    frag_color = vec4(color, 1.0);\n"
     "}\n";
 
@@ -63,11 +62,9 @@ typedef struct {
     Walrus_ProgramHandle map_shader;
     Walrus_UniformHandle u_texture;
     Walrus_BufferHandle  buffer;
-    Walrus_BufferHandle  uv_buffer;
     Walrus_BufferHandle  model_buffer;
     Walrus_BufferHandle  index_buffer;
-    Walrus_LayoutHandle  pos_layout;
-    Walrus_LayoutHandle  uv_layout;
+    Walrus_LayoutHandle  layout;
     Walrus_LayoutHandle  model_layout;
     Walrus_TextureHandle texture;
 
@@ -85,8 +82,7 @@ void on_render(Walrus_App *app)
 
     walrus_rhi_set_view_transform(0, cam->view, NULL);
 
-    walrus_rhi_set_vertex_buffer(0, data->buffer, data->pos_layout, 0, UINT32_MAX);
-    walrus_rhi_set_vertex_buffer(1, data->uv_buffer, data->uv_layout, 0, UINT32_MAX);
+    walrus_rhi_set_vertex_buffer(0, data->buffer, data->layout, 0, UINT32_MAX);
     walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
     walrus_rhi_set_texture(0, data->u_texture, data->texture);
     walrus_rhi_set_instance_buffer(data->model_buffer, data->model_layout, 0, UINT32_MAX);
@@ -151,28 +147,29 @@ Walrus_AppError on_init(Walrus_App *app)
     glm_perspective(glm_rad(45.0), (float)width / height, 0.1, 1000.0, projection);
     walrus_rhi_set_view_transform(0, NULL, projection);
 
-    vec3 vertices[6];
-    vec2 uvs[6];
-    f32  rad = glm_rad(90);
+    struct {
+        vec3 pos;
+        vec2 uv;
+    } vertices[6];
+    f32 rad = glm_rad(90);
     for (u8 i = 0; i < 6; ++i) {
-        vertices[i][0] = cos(rad);
-        vertices[i][1] = 0;
-        vertices[i][2] = sin(rad);
-        uvs[i][0]      = (cos(rad) + 1) * 0.5;
-        uvs[i][1]      = (sin(rad) + 1) * 0.5;
+        vertices[i].pos[0] = cos(rad);
+        vertices[i].pos[1] = 0;
+        vertices[i].pos[2] = sin(rad);
+        vertices[i].uv[0]  = (cos(rad) + 1) * 0.5;
+        vertices[i].uv[1]  = (sin(rad) + 1) * 0.5;
         rad += glm_rad(60);
     }
+    u16 indices[]          = {0, 1, 2, 2, 3, 4, 4, 5, 0, 0, 2, 4};
+    app_data->buffer       = walrus_rhi_create_buffer(vertices, sizeof(vertices), 0);
+    app_data->index_buffer = walrus_rhi_create_buffer(indices, sizeof(indices), WR_RHI_BUFFER_INDEX);
 
     Walrus_VertexLayout layout;
     walrus_vertex_layout_begin(&layout);
     walrus_vertex_layout_add(&layout, 0, 3, WR_RHI_ATTR_FLOAT, false);
-    walrus_vertex_layout_end(&layout);
-    app_data->pos_layout = walrus_rhi_create_vertex_layout(&layout);
-
-    walrus_vertex_layout_begin(&layout);
     walrus_vertex_layout_add(&layout, 1, 2, WR_RHI_ATTR_FLOAT, false);
     walrus_vertex_layout_end(&layout);
-    app_data->uv_layout = walrus_rhi_create_vertex_layout(&layout);
+    app_data->layout = walrus_rhi_create_vertex_layout(&layout);
 
     walrus_vertex_layout_begin_instance(&layout, 1);
     walrus_vertex_layout_add(&layout, 2, 4, WR_RHI_ATTR_FLOAT, false);
@@ -182,24 +179,20 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_vertex_layout_end(&layout);
     app_data->model_layout = walrus_rhi_create_vertex_layout(&layout);
 
-    u16 indices[]       = {0, 1, 2, 2, 3, 4, 4, 5, 0, 0, 2, 4};
-    app_data->buffer    = walrus_rhi_create_buffer(vertices, sizeof(vertices), 0);
-    app_data->uv_buffer = walrus_rhi_create_buffer(uvs, sizeof(uvs), 0);
     mat4 models[2];
     hex_map_set_flags(&app_data->hex_map, 0, 0, HEX_FLAG_NORMAL);
     hex_map_set_flags(&app_data->hex_map, 1, 1, HEX_FLAG_NORMAL);
     hex_map_compute_models(&app_data->hex_map, models, 2, HEX_FLAG_NORMAL);
 
     app_data->model_buffer = walrus_rhi_create_buffer(models, sizeof(models), 0);
-    app_data->index_buffer = walrus_rhi_create_buffer(indices, sizeof(indices), WR_RHI_BUFFER_INDEX);
 
     app_data->u_texture = walrus_rhi_create_uniform("u_texture", WR_RHI_UNIFORM_SAMPLER, 1);
 
-    Walrus_ShaderHandle vs          = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, hex_src);
-    Walrus_ShaderHandle vs_instance = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, hex_instance_src);
-    Walrus_ShaderHandle fs          = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
-    app_data->pick_shader           = walrus_rhi_create_program(vs, fs);
-    app_data->map_shader            = walrus_rhi_create_program(vs_instance, fs);
+    Walrus_ShaderHandle vs     = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, hex_src);
+    Walrus_ShaderHandle vs_ins = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, ins_hex_src);
+    Walrus_ShaderHandle fs     = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
+    app_data->pick_shader      = walrus_rhi_create_program(vs, fs);
+    app_data->map_shader       = walrus_rhi_create_program(vs_ins, fs);
 
     glm_mat4_identity(app_data->model);
 
