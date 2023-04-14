@@ -87,7 +87,7 @@ void on_tick(Walrus_App *app, float dt)
     AppData *data = walrus_app_userdata(app);
 
     camera_tick(&data->cam, dt);
-    glm_rotate(data->model, 1.0 * dt, (vec3){0, 1, 0});
+    /* glm_rotate(data->model, 1.0 * dt, (vec3){0, 1, 0}); */
 }
 
 void on_event(Walrus_App *app, Walrus_Event *e)

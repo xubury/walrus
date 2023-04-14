@@ -94,13 +94,13 @@ u8 walrus_input_modifiers(Walrus_InputDevice* device)
 
 void walrus_input_axis(Walrus_InputDevice* device, i8 id, vec3 out)
 {
-    id < device->num_axes ? glm_vec3_copy(out, device->axis[id]) : glm_vec3_copy(out, (vec3){0, 0, 0});
+    id < device->num_axes ? glm_vec3_copy(device->axis[id], out) : glm_vec3_copy((vec3){0, 0, 0}, out);
 }
 
 void walrus_input_relaxis(Walrus_InputDevice* device, i8 id, vec3 out)
 {
     id < device->num_axes ? glm_vec3_sub(device->axis[id], device->last_axis[id], out)
-                          : glm_vec3_copy(out, (vec3){0, 0, 0});
+                          : glm_vec3_copy((vec3){0, 0, 0}, out);
 }
 
 void walrus_input_set_axis(Walrus_InputDevice* device, i8 id, f32 x, f32 y, f32 z, u8 modifiers)

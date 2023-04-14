@@ -286,6 +286,19 @@ static void cursor_callback(GLFWwindow *window, f64 x, f64 y)
     walrus_event_push(&e);
 }
 
+Walrus_MouseButton translate_btn(i32 btn)
+{
+    switch (btn) {
+        case GLFW_MOUSE_BUTTON_LEFT:
+            return WR_MOUSE_BTN_LEFT;
+        case GLFW_MOUSE_BUTTON_RIGHT:
+            return WR_MOUSE_BTN_RIGHT;
+        case GLFW_MOUSE_BUTTON_MIDDLE:
+            return WR_MOUSE_BTN_MIDDLE;
+    }
+    return WR_MOUSE_BTN_COUNT;
+}
+
 static void mousebtn_callback(GLFWwindow *window, i32 btn, i32 action, i32 mods)
 {
     walrus_unused(window);
@@ -293,9 +306,10 @@ static void mousebtn_callback(GLFWwindow *window, i32 btn, i32 action, i32 mods)
     Walrus_Event e;
     e.type          = WR_EVENT_TYPE_BUTTON;
     e.button.device = WR_INPUT_MOUSE;
-    e.button.button = btn;
+    e.button.button = translate_btn(btn);
     e.button.state  = action != GLFW_RELEASE;
     e.button.mods   = mods;
+    walrus_event_push(&e);
 }
 
 void *glfw_create_window(char const *title, u32 width, u32 height, u32 flags)
