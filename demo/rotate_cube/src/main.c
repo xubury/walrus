@@ -18,7 +18,7 @@
 
 #include <cglm/cglm.h>
 
-char const *hex_instance_src =
+char const *ins_hex_src =
     "layout (location = 0) in vec3 a_pos;\n"
     "layout (location = 1) in vec2 a_uv;\n"
     "out vec2 v_pos;\n"
@@ -211,7 +211,7 @@ Walrus_AppError on_init(Walrus_App *app)
 
     app_data->u_texture = walrus_rhi_create_uniform("u_texture", WR_RHI_UNIFORM_SAMPLER, 1);
 
-    Walrus_ShaderHandle vs = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, hex_instance_src);
+    Walrus_ShaderHandle vs = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, ins_hex_src);
     Walrus_ShaderHandle fs = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
     app_data->map_shader       = walrus_rhi_create_program(vs, fs);
 

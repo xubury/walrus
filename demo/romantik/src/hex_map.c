@@ -13,7 +13,7 @@ void hex_map_init(HexMap *map, u32 hex_size, u32 horizontal_grids, u32 vertical_
     map->grids    = walrus_new0(HexGrid, map->grid_width * map->grid_height);
 }
 
-void hex_map_set_flags(HexMap *map, i32 q, i32 r, u32 flags)
+static u32 get_index(HexMap *map, i32 q, i32 r)
 {
     i32 const center_q = map->grid_width / 2.0;
     i32 const center_r = map->grid_height / 2.0;
@@ -23,13 +23,23 @@ void hex_map_set_flags(HexMap *map, i32 q, i32 r, u32 flags)
     q_offset = walrus_clamp(q_offset, 0, map->grid_width);
     r_offset = walrus_clamp(r_offset, 0, map->grid_height);
 
-    map->grids[r_offset * map->grid_width + q_offset].flags = flags;
+    return r_offset * map->grid_width + q_offset;
 }
+
+bool hex_map_test_flags(HexMap *map, i32 q, i32 r, u32 flags)
+{
+    return map->grids[get_index(map, q, r)].flags & flags;
+}
+
+void hex_map_set_flags(HexMap *map, i32 q, i32 r, u32 flags)
+{
+    map->grids[get_index(map, q, r)].flags = flags;
+}
+
 void hex_map_compute_model_pixel(HexMap *map, mat4 model, f32 x, f32 y)
 {
     i32 q, r;
     hex_pixel_to_qr(map->hex_size, x, y, &q, &r);
-    hex_qr_to_pixel(map->hex_size, q, r, &x, &y);
     hex_map_compute_model(map, model, q, r);
 }
 

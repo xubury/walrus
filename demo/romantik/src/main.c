@@ -107,7 +107,12 @@ void on_tick(Walrus_App *app, float dt)
         walrus_rhi_screen_to_world(0, axis, world_pos);
         walrus_rhi_screen_to_world_dir(0, axis, world_dir);
         if (walrus_intersect_ray_plane(select, world_pos, world_dir, (vec3 const){0, 1, 0}, (vec3 const){0, 0, 0})) {
-            hex_map_compute_model_pixel(&data->hex_map, data->model, select[0], select[2]);
+            i32 q, r;
+            hex_pixel_to_qr(data->hex_map.hex_size, select[0], select[2], &q, &r);
+            hex_map_compute_model(&data->hex_map, data->model, q, r);
+            if (hex_map_test_flags(&data->hex_map, q, r, HEX_FLAG_NORMAL)) {
+                walrus_trace("occupied!");
+            }
         }
     }
 }
