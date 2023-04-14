@@ -130,6 +130,7 @@ static void engine_frame(void)
     f32 const max_spf = 1.0 / s_engine->opt.minfps;
 
     static f32 sec_elapesd = 0.f;
+    static f32 input_timer = 0.f;
     static u64 last_ts     = 0;
 
     u64 const nw = walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC);
@@ -138,6 +139,8 @@ static void engine_frame(void)
         sec_elapesd = (nw - last_ts) * 1e-3;
     }
     last_ts = nw;
+
+    input_timer += sec_elapesd;
 
     while (sec_elapesd > max_spf) {
         sec_elapesd -= max_spf;
@@ -150,7 +153,10 @@ static void engine_frame(void)
 
     app->render(app);
 
-    walrus_inputs_tick(input);
+    if (input_timer > 1.0 / 60.0) {
+        walrus_inputs_tick(input);
+        input_timer = 0.f;
+    }
 
     event_process();
 

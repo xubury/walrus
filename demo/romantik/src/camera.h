@@ -7,8 +7,8 @@ typedef struct {
     vec3 movement;
     f32  angle_movement;
     vec3 focus_pos;
-    f32  speed;
-    f32  angle_speed;
+    f32  move_speed;
+    f32  rot_speed;
 
     f32 arm_len;
     f32 arm_movement;

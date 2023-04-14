@@ -111,7 +111,6 @@ void on_tick(Walrus_App *app, float dt)
             hex_pixel_to_qr(data->hex_map.hex_size, select[0], select[2], &q, &r);
             hex_map_compute_model(&data->hex_map, data->model, q, r);
             if (hex_map_test_flags(&data->hex_map, q, r, HEX_FLAG_NORMAL)) {
-                walrus_trace("occupied!");
             }
         }
     }
