@@ -12,7 +12,7 @@ typedef enum {
 
 typedef enum {
     WR_MOUSE_AXIS_CURSOR = 0,
-    WR_MOUSE_AXIS_MIDDLE = 1,
+    WR_MOUSE_AXIS_WHEEL = 1,
 
     WR_MOUSE_AXIS_COUNT,
 } Walrus_MouseAxis;

@@ -34,10 +34,10 @@ void walrus_input_set_button(Walrus_InputDevice* device, u16 id, bool state, u8 
 u8 walrus_input_modifiers(Walrus_InputDevice* device);
 
 // Get current input axis position
-void walrus_input_axis(Walrus_InputDevice* device, u8 id, float* out, u8 num);
+void walrus_input_axis(Walrus_InputDevice* device, u8 id, f32* x, f32* y, f32* z);
 
 // Get relative axis movement from last tick
-void walrus_input_relaxis(Walrus_InputDevice* device, u8 id, float* out, u8 num);
+void walrus_input_relaxis(Walrus_InputDevice* device, u8 id, f32* x, f32* y, f32* z);
 
 // Set axis state
 void walrus_input_set_axis(Walrus_InputDevice* device, u8 id, f32 x, f32 y, f32 z, u8 modifiers);

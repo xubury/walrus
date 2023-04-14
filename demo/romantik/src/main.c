@@ -117,7 +117,7 @@ void on_tick(Walrus_App *app, float dt)
         vec2 axis;
         vec3 world_pos, world_dir;
         vec3 select;
-        walrus_input_axis(input->mouse, WR_MOUSE_AXIS_CURSOR, axis, 2);
+        walrus_input_axis(input->mouse, WR_MOUSE_AXIS_CURSOR, &axis[0], &axis[1], NULL);
         walrus_rhi_screen_to_world(0, axis, world_pos);
         walrus_rhi_screen_to_world_dir(0, axis, world_dir);
         if (walrus_intersect_ray_plane(select, world_pos, world_dir, (vec3 const){0, 1, 0}, (vec3 const){0, 0, 0})) {

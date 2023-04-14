@@ -7,13 +7,14 @@
 static void camera_get_dir(CameraData *cam, vec3 dir)
 {
     glm_vec3_copy((vec3){cos(cam->view_angle), sin(cam->view_yangle), sin(cam->view_angle)}, dir);
+    glm_vec3_normalize(dir);
 }
 
 static void camera_get_eye(CameraData *cam, vec3 eye)
 {
     vec3 dir;
     camera_get_dir(cam, dir);
-    glm_vec3_scale(dir, cam->view_len, dir);
+    glm_vec3_scale(dir, cam->arm_len, dir);
     glm_vec3_add(cam->focus_pos, dir, eye);
 }
 
@@ -53,25 +54,38 @@ void camera_tick(CameraData *cam, f32 dt)
 
     f32 angle_step = 0.f;
     if (walrus_input_down(input->mouse, WR_MOUSE_BTN_RIGHT)) {
-        vec2 axis;
-        walrus_input_relaxis(input->mouse, WR_MOUSE_AXIS_CURSOR, axis, 2);
-        if (axis[0] > FLT_EPSILON) {
-            angle_step = 1;
+        f32 x_offset;
+        walrus_input_relaxis(input->mouse, WR_MOUSE_AXIS_CURSOR, &x_offset, NULL, NULL);
+        if (x_offset > FLT_EPSILON) {
+            angle_step = cam->angle_speed * dt;
         }
-        else if (axis[0] < -FLT_EPSILON) {
-            angle_step = -1;
+        else if (x_offset < -FLT_EPSILON) {
+            angle_step = -cam->angle_speed * dt;
         }
-        angle_step = cam->angle_speed * angle_step * dt;
     }
 
-    bool const update_view =
-        glm_vec3_norm2(cam->movement) >= FLT_EPSILON || walrus_abs(cam->angle_movement) >= FLT_EPSILON;
+    float arm_step = 0.f;
+    float y_scroll = 0.f;
+    walrus_input_relaxis(input->mouse, WR_MOUSE_AXIS_WHEEL, NULL, &y_scroll, NULL);
+    if (y_scroll > FLT_EPSILON) {
+        arm_step = -cam->speed * dt;
+    }
+    else if (y_scroll < -FLT_EPSILON) {
+        arm_step = cam->speed * dt;
+    }
+
+    bool const update_view = glm_vec3_norm2(cam->movement) >= FLT_EPSILON ||
+                             walrus_abs(cam->angle_movement) >= FLT_EPSILON ||
+                             walrus_abs(cam->arm_movement) >= FLT_EPSILON >= FLT_EPSILON;
 
     glm_vec3_lerp(cam->movement, step, walrus_clamp(cam->smoothness * dt, 0.0, 1.0), cam->movement);
     cam->angle_movement = glm_lerp(cam->angle_movement, angle_step, walrus_clamp(cam->smoothness * dt, 0.0, 1.0));
+    cam->arm_movement   = glm_lerp(cam->arm_movement, arm_step, walrus_clamp(cam->smoothness * dt, 0.0, 1.0));
 
     glm_vec3_add(cam->focus_pos, cam->movement, cam->focus_pos);
     cam->view_angle += cam->angle_movement;
+
+    cam->arm_len += cam->arm_movement;
     if (cam->view_angle > M_PI * 2) cam->view_angle -= M_PI * 2;
 
     if (update_view) {
@@ -87,7 +101,8 @@ void camera_init(CameraData *cam)
     cam->speed          = 10.0f;
     cam->angle_speed    = 2.0f;
     cam->angle_movement = 0.0f;
-    cam->view_len       = 5.f;
+    cam->arm_len        = 5.f;
+    cam->arm_movement   = 0.f;
     cam->view_angle     = glm_rad(45);
     cam->view_yangle    = glm_rad(70);
     camera_update_view(cam);

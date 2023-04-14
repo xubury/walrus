@@ -286,6 +286,26 @@ static void cursor_callback(GLFWwindow *window, f64 x, f64 y)
     walrus_event_push(&e);
 }
 
+static void scroll_callback(GLFWwindow *window, f64 x_offset, f64 y_offset)
+{
+    walrus_unused(window);
+
+    static f64 x = 0;
+    static f64 y = 0;
+    x += x_offset;
+    y += y_offset;
+
+    Walrus_Event e;
+    e.type        = WR_EVENT_TYPE_AXIS;
+    e.axis.device = WR_INPUT_MOUSE;
+    e.axis.axis   = WR_MOUSE_AXIS_WHEEL;
+    e.axis.x      = x;
+    e.axis.y      = y;
+    e.axis.z      = 0;
+    e.axis.mods   = 0;
+    walrus_event_push(&e);
+}
+
 Walrus_MouseButton translate_btn(i32 btn)
 {
     switch (btn) {
@@ -335,6 +355,7 @@ void *glfw_create_window(char const *title, u32 width, u32 height, u32 flags)
         glfwSetFramebufferSizeCallback(handle, framebuffer_size_callback);
         glfwSetKeyCallback(handle, key_callback);
         glfwSetCursorPosCallback(handle, cursor_callback);
+        glfwSetScrollCallback(handle, scroll_callback);
         glfwSetMouseButtonCallback(handle, mousebtn_callback);
     }
     return handle;

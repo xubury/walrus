@@ -93,24 +93,20 @@ u8 walrus_input_modifiers(Walrus_InputDevice* device)
     return device->modifiers;
 }
 
-void walrus_input_axis(Walrus_InputDevice* device, u8 id, f32* out, u8 num)
+void walrus_input_axis(Walrus_InputDevice* device, u8 id, f32* x, f32* y, f32* z)
 {
-    num = walrus_min(num, 3);
-
     bool const valid = id < device->num_axes;
-    for (u8 i = 0; i < num; ++i) {
-        out[i] = valid ? device->axis[id][i] : 0;
-    }
+    if (x) *x = valid ? device->axis[id][0] : 0;
+    if (y) *y = valid ? device->axis[id][1] : 0;
+    if (z) *z = valid ? device->axis[id][2] : 0;
 }
 
-void walrus_input_relaxis(Walrus_InputDevice* device, u8 id, float* out, u8 num)
+void walrus_input_relaxis(Walrus_InputDevice* device, u8 id, f32* x, f32* y, f32* z)
 {
-    num = walrus_min(num, 3);
-
     bool const valid = id < device->num_axes;
-    for (u8 i = 0; i < num; ++i) {
-        out[i] = valid ? device->axis[id][i] - device->last_axis[id][i] : 0;
-    }
+    if (x) *x = valid ? device->axis[id][0] - device->last_axis[id][0] : 0;
+    if (y) *y = valid ? device->axis[id][1] - device->last_axis[id][1] : 0;
+    if (z) *z = valid ? device->axis[id][2] - device->last_axis[id][2] : 0;
 }
 
 void walrus_input_set_axis(Walrus_InputDevice* device, u8 id, f32 x, f32 y, f32 z, u8 modifiers)
