@@ -9,6 +9,7 @@ add_library(
   math.c
   memory.c
   queue.c
+  ray.c
   string.c
   sys.c)
 

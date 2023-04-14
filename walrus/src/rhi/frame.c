@@ -75,6 +75,12 @@ void draw_clear(RenderDraw *draw, u8 flags)
         draw->num_indices     = UINT32_MAX;
         draw->index_buffer.id = WR_INVALID_HANDLE;
     }
+    if (flags & WR_RHI_DISCARD_INSTANCE_DATA) {
+        draw->instance_offset    = 0;
+        draw->num_instances      = 1;
+        draw->instance_buffer.id = WR_INVALID_HANDLE;
+        draw->instance_layout.id = WR_INVALID_HANDLE;
+    }
 }
 
 void bind_clear(RenderBind *bind, u8 flags)

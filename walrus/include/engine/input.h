@@ -11,6 +11,13 @@ typedef enum {
 } Walrus_MouseButton;
 
 typedef enum {
+    WR_MOUSE_AXIS_CURSOR = 0,
+    WR_MOUSE_AXIS_MIDDLE = 1,
+
+    WR_MOUSE_AXIS_COUNT,
+} Walrus_MouseAxis;
+
+typedef enum {
     WR_KEYMOD_NONE  = 0,
     WR_KEYMOD_ALT   = 1 << 1,
     WR_KEYMOD_CTRL  = 1 << 2,

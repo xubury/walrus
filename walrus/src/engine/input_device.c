@@ -1,6 +1,7 @@
 #include <engine/input_device.h>
 #include <core/macro.h>
 #include <core/memory.h>
+#include <core/math.h>
 
 #include <string.h>
 
@@ -18,7 +19,7 @@ struct _Walrus_InputDevice {
     vec3* last_axis;
 };
 
-Walrus_InputDevice* walrus_input_create(i16 num_btns, i8 num_axes)
+Walrus_InputDevice* walrus_input_create(u16 num_btns, u8 num_axes)
 {
     Walrus_InputDevice* device = walrus_malloc(sizeof(Walrus_InputDevice));
 
@@ -50,37 +51,37 @@ void walrus_input_destroy(Walrus_InputDevice* device)
     walrus_free(device);
 }
 
-bool walrus_input_pressed(Walrus_InputDevice* device, i16 id)
+bool walrus_input_pressed(Walrus_InputDevice* device, u16 id)
 {
     return id < device->num_buttons ? (!device->last_state[id] & device->state[id]) : false;
 }
 
-u16 walrus_input_any_pressed(Walrus_InputDevice* device)
+bool walrus_input_any_pressed(Walrus_InputDevice* device)
 {
-    return walrus_input_pressed(device, device->first_buttons[0]) ? device->first_buttons[0] : WR_INPUT_INVALID_ID;
+    return walrus_input_pressed(device, device->first_buttons[0]);
 }
 
-bool walrus_input_released(Walrus_InputDevice* device, i16 id)
+bool walrus_input_released(Walrus_InputDevice* device, u16 id)
 {
     return id < device->num_buttons ? (device->last_state[id] & !device->state[id]) : false;
 }
 
-u16 walrus_input_any_released(Walrus_InputDevice* device)
+bool walrus_input_any_released(Walrus_InputDevice* device)
 {
-    return walrus_input_released(device, device->first_buttons[1]) ? device->first_buttons[1] : WR_INPUT_INVALID_ID;
+    return walrus_input_released(device, device->first_buttons[1]);
 }
 
-bool walrus_input_down(Walrus_InputDevice* device, i16 id)
+bool walrus_input_down(Walrus_InputDevice* device, u16 id)
 {
     return id < device->num_buttons ? device->state[id] : false;
 }
 
-u16 walrus_input_any_down(Walrus_InputDevice* device)
+bool walrus_input_any_down(Walrus_InputDevice* device)
 {
-    return walrus_input_down(device, device->first_buttons[0]) ? device->first_buttons[0] : WR_INPUT_INVALID_ID;
+    return walrus_input_down(device, device->first_buttons[0]);
 }
 
-void walrus_input_set_button(Walrus_InputDevice* device, i16 id, bool state, u8 modifiers)
+void walrus_input_set_button(Walrus_InputDevice* device, u16 id, bool state, u8 modifiers)
 {
     device->state[id]                    = state;
     device->first_buttons[state ? 0 : 1] = id;
@@ -92,18 +93,27 @@ u8 walrus_input_modifiers(Walrus_InputDevice* device)
     return device->modifiers;
 }
 
-void walrus_input_axis(Walrus_InputDevice* device, i8 id, vec3 out)
+void walrus_input_axis(Walrus_InputDevice* device, u8 id, f32* out, u8 num)
 {
-    id < device->num_axes ? glm_vec3_copy(device->axis[id], out) : glm_vec3_copy((vec3){0, 0, 0}, out);
+    num = walrus_min(num, 3);
+
+    bool const valid = id < device->num_axes;
+    for (u8 i = 0; i < num; ++i) {
+        out[i] = valid ? device->axis[id][i] : 0;
+    }
 }
 
-void walrus_input_relaxis(Walrus_InputDevice* device, i8 id, vec3 out)
+void walrus_input_relaxis(Walrus_InputDevice* device, u8 id, float* out, u8 num)
 {
-    id < device->num_axes ? glm_vec3_sub(device->axis[id], device->last_axis[id], out)
-                          : glm_vec3_copy((vec3){0, 0, 0}, out);
+    num = walrus_min(num, 3);
+
+    bool const valid = id < device->num_axes;
+    for (u8 i = 0; i < num; ++i) {
+        out[i] = valid ? device->axis[id][i] - device->last_axis[id][i] : 0;
+    }
 }
 
-void walrus_input_set_axis(Walrus_InputDevice* device, i8 id, f32 x, f32 y, f32 z, u8 modifiers)
+void walrus_input_set_axis(Walrus_InputDevice* device, u8 id, f32 x, f32 y, f32 z, u8 modifiers)
 {
     device->axis[id][0] = x;
     device->axis[id][1] = y;

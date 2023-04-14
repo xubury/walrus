@@ -25,6 +25,10 @@ void walrus_rhi_set_view_rect(u16 view_id, i32 x, i32 y, u32 width, u32 height);
 void walrus_rhi_set_view_clear(u16 view_id, u16 flags, u32 rgba, f32 depth, u8 stencil);
 void walrus_rhi_set_view_transform(u16 view_id, mat4 view, mat4 projection);
 
+void walrus_rhi_screen_to_clip(u16 view_id, vec2 const screen, vec2 clip);
+void walrus_rhi_screen_to_world(u16 view_id, vec2 const screen, vec3 world);
+void walrus_rhi_screen_to_world_dir(u16 view_id, vec2 const screen, vec3 world_dir);
+
 void walrus_rhi_set_transform(mat4 const transform);
 
 Walrus_ShaderHandle walrus_rhi_create_shader(Walrus_ShaderType type, char const* source);
@@ -46,6 +50,8 @@ void                walrus_rhi_destroy_buffer(Walrus_BufferHandle handle);
 
 void walrus_rhi_set_vertex_buffer(u8 stream_id, Walrus_BufferHandle handle, Walrus_LayoutHandle layout_handle,
                                   u32 offset, u32 num_vertices);
+void walrus_rhi_set_instance_buffer(Walrus_BufferHandle handle, Walrus_LayoutHandle layout_handle, u32 offset,
+                                    u32 num_instance);
 
 void walrus_rhi_set_index_buffer(Walrus_BufferHandle handle, u32 offset, u32 num_indices);
 void walrus_rhi_set_index32_buffer(Walrus_BufferHandle handle, u32 offset, u32 num_indices);

@@ -4,7 +4,7 @@
 Walrus_Input *walrus_inputs_create(void)
 {
     Walrus_Input *input = walrus_malloc(sizeof(Walrus_Input));
-    input->mouse        = walrus_input_create(WR_MOUSE_BTN_COUNT, 1);
+    input->mouse        = walrus_input_create(WR_MOUSE_BTN_COUNT, WR_MOUSE_AXIS_COUNT);
     input->keyboard     = walrus_input_create(WR_KEY_COUNT, 0);
 
     return input;

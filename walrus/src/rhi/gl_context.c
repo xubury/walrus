@@ -322,8 +322,15 @@ static void submit(RenderFrame *frame)
                 }
             }
 
-            if (program_changed || current_state.stream_mask != draw->stream_mask) {
-                current_state.stream_mask = draw->stream_mask;
+            if (program_changed || current_state.stream_mask != draw->stream_mask ||
+                current_state.instance_buffer.id != draw->instance_buffer.id ||
+                current_state.instance_layout.id != draw->instance_layout.id ||
+                current_state.num_instances != draw->num_instances ||
+                current_state.instance_offset != draw->instance_offset) {
+                current_state.stream_mask     = draw->stream_mask;
+                current_state.instance_buffer = draw->instance_buffer;
+                current_state.instance_layout = draw->instance_layout;
+                current_state.instance_offset = draw->instance_offset;
 
                 bind_attributes = true;
             }
@@ -340,9 +347,45 @@ static void submit(RenderFrame *frame)
                 }
             }
 
-            if (draw->stream_mask != 0 && bind_attributes) {
+            u32 num_vertices  = draw->num_vertices;
+            u32 num_instances = draw->num_instances;
+            if (draw->stream_mask != 0 && num_vertices == UINT32_MAX) {
+                for (u32 id = 0, stream_mask = draw->stream_mask; 0 != stream_mask; stream_mask >>= 1, ++id) {
+                    u32 const ntz = walrus_u32cnttz(stream_mask);
+                    stream_mask >>= ntz;
+                    id += ntz;
+
+                    VertexStream const *stream = &draw->streams[id];
+                    if (current_state.streams[id].handle.id != stream->handle.id) {
+                        bind_attributes = true;
+                    }
+                    if (current_state.streams[id].offset != stream->offset) {
+                        bind_attributes = true;
+                    }
+
+                    if (stream->handle.id != WR_INVALID_HANDLE) {
+                        GlBuffer const vb = g_ctx->buffers[stream->handle.id];
+
+                        Walrus_LayoutHandle const layout_handle = stream->layout_handle;
+                        if (layout_handle.id != WR_INVALID_HANDLE) {
+                            Walrus_VertexLayout const *layout = &g_ctx->vertex_layouts[layout_handle.id];
+
+                            num_vertices = walrus_min(num_vertices, vb.size / layout->stride);
+                        }
+                    }
+                }
+            }
+            bool const instance_valid =
+                draw->instance_buffer.id != WR_INVALID_HANDLE && draw->instance_layout.id != WR_INVALID_HANDLE;
+            if (instance_valid && num_instances == UINT32_MAX) {
+                Walrus_VertexLayout const *layout          = &g_ctx->vertex_layouts[draw->instance_layout.id];
+                GlBuffer const             instance_buffer = g_ctx->buffers[draw->instance_buffer.id];
+                num_instances = walrus_min(num_instances, instance_buffer.size / layout->stride);
+            }
+            if (bind_attributes) {
                 for (u8 i = 0; i < WR_RHI_MAX_VERTEX_ATTRIBUTES; ++i) {
                     lazy_disable_vertex_attribute(i);
+                    glVertexAttribDivisor(i, 0);
                 }
                 for (u32 id = 0, stream_mask = draw->stream_mask; 0 != stream_mask; stream_mask >>= 1, ++id) {
                     u32 const ntz = walrus_u32cnttz(stream_mask);
@@ -378,36 +421,35 @@ static void submit(RenderFrame *frame)
                         }
                     }
                 }
+                if (instance_valid) {
+                    GlBuffer const instance_buffer = g_ctx->buffers[draw->instance_buffer.id];
+                    glBindBuffer(GL_ARRAY_BUFFER, instance_buffer.id);
+
+                    Walrus_VertexLayout const *layout = &g_ctx->vertex_layouts[draw->instance_layout.id];
+                    for (u8 i = 0; i < layout->num_attributes; ++i) {
+                        Walrus_Attribute type;
+                        u8               attr_id;
+                        u8               num;
+                        bool             normalized;
+                        bool             as_int;
+                        walrus_vertex_layout_decode(layout, i, &attr_id, &num, &type, &normalized, &as_int);
+                        lazy_enable_vertex_attribute(attr_id);
+                        glVertexAttribDivisor(attr_id, layout->instance_strde);
+                        if (as_int) {
+                            glVertexAttribIPointer(attr_id, num, s_gl_attribute_type[type], layout->stride,
+                                                   (void const *)(layout->offsets[i] + draw->instance_offset));
+                        }
+                        else {
+                            glVertexAttribPointer(attr_id, num, s_gl_attribute_type[type],
+                                                  normalized ? GL_TRUE : GL_FALSE, layout->stride,
+                                                  (void const *)(layout->offsets[i] + draw->instance_offset));
+                        }
+                    }
+                    glBindBuffer(GL_ARRAY_BUFFER, 0);
+                }
                 apply_lazy_enabled_vertex_attribute();
             }
 
-            u32 num_vertices = draw->num_vertices;
-            if (draw->stream_mask != 0 && num_vertices == UINT32_MAX) {
-                for (u32 id = 0, stream_mask = draw->stream_mask; 0 != stream_mask; stream_mask >>= 1, ++id) {
-                    u32 const ntz = walrus_u32cnttz(stream_mask);
-                    stream_mask >>= ntz;
-                    id += ntz;
-
-                    VertexStream const *stream = &draw->streams[id];
-                    if (current_state.streams[id].handle.id != stream->handle.id) {
-                        bind_attributes = true;
-                    }
-                    if (current_state.streams[id].offset != stream->offset) {
-                        bind_attributes = true;
-                    }
-
-                    if (stream->handle.id != WR_INVALID_HANDLE) {
-                        GlBuffer const vb = g_ctx->buffers[stream->handle.id];
-
-                        Walrus_LayoutHandle const layout_handle = stream->layout_handle;
-                        if (layout_handle.id != WR_INVALID_HANDLE) {
-                            Walrus_VertexLayout const *layout = &g_ctx->vertex_layouts[layout_handle.id];
-
-                            num_vertices = walrus_min(num_vertices, vb.size / layout->stride);
-                        }
-                    }
-                }
-            }
             if (draw->index_buffer.id != WR_INVALID_HANDLE) {
                 static GLenum const gl_index_type[5] = {GL_ZERO, GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT, GL_ZERO,
                                                         GL_UNSIGNED_INT};
@@ -418,10 +460,11 @@ static void submit(RenderFrame *frame)
                 if (num_indices == UINT32_MAX) {
                     num_indices = ib->size / draw->index_size;
                 }
-                glDrawElements(GL_TRIANGLES, num_indices, gl_index_type[draw->index_size], (void *)draw->index_offset);
+                glDrawElementsInstanced(GL_TRIANGLES, num_indices, gl_index_type[draw->index_size],
+                                        (void *)draw->index_offset, num_instances);
             }
             else if (num_vertices != UINT32_MAX) {
-                glDrawArrays(GL_TRIANGLES, 0, num_vertices);
+                glDrawArraysInstanced(GL_TRIANGLES, 0, num_vertices, num_instances);
             }
         }
 

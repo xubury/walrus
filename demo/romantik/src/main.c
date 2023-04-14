@@ -4,13 +4,16 @@
 #include <core/memory.h>
 #include <engine/engine.h>
 #include <rhi/rhi.h>
+#include <core/ray.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 #include "camera.h"
+#include "hex.h"
+#include "hex_map.h"
 
-char const *vs_src =
+char const *hex_src =
     "layout (location = 0) in vec3 a_pos;\n"
     "layout (location = 1) in vec2 a_uv;\n"
     "out vec2 v_pos;\n"
@@ -19,6 +22,19 @@ char const *vs_src =
     "uniform mat4 u_model;\n"
     "void main() { \n"
     "    gl_Position = u_viewproj * u_model * vec4(a_pos, 1.0);\n"
+    "    v_pos = a_pos.xy;\n"
+    "    v_uv = a_uv;\n"
+    "}\n";
+
+char const *hex_instance_src =
+    "layout (location = 0) in vec3 a_pos;\n"
+    "layout (location = 1) in vec2 a_uv;\n"
+    "layout (location = 2) in mat4 a_model;\n"
+    "out vec2 v_pos;\n"
+    "out vec2 v_uv;\n"
+    "uniform mat4 u_viewproj;\n"
+    "void main() { \n"
+    "    gl_Position = u_viewproj * a_model * vec4(a_pos, 1.0);\n"
     "    v_pos = a_pos.xy;\n"
     "    v_uv = a_uv;\n"
     "}\n";
@@ -53,18 +69,23 @@ char const *fs_src =
     "}\n";
 
 typedef struct {
-    Walrus_ProgramHandle shader;
+    Walrus_ProgramHandle pick_shader;
+    Walrus_ProgramHandle map_shader;
     Walrus_UniformHandle u_texture;
     Walrus_BufferHandle  buffer;
     Walrus_BufferHandle  uv_buffer;
+    Walrus_BufferHandle  model_buffer;
     Walrus_BufferHandle  index_buffer;
     Walrus_LayoutHandle  pos_layout;
     Walrus_LayoutHandle  uv_layout;
+    Walrus_LayoutHandle  model_layout;
     Walrus_TextureHandle texture;
 
     mat4 model;
 
     CameraData cam;
+
+    HexMap hex_map;
 } AppData;
 
 void on_render(Walrus_App *app)
@@ -74,12 +95,15 @@ void on_render(Walrus_App *app)
 
     walrus_rhi_set_view_transform(0, cam->view, NULL);
 
-    walrus_rhi_set_transform(data->model);
     walrus_rhi_set_vertex_buffer(0, data->buffer, data->pos_layout, 0, UINT32_MAX);
     walrus_rhi_set_vertex_buffer(1, data->uv_buffer, data->uv_layout, 0, UINT32_MAX);
     walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
     walrus_rhi_set_texture(0, data->u_texture, data->texture);
-    walrus_rhi_submit(0, data->shader, WR_RHI_DISCARD_ALL);
+    walrus_rhi_set_instance_buffer(data->model_buffer, data->model_layout, 0, UINT32_MAX);
+    walrus_rhi_submit(0, data->map_shader, WR_RHI_DISCARD_INSTANCE_DATA);
+
+    walrus_rhi_set_transform(data->model);
+    walrus_rhi_submit(0, data->pick_shader, WR_RHI_DISCARD_ALL);
 }
 
 void on_tick(Walrus_App *app, float dt)
@@ -87,7 +111,19 @@ void on_tick(Walrus_App *app, float dt)
     AppData *data = walrus_app_userdata(app);
 
     camera_tick(&data->cam, dt);
-    /* glm_rotate(data->model, 1.0 * dt, (vec3){0, 1, 0}); */
+
+    Walrus_Input *input = walrus_engine_input();
+    if (!walrus_input_any_down(input->mouse)) {
+        vec2 axis;
+        vec3 world_pos, world_dir;
+        vec3 select;
+        walrus_input_axis(input->mouse, WR_MOUSE_AXIS_CURSOR, axis, 2);
+        walrus_rhi_screen_to_world(0, axis, world_pos);
+        walrus_rhi_screen_to_world_dir(0, axis, world_dir);
+        if (walrus_intersect_ray_plane(select, world_pos, world_dir, (vec3 const){0, 1, 0}, (vec3 const){0, 0, 0})) {
+            hex_map_compute_model_pixel(&data->hex_map, data->model, select[0], select[2]);
+        }
+    }
 }
 
 void on_event(Walrus_App *app, Walrus_Event *e)
@@ -116,6 +152,7 @@ Walrus_AppError on_init(Walrus_App *app)
     i32 const       height   = walrus_window_height(window);
 
     camera_init(&app_data->cam);
+    hex_map_init(&app_data->hex_map, 1, 10, 10);
 
     walrus_rhi_set_view_rect(0, 0, 0, width, height);
     walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_COLOR | WR_RHI_CLEAR_DEPTH, 0xffd580ff, 1.0, 0);
@@ -128,9 +165,9 @@ Walrus_AppError on_init(Walrus_App *app)
     vec2 uvs[6];
     f32  rad = glm_rad(90);
     for (u8 i = 0; i < 6; ++i) {
-        vertices[i][0] = cos(rad) * 0.5;
+        vertices[i][0] = cos(rad);
         vertices[i][1] = 0;
-        vertices[i][2] = sin(rad) * 0.5;
+        vertices[i][2] = sin(rad);
         uvs[i][0]      = (cos(rad) + 1) * 0.5;
         uvs[i][1]      = (sin(rad) + 1) * 0.5;
         rad += glm_rad(60);
@@ -147,16 +184,32 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_vertex_layout_end(&layout);
     app_data->uv_layout = walrus_rhi_create_vertex_layout(&layout);
 
-    u16 indices[]          = {0, 1, 2, 2, 3, 4, 4, 5, 0, 0, 2, 4};
-    app_data->buffer       = walrus_rhi_create_buffer(vertices, sizeof(vertices), 0);
-    app_data->uv_buffer    = walrus_rhi_create_buffer(uvs, sizeof(uvs), 0);
+    walrus_vertex_layout_begin_instance(&layout, 1);
+    walrus_vertex_layout_add(&layout, 2, 4, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_add(&layout, 3, 4, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_add(&layout, 4, 4, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_add(&layout, 5, 4, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_end(&layout);
+    app_data->model_layout = walrus_rhi_create_vertex_layout(&layout);
+
+    u16 indices[]       = {0, 1, 2, 2, 3, 4, 4, 5, 0, 0, 2, 4};
+    app_data->buffer    = walrus_rhi_create_buffer(vertices, sizeof(vertices), 0);
+    app_data->uv_buffer = walrus_rhi_create_buffer(uvs, sizeof(uvs), 0);
+    mat4 models[2];
+    hex_map_set_flags(&app_data->hex_map, 0, 0, HEX_FLAG_NORMAL);
+    hex_map_set_flags(&app_data->hex_map, 1, 1, HEX_FLAG_NORMAL);
+    hex_map_compute_models(&app_data->hex_map, models, 2, HEX_FLAG_NORMAL);
+
+    app_data->model_buffer = walrus_rhi_create_buffer(models, sizeof(models), 0);
     app_data->index_buffer = walrus_rhi_create_buffer(indices, sizeof(indices), WR_RHI_BUFFER_INDEX);
 
     app_data->u_texture = walrus_rhi_create_uniform("u_texture", WR_RHI_UNIFORM_SAMPLER, 1);
 
-    Walrus_ShaderHandle vs = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, vs_src);
-    Walrus_ShaderHandle fs = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
-    app_data->shader       = walrus_rhi_create_program(vs, fs);
+    Walrus_ShaderHandle vs          = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, hex_src);
+    Walrus_ShaderHandle vs_instance = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, hex_instance_src);
+    Walrus_ShaderHandle fs          = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
+    app_data->pick_shader           = walrus_rhi_create_program(vs, fs);
+    app_data->map_shader            = walrus_rhi_create_program(vs_instance, fs);
 
     glm_mat4_identity(app_data->model);
 
@@ -185,8 +238,8 @@ int main(void)
 {
     Walrus_EngineOption opt;
     opt.window_title  = "romantik";
-    opt.window_width  = 640;
-    opt.window_height = 480;
+    opt.window_width  = 1440;
+    opt.window_height = 900;
     opt.window_flags  = WR_WINDOW_FLAG_VSYNC | WR_WINDOW_FLAG_OPENGL;
     opt.minfps        = 30.f;
 

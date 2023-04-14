@@ -26,6 +26,7 @@ typedef struct {
 } Walrus_VertexLayout;
 
 void walrus_vertex_layout_begin(Walrus_VertexLayout* layout);
+void walrus_vertex_layout_begin_instance(Walrus_VertexLayout* layout, u8 instance);
 void walrus_vertex_layout_add(Walrus_VertexLayout* layout, u8 attr_id, u8 num, Walrus_Attribute type, bool normalized);
 void walrus_vertex_layout_add_int(Walrus_VertexLayout* layout, u8 attr_id, u8 num, Walrus_Attribute type,
                                   bool normalized);

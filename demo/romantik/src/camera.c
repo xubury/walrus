@@ -2,14 +2,26 @@
 
 #include <core/math.h>
 #include <engine/engine.h>
+#include <rhi/rhi.h>
+
+static void camera_get_dir(CameraData *cam, vec3 dir)
+{
+    glm_vec3_copy((vec3){cos(cam->view_angle), sin(cam->view_yangle), sin(cam->view_angle)}, dir);
+}
+
+static void camera_get_eye(CameraData *cam, vec3 eye)
+{
+    vec3 dir;
+    camera_get_dir(cam, dir);
+    glm_vec3_scale(dir, cam->view_len, dir);
+    glm_vec3_add(cam->focus_pos, dir, eye);
+}
 
 static void camera_update_view(CameraData *cam)
 {
-    vec3 dir = {cos(cam->view_angle), sin(cam->view_yangle), sin(cam->view_angle)};
-    vec3 up  = {0, 1, 0};
+    vec3 up = {0, 1, 0};
     vec3 eye;
-    glm_vec3_scale(dir, cam->view_len, dir);
-    glm_vec3_add(cam->focus_pos, dir, eye);
+    camera_get_eye(cam, eye);
     glm_lookat(eye, cam->focus_pos, up, cam->view);
 }
 
@@ -41,8 +53,8 @@ void camera_tick(CameraData *cam, f32 dt)
 
     f32 angle_step = 0.f;
     if (walrus_input_down(input->mouse, WR_MOUSE_BTN_RIGHT)) {
-        vec3 axis;
-        walrus_input_relaxis(input->mouse, 0, axis);
+        vec2 axis;
+        walrus_input_relaxis(input->mouse, WR_MOUSE_AXIS_CURSOR, axis, 2);
         if (axis[0] > FLT_EPSILON) {
             angle_step = 1;
         }

@@ -211,7 +211,7 @@ void __on_mouse_move(i32 x, i32 y, u8 mods)
     Walrus_Event e;
     e.type        = WR_EVENT_TYPE_AXIS;
     e.axis.device = WR_INPUT_MOUSE;
-    e.axis.axis   = 0;
+    e.axis.axis   = WR_MOUSE_AXIS_CURSOR;
     e.axis.x      = x;
     e.axis.y      = y;
     e.axis.z      = 0;

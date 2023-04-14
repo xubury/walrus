@@ -18,7 +18,7 @@
 
 #include <cglm/cglm.h>
 
-char const *vs_src =
+char const *hex_instance_src =
     "layout (location = 0) in vec3 a_pos;\n"
     "layout (location = 1) in vec2 a_uv;\n"
     "out vec2 v_pos;\n"
@@ -41,7 +41,7 @@ char const *fs_src =
     "}";
 
 typedef struct {
-    Walrus_ProgramHandle shader;
+    Walrus_ProgramHandle map_shader;
     Walrus_UniformHandle u_texture;
     Walrus_BufferHandle  buffer;
     Walrus_BufferHandle  uv_buffer;
@@ -64,7 +64,7 @@ void on_render(Walrus_App *app)
     walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
     walrus_rhi_set_texture(0, data->u_texture, data->texture);
     /* walrus_rhi_set_image(0, data->texture, 0, WR_RHI_ACCESS_READ, WR_RHI_FORMAT_RGBA8); */
-    walrus_rhi_submit(0, data->shader, WR_RHI_DISCARD_ALL);
+    walrus_rhi_submit(0, data->map_shader, WR_RHI_DISCARD_ALL);
 }
 
 void on_tick(Walrus_App *app, float dt)
@@ -211,9 +211,9 @@ Walrus_AppError on_init(Walrus_App *app)
 
     app_data->u_texture = walrus_rhi_create_uniform("u_texture", WR_RHI_UNIFORM_SAMPLER, 1);
 
-    Walrus_ShaderHandle vs = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, vs_src);
+    Walrus_ShaderHandle vs = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, hex_instance_src);
     Walrus_ShaderHandle fs = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
-    app_data->shader       = walrus_rhi_create_program(vs, fs);
+    app_data->map_shader       = walrus_rhi_create_program(vs, fs);
 
     glm_mat4_identity(app_data->model);
     glm_translate(app_data->model, (vec3){0, 0, -2});

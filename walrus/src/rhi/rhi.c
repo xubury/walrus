@@ -272,6 +272,52 @@ void walrus_rhi_set_view_transform(u16 view_id, mat4 view, mat4 projection)
     }
 }
 
+void walrus_rhi_screen_to_clip(u16 view_id, vec2 const screen, vec2 clip)
+{
+    RenderView* const  v    = &s_ctx->views[view_id];
+    Walrus_Rect* const rect = &v->viewport;
+    clip[0]                 = 2.f * (screen[0] - rect->x) / rect->width - 1.f;
+    clip[1]                 = 1.f - 2.f * (screen[1] - rect->y) / rect->height;
+}
+
+void walrus_rhi_screen_to_world(u16 view_id, vec2 const screen, vec3 world)
+{
+    RenderView* const v = &s_ctx->views[view_id];
+
+    vec4 clip = {0, 0, -1, 1.0};
+    walrus_rhi_screen_to_clip(view_id, screen, clip);
+
+    mat4 inv_vp;
+    glm_mat4_mul(v->projection, v->view, inv_vp);
+    glm_mat4_inv(inv_vp, inv_vp);
+
+    glm_mat4_mulv(inv_vp, clip, clip);
+    glm_vec3_scale(clip, 1.0 / clip[3], world);
+}
+
+void walrus_rhi_screen_to_world_dir(u16 view_id, vec2 const screen, vec3 world_dir)
+{
+    RenderView* const v = &s_ctx->views[view_id];
+
+    vec4 near_clip = {0, 0, -1, 1.0};
+    vec4 far_clip  = {0, 0, 1, 1.0};
+    walrus_rhi_screen_to_clip(view_id, screen, near_clip);
+    walrus_rhi_screen_to_clip(view_id, screen, far_clip);
+
+    mat4 inv_vp;
+    glm_mat4_mul(v->projection, v->view, inv_vp);
+    glm_mat4_inv(inv_vp, inv_vp);
+
+    glm_mat4_mulv(inv_vp, near_clip, near_clip);
+    glm_mat4_mulv(inv_vp, far_clip, far_clip);
+
+    glm_vec4_scale(near_clip, 1.0 / near_clip[3], near_clip);
+    glm_vec4_scale(far_clip, 1.0 / far_clip[3], far_clip);
+
+    glm_vec3_sub(far_clip, near_clip, world_dir);
+    glm_vec3_normalize(world_dir);
+}
+
 void walrus_rhi_set_transform(mat4 const transform)
 {
     u32 num                  = 1;
@@ -507,6 +553,17 @@ void walrus_rhi_set_vertex_buffer(u8 stream_id, Walrus_BufferHandle handle, Walr
         stream->layout_handle          = layout_handle;
         s_ctx->num_vertices[stream_id] = num_vertices;
     }
+}
+
+void walrus_rhi_set_instance_buffer(Walrus_BufferHandle handle, Walrus_LayoutHandle layout_handle, u32 offset,
+                                    u32 num_instance)
+{
+    walrus_assert(handle.id != WR_INVALID_HANDLE);
+
+    s_ctx->draw.instance_buffer = handle;
+    s_ctx->draw.instance_layout = layout_handle;
+    s_ctx->draw.instance_offset = offset;
+    s_ctx->draw.num_instances   = num_instance;
 }
 
 void walrus_rhi_set_index_buffer(Walrus_BufferHandle handle, u32 offset, u32 num_indices)

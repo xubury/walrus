@@ -34,6 +34,16 @@ void walrus_vertex_layout_begin(Walrus_VertexLayout* layout)
     memset(layout->offsets, 0, sizeof(layout->offsets));
 }
 
+void walrus_vertex_layout_begin_instance(Walrus_VertexLayout* layout, u8 instance)
+{
+    layout->instance_strde = instance;
+    layout->hash           = 0;
+    layout->stride         = 0;
+    layout->num_attributes = 0;
+    memset(layout->attributes, 0, sizeof(layout->attributes));
+    memset(layout->offsets, 0, sizeof(layout->offsets));
+}
+
 static u16 encode(u8 attr_id, u8 num, Walrus_Attribute type, bool normalized, bool as_int)
 {
     walrus_assert_msg(num <= 4 && num > 0, "Invalid number of components!");
@@ -47,7 +57,7 @@ static u16 encode(u8 attr_id, u8 num, Walrus_Attribute type, bool normalized, bo
 
 void walrus_vertex_layout_add(Walrus_VertexLayout* layout, u8 attr_id, u8 num, Walrus_Attribute type, bool normalized)
 {
-    u16 const en = encode(attr_id, num, type, normalized, false);
+    u16 const en                               = encode(attr_id, num, type, normalized, false);
     layout->attributes[layout->num_attributes] = en;
     layout->offsets[layout->num_attributes]    = layout->stride;
     layout->stride += s_attr_stride[type][num - 1];
