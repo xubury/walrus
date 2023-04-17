@@ -17,23 +17,40 @@ static u32 get_index(HexMap *map, i32 q, i32 r)
 {
     i32 const center_q = map->grid_width / 2.0;
     i32 const center_r = map->grid_height / 2.0;
-    u32       q_offset = q + center_q;
-    u32       r_offset = r + center_r;
+    q += center_q;
+    r += center_r;
+    if (q >= 0 && r >= 0) {
+        q = walrus_min((u32)q, map->grid_width - 1);
+        r = walrus_min((u32)r, map->grid_height - 1);
+        return r * map->grid_width + q;
+    }
+    return 0;
+}
 
-    q_offset = walrus_clamp(q_offset, 0, map->grid_width);
-    r_offset = walrus_clamp(r_offset, 0, map->grid_height);
-
-    return r_offset * map->grid_width + q_offset;
+static bool check_in_bound(HexMap *map, i32 q, i32 r)
+{
+    i32 const center_q = map->grid_width / 2.0;
+    i32 const center_r = map->grid_height / 2.0;
+    q += center_q;
+    r += center_r;
+    return q >= 0 && r >= 0 && (u32)q <= map->grid_width - 1 && (u32)r <= map->grid_height - 1;
 }
 
 bool hex_map_test_flags(HexMap *map, i32 q, i32 r, u32 flags)
 {
-    return map->grids[get_index(map, q, r)].flags & flags;
+    if (check_in_bound(map, q, r)) {
+        return map->grids[get_index(map, q, r)].flags & flags;
+    }
+    return false;
 }
 
-void hex_map_set_flags(HexMap *map, i32 q, i32 r, u32 flags)
+bool hex_map_set_flags(HexMap *map, i32 q, i32 r, u32 flags)
 {
-    map->grids[get_index(map, q, r)].flags = flags;
+    if (check_in_bound(map, q, r)) {
+        map->grids[get_index(map, q, r)].flags = flags;
+        return true;
+    }
+    return false;
 }
 
 void hex_map_compute_model_pixel(HexMap *map, mat4 model, f32 x, f32 y)

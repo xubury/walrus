@@ -23,6 +23,7 @@ typedef void (*RhiDestroyVertexLayoutFn)(Walrus_LayoutHandle handle);
 
 typedef void (*RhiCreateBufferFn)(Walrus_BufferHandle handle, void const *data, u64 size, u16 flags);
 typedef void (*RhiDestroyBufferFn)(Walrus_BufferHandle handle);
+typedef void (*RhiUpdateBufferFn)(Walrus_BufferHandle handle, u64 offset, u64 size, void const *data);
 
 typedef void (*RhiCreateTextureFn)(Walrus_TextureHandle handle, Walrus_TextureCreateInfo const *info);
 typedef void (*RhiDestroyTextureFn)(Walrus_TextureHandle handle);
@@ -45,6 +46,7 @@ typedef struct {
 
     RhiCreateBufferFn  buffer_create_fn;
     RhiDestroyBufferFn buffer_destroy_fn;
+    RhiUpdateBufferFn  buffer_update_fn;
 
     RhiCreateTextureFn  texture_create_fn;
     RhiDestroyTextureFn texture_destroy_fn;

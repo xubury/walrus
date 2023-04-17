@@ -533,6 +533,15 @@ void walrus_rhi_destroy_buffer(Walrus_BufferHandle handle)
     walrus_handle_free(s_ctx->buffers, handle.id);
 }
 
+void walrus_rhi_update_buffer(Walrus_BufferHandle handle, u64 offset, u64 size, void const* data)
+{
+    if (handle.id == WR_INVALID_HANDLE) {
+        return;
+    }
+
+    s_table->buffer_update_fn(handle, offset, size, data);
+}
+
 static bool set_stream_bit(RenderDraw* draw, u8 stream, Walrus_BufferHandle handle)
 {
     u16 const bit     = 1 << stream;

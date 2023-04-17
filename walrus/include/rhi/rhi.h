@@ -47,6 +47,7 @@ void                walrus_rhi_destroy_vertex_layout(Walrus_LayoutHandle handle)
 
 Walrus_BufferHandle walrus_rhi_create_buffer(void const* data, u64 size, u16 flags);
 void                walrus_rhi_destroy_buffer(Walrus_BufferHandle handle);
+void                walrus_rhi_update_buffer(Walrus_BufferHandle handle, u64 offset, u64 size, void const* data);
 
 void walrus_rhi_set_vertex_buffer(u8 stream_id, Walrus_BufferHandle handle, Walrus_LayoutHandle layout_handle,
                                   u32 offset, u32 num_vertices);

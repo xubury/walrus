@@ -541,10 +541,12 @@ static void gl_buffer_create(Walrus_BufferHandle handle, void const *data, u64 s
     glGenBuffers(1, &vbo);
     glBindBuffer(target, vbo);
     glBufferData(target, size, data, GL_STATIC_DRAW);
-    g_ctx->buffers[handle.id].id   = vbo;
-    g_ctx->buffers[handle.id].size = size;
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(target, 0);
+
+    g_ctx->buffers[handle.id].id     = vbo;
+    g_ctx->buffers[handle.id].size   = size;
+    g_ctx->buffers[handle.id].target = target;
 }
 
 static void gl_buffer_destroy(Walrus_BufferHandle handle)
@@ -552,6 +554,15 @@ static void gl_buffer_destroy(Walrus_BufferHandle handle)
     glDeleteBuffers(1, &g_ctx->buffers[handle.id].id);
     g_ctx->buffers[handle.id].id   = 0;
     g_ctx->buffers[handle.id].size = 0;
+}
+
+static void gl_buffer_update(Walrus_BufferHandle handle, u64 offset, u64 size, void const *data)
+{
+    GLenum target = g_ctx->buffers[handle.id].target;
+    GLint  id     = g_ctx->buffers[handle.id].id;
+    glBindBuffer(target, id);
+    glBufferSubData(target, offset, size, data);
+    glBindBuffer(target, 0);
 }
 
 static void init_api(RhiVTable *vtable)
@@ -573,6 +584,7 @@ static void init_api(RhiVTable *vtable)
 
     vtable->buffer_create_fn  = gl_buffer_create;
     vtable->buffer_destroy_fn = gl_buffer_destroy;
+    vtable->buffer_update_fn  = gl_buffer_update;
 
     vtable->texture_create_fn  = gl_texture_create;
     vtable->texture_destroy_fn = gl_texture_destroy;

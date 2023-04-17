@@ -62,11 +62,14 @@ typedef struct {
     Walrus_ProgramHandle map_shader;
     Walrus_UniformHandle u_texture;
     Walrus_BufferHandle  buffer;
-    Walrus_BufferHandle  model_buffer;
+
     Walrus_BufferHandle  index_buffer;
     Walrus_LayoutHandle  layout;
-    Walrus_LayoutHandle  model_layout;
     Walrus_TextureHandle texture;
+
+    Walrus_LayoutHandle model_layout;
+    Walrus_BufferHandle model_buffer;
+    u32                 num_models;
 
     mat4 model;
 
@@ -85,7 +88,7 @@ void on_render(Walrus_App *app)
     walrus_rhi_set_vertex_buffer(0, data->buffer, data->layout, 0, UINT32_MAX);
     walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
     walrus_rhi_set_texture(0, data->u_texture, data->texture);
-    walrus_rhi_set_instance_buffer(data->model_buffer, data->model_layout, 0, UINT32_MAX);
+    walrus_rhi_set_instance_buffer(data->model_buffer, data->model_layout, 0, data->num_models);
     walrus_rhi_submit(0, data->map_shader, WR_RHI_DISCARD_INSTANCE_DATA);
 
     walrus_rhi_set_transform(data->model);
@@ -99,7 +102,7 @@ void on_tick(Walrus_App *app, float dt)
     camera_tick(&data->cam, dt);
 
     Walrus_Input *input = walrus_engine_input();
-    if (!walrus_input_any_down(input->mouse)) {
+    if (!walrus_input_down(input->mouse, WR_MOUSE_BTN_RIGHT)) {
         vec2 axis;
         vec3 world_pos, world_dir;
         vec3 select;
@@ -110,7 +113,13 @@ void on_tick(Walrus_App *app, float dt)
             i32 q, r;
             hex_pixel_to_qr(data->hex_map.hex_size, select[0], select[2], &q, &r);
             hex_map_compute_model(&data->hex_map, data->model, q, r);
-            if (hex_map_test_flags(&data->hex_map, q, r, HEX_FLAG_NORMAL)) {
+            if (!hex_map_test_flags(&data->hex_map, q, r, HEX_FLAG_NORMAL) &&
+                walrus_input_pressed(input->mouse, WR_MOUSE_BTN_LEFT)) {
+                if (hex_map_set_flags(&data->hex_map, q, r, HEX_FLAG_NORMAL)) {
+                    walrus_rhi_update_buffer(data->model_buffer, data->num_models * sizeof(mat4), sizeof(mat4),
+                                             &data->model);
+                    ++data->num_models;
+                }
             }
         }
     }
@@ -183,10 +192,10 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_vertex_layout_end(&layout);
     app_data->model_layout = walrus_rhi_create_vertex_layout(&layout);
 
-    mat4 models[2];
+    mat4 models[1000];
     hex_map_set_flags(&app_data->hex_map, 0, 0, HEX_FLAG_NORMAL);
     hex_map_set_flags(&app_data->hex_map, 1, 1, HEX_FLAG_NORMAL);
-    hex_map_compute_models(&app_data->hex_map, models, 2, HEX_FLAG_NORMAL);
+    app_data->num_models = hex_map_compute_models(&app_data->hex_map, models, 1000, HEX_FLAG_NORMAL);
 
     app_data->model_buffer = walrus_rhi_create_buffer(models, sizeof(models), 0);
 

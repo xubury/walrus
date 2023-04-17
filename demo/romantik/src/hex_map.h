@@ -27,7 +27,7 @@ void hex_map_init(HexMap *map, u32 hex_size, u32 horizontal_grids, u32 vertical_
 
 bool hex_map_test_flags(HexMap *map, i32 q, i32 r, u32 flags);
 
-void hex_map_set_flags(HexMap *map, i32 q, i32 r, u32 flags);
+bool hex_map_set_flags(HexMap *map, i32 q, i32 r, u32 flags);
 
 void hex_map_compute_model(HexMap *map, mat4 model, i32 q, i32 r);
 
