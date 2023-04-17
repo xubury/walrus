@@ -12,6 +12,7 @@
 #include "camera.h"
 #include "hex.h"
 #include "hex_map.h"
+#include "game_logic.h"
 
 char const *hex_src =
     "layout (location = 0) in vec3 a_pos;\n"
@@ -57,9 +58,16 @@ char const *fs_src =
     "    frag_color = vec4(color, 1.0);\n"
     "}\n";
 
+char const *fs_grid_src =
+    "out vec4 frag_color;\n"
+    "void main() {\n"
+    "    frag_color = vec4(0.3);\n"
+    "}\n";
+
 typedef struct {
     Walrus_ProgramHandle pick_shader;
     Walrus_ProgramHandle map_shader;
+    Walrus_ProgramHandle grid_shader;
     Walrus_UniformHandle u_texture;
     Walrus_BufferHandle  buffer;
 
@@ -68,14 +76,16 @@ typedef struct {
     Walrus_TextureHandle texture;
 
     Walrus_LayoutHandle model_layout;
-    Walrus_BufferHandle model_buffer;
-    u32                 num_models;
+    Walrus_BufferHandle placed_buffer;
+    Walrus_BufferHandle avail_buffer;
 
     mat4 model;
 
     CameraData cam;
 
-    HexMap hex_map;
+    bool hide_picker;
+
+    RomantikGame game;
 } AppData;
 
 void on_render(Walrus_App *app)
@@ -87,12 +97,18 @@ void on_render(Walrus_App *app)
 
     walrus_rhi_set_vertex_buffer(0, data->buffer, data->layout, 0, UINT32_MAX);
     walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
+
+    walrus_rhi_set_instance_buffer(data->avail_buffer, data->model_layout, 0, data->game.num_avail_grids);
+    walrus_rhi_submit(0, data->grid_shader, WR_RHI_DISCARD_INSTANCE_DATA);
+
     walrus_rhi_set_texture(0, data->u_texture, data->texture);
-    walrus_rhi_set_instance_buffer(data->model_buffer, data->model_layout, 0, data->num_models);
+    walrus_rhi_set_instance_buffer(data->placed_buffer, data->model_layout, 0, data->game.num_placed_grids);
     walrus_rhi_submit(0, data->map_shader, WR_RHI_DISCARD_INSTANCE_DATA);
 
-    walrus_rhi_set_transform(data->model);
-    walrus_rhi_submit(0, data->pick_shader, WR_RHI_DISCARD_ALL);
+    if (!data->hide_picker) {
+        walrus_rhi_set_transform(data->model);
+        walrus_rhi_submit(0, data->pick_shader, WR_RHI_DISCARD_ALL);
+    }
 }
 
 void on_tick(Walrus_App *app, float dt)
@@ -102,6 +118,9 @@ void on_tick(Walrus_App *app, float dt)
     camera_tick(&data->cam, dt);
 
     Walrus_Input *input = walrus_engine_input();
+    RomantikGame *game  = &data->game;
+    HexMap       *map   = &game->map;
+    data->hide_picker   = true;
     if (!walrus_input_down(input->mouse, WR_MOUSE_BTN_RIGHT)) {
         vec2 axis;
         vec3 world_pos, world_dir;
@@ -111,14 +130,23 @@ void on_tick(Walrus_App *app, float dt)
         walrus_rhi_screen_to_world_dir(0, axis, world_dir);
         if (walrus_intersect_ray_plane(select, world_pos, world_dir, (vec3 const){0, 1, 0}, (vec3 const){0, 0, 0})) {
             i32 q, r;
-            hex_pixel_to_qr(data->hex_map.hex_size, select[0], select[2], &q, &r);
-            hex_map_compute_model(&data->hex_map, data->model, q, r);
-            if (!hex_map_test_flags(&data->hex_map, q, r, HEX_FLAG_NORMAL) &&
-                walrus_input_pressed(input->mouse, WR_MOUSE_BTN_LEFT)) {
-                if (hex_map_set_flags(&data->hex_map, q, r, HEX_FLAG_NORMAL)) {
-                    walrus_rhi_update_buffer(data->model_buffer, data->num_models * sizeof(mat4), sizeof(mat4),
-                                             &data->model);
-                    ++data->num_models;
+            hex_pixel_to_qr(map->hex_size, select[0], select[2], &q, &r);
+            if (hex_map_test_flags(map, q, r, HEX_FLAG_AVAIL)) {
+                hex_map_compute_model(map, data->model, q, r);
+                data->hide_picker = false;
+                if (walrus_input_pressed(input->mouse, WR_MOUSE_BTN_LEFT)) {
+                    if (romantik_place_grid(game, q, r)) {
+                        walrus_rhi_update_buffer(data->placed_buffer, (game->num_placed_grids - 1) * sizeof(mat4),
+                                                 sizeof(mat4), &data->model);
+
+                        mat4 *models       = walrus_new(mat4, game->num_avail_grids);
+                        u32   compute_size = hex_map_compute_models(map, models, game->num_avail_grids, HEX_FLAG_AVAIL);
+                        if (compute_size != game->num_avail_grids) {
+                            walrus_trace("compute size: %d avail grids: %d", compute_size, game->num_avail_grids);
+                        }
+                        walrus_rhi_update_buffer(data->avail_buffer, 0, game->num_avail_grids * sizeof(mat4), models);
+                        walrus_free(models);
+                    }
                 }
             }
         }
@@ -151,7 +179,7 @@ Walrus_AppError on_init(Walrus_App *app)
     i32 const       height   = walrus_window_height(window);
 
     camera_init(&app_data->cam);
-    hex_map_init(&app_data->hex_map, 1, 10, 10);
+    romantik_game_init(&app_data->game);
 
     walrus_rhi_set_view_rect(0, 0, 0, width, height);
     walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_COLOR | WR_RHI_CLEAR_DEPTH, 0xffd580ff, 1.0, 0);
@@ -192,20 +220,36 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_vertex_layout_end(&layout);
     app_data->model_layout = walrus_rhi_create_vertex_layout(&layout);
 
-    mat4 models[1000];
-    hex_map_set_flags(&app_data->hex_map, 0, 0, HEX_FLAG_NORMAL);
-    hex_map_set_flags(&app_data->hex_map, 1, 1, HEX_FLAG_NORMAL);
-    app_data->num_models = hex_map_compute_models(&app_data->hex_map, models, 1000, HEX_FLAG_NORMAL);
+    RomantikGame *game = &app_data->game;
+    /* romantik_set_avail(game, 0, 0); */
+    for (i8 q = -5; q <= 5; ++q) {
+        for (i8 r = -5; r <= 5; ++r) {
+            u32 dist  = hex_distance(q, r, 0, 0);
+            if (dist <= 2) {
+                romantik_set_avail(game, q, r);
+            }
+        }
+    }
 
-    app_data->model_buffer = walrus_rhi_create_buffer(models, sizeof(models), 0);
+    app_data->placed_buffer = walrus_rhi_create_buffer(NULL, 1000 * sizeof(mat4), 0);
+    app_data->avail_buffer  = walrus_rhi_create_buffer(NULL, 2000 * sizeof(mat4), 0);
+
+    mat4 *model = walrus_new(mat4, game->num_avail_grids);
+    hex_map_compute_models(&game->map, model, game->num_avail_grids, HEX_FLAG_AVAIL);
+    walrus_rhi_update_buffer(app_data->avail_buffer, 0, game->num_avail_grids * sizeof(mat4), model);
+    walrus_free(model);
 
     app_data->u_texture = walrus_rhi_create_uniform("u_texture", WR_RHI_UNIFORM_SAMPLER, 1);
 
-    Walrus_ShaderHandle vs     = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, hex_src);
-    Walrus_ShaderHandle vs_ins = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, ins_hex_src);
-    Walrus_ShaderHandle fs     = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
-    app_data->pick_shader      = walrus_rhi_create_program(vs, fs);
-    app_data->map_shader       = walrus_rhi_create_program(vs_ins, fs);
+    Walrus_ShaderHandle vs      = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, hex_src);
+    Walrus_ShaderHandle vs_ins  = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, ins_hex_src);
+    Walrus_ShaderHandle fs      = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
+    Walrus_ShaderHandle fs_grid = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_grid_src);
+    app_data->pick_shader       = walrus_rhi_create_program(vs, fs);
+    app_data->map_shader        = walrus_rhi_create_program(vs_ins, fs);
+    app_data->grid_shader       = walrus_rhi_create_program(vs_ins, fs_grid);
+
+    app_data->hide_picker = true;
 
     glm_mat4_identity(app_data->model);
 

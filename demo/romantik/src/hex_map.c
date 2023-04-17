@@ -10,13 +10,14 @@ void hex_map_init(HexMap *map, u32 hex_size, u32 horizontal_grids, u32 vertical_
     map->grid_height = walrus_min(MAX_GRIDS_VERTICAL, vertical_grids);
 
     map->hex_size = hex_size;
-    map->grids    = walrus_new0(HexGrid, map->grid_width * map->grid_height);
+
+    map->grids = walrus_new0(HexGrid, map->grid_width * map->grid_height);
 }
 
 static u32 get_index(HexMap *map, i32 q, i32 r)
 {
-    i32 const center_q = map->grid_width / 2.0;
-    i32 const center_r = map->grid_height / 2.0;
+    u32 const center_q = ceil((map->grid_width - 1) / 2.0);
+    u32 const center_r = ceil((map->grid_height - 1) / 2.0);
     q += center_q;
     r += center_r;
     if (q >= 0 && r >= 0) {
@@ -27,18 +28,22 @@ static u32 get_index(HexMap *map, i32 q, i32 r)
     return 0;
 }
 
-static bool check_in_bound(HexMap *map, i32 q, i32 r)
+bool hex_map_check_in_bound(HexMap *map, i32 q, i32 r)
 {
-    i32 const center_q = map->grid_width / 2.0;
-    i32 const center_r = map->grid_height / 2.0;
+    u32 const center_q = ceil((map->grid_width - 1) / 2.0);
+    u32 const center_r = ceil((map->grid_height - 1) / 2.0);
+
     q += center_q;
     r += center_r;
-    return q >= 0 && r >= 0 && (u32)q <= map->grid_width - 1 && (u32)r <= map->grid_height - 1;
+    if (q >= 0 && r >= 0) {
+        return (u32)q < map->grid_width && (u32)r < map->grid_height;
+    }
+    return false;
 }
 
 bool hex_map_test_flags(HexMap *map, i32 q, i32 r, u32 flags)
 {
-    if (check_in_bound(map, q, r)) {
+    if (hex_map_check_in_bound(map, q, r)) {
         return map->grids[get_index(map, q, r)].flags & flags;
     }
     return false;
@@ -46,7 +51,7 @@ bool hex_map_test_flags(HexMap *map, i32 q, i32 r, u32 flags)
 
 bool hex_map_set_flags(HexMap *map, i32 q, i32 r, u32 flags)
 {
-    if (check_in_bound(map, q, r)) {
+    if (hex_map_check_in_bound(map, q, r)) {
         map->grids[get_index(map, q, r)].flags = flags;
         return true;
     }
@@ -74,13 +79,16 @@ u32 hex_map_compute_models(HexMap *map, mat4 *models, u64 max_size, u32 flags)
     u64 size = map->grid_width * map->grid_height;
     u64 cnt  = 0;
 
-    u32 const center_q = map->grid_width / 2.0;
-    u32 const center_r = map->grid_height / 2.0;
+    u32 const center_q = ceil((map->grid_width - 1) / 2.0);
+    u32 const center_r = ceil((map->grid_height - 1) / 2.0);
     for (u64 i = 0; i < size && cnt < max_size; ++i) {
+        u32 q = i % map->grid_width;
+        u32 r = i / map->grid_width;
+        if (r >= map->grid_height) {
+            continue;
+        }
         if (map->grids[i].flags & flags) {
-            i32 r = i / map->grid_width - center_q;
-            i32 q = i % map->grid_width - center_r;
-            hex_map_compute_model(map, models[cnt], q, r);
+            hex_map_compute_model(map, models[cnt], q - center_q, r - center_r);
             ++cnt;
         }
     }

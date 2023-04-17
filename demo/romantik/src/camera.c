@@ -101,7 +101,7 @@ void camera_init(CameraData *cam)
     cam->smoothness = 10.0f;
 
     cam->move_speed = 10.0f;
-    cam->rot_speed  = 8.0f;
+    cam->rot_speed  = 4.0f;
 
     cam->angle_movement = 0.0f;
     cam->arm_len        = 5.f;

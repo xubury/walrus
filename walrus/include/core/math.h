@@ -2,13 +2,13 @@
 
 #include "macro.h"
 
-#define walrus_max(a, b) (a > b ? a : b)
+#define walrus_max(a, b) ((a) > (b) ? a : b)
 
-#define walrus_min(a, b) (a < b ? a : b)
+#define walrus_min(a, b) ((a) < (b) ? a : b)
 
 #define walrus_clamp(v, low, high) walrus_min(walrus_max(v, low), high)
 
-#define walrus_abs(a) (a > 0 ? a : -a)
+#define walrus_abs(a) ((a) > 0 ? (a) : -(a))
 
 WR_INLINE u32 walrus_u32add(u32 a, u32 b)
 {

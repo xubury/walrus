@@ -162,8 +162,6 @@ void gl_program_create(Walrus_ProgramHandle handle, Walrus_ShaderHandle shader0,
             bracket = 0;
         }
 
-        walrus_trace("uniform \"%s\" loc: %d", name, loc);
-
         switch (gl_type) {
             case GL_SAMPLER_2D:
             case GL_SAMPLER_2D_ARRAY:

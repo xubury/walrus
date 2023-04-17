@@ -535,6 +535,11 @@ export function importGl(env)
                 glCtx.bufferData(target, size, usage)
             }
         },
+        glBufferSubData: function(target, offset, size, data) {
+            var heap = sys.getHeap();
+            var HEAPU8 = new Uint8Array(heap.buffer);
+            glCtx.bufferSubData(target, offset, HEAPU8.subarray(data, data + size))
+        },
 
         glGenVertexArrays: function(n, vaos) {
             genObjects(n, vaos, "createVertexArray", glVertexArrays);

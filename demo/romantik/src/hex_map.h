@@ -6,11 +6,6 @@
 #define MAX_GRIDS_HORIZONTAL 100
 #define MAX_GRIDS_VERTICAL   100
 
-typedef enum {
-    HEX_FLAG_NONE   = 0,
-    HEX_FLAG_NORMAL = 1 << 0,
-} HexFlag;
-
 typedef struct {
     u32 id;
     u32 flags;
@@ -24,6 +19,8 @@ typedef struct {
 } HexMap;
 
 void hex_map_init(HexMap *map, u32 hex_size, u32 horizontal_grids, u32 vertical_grids);
+
+bool hex_map_check_in_bound(HexMap *map, i32 q, i32 r);
 
 bool hex_map_test_flags(HexMap *map, i32 q, i32 r, u32 flags);
 

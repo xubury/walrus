@@ -217,7 +217,7 @@ static void submit(RenderFrame *frame)
 
     Walrus_ProgramHandle current_prog = {WR_INVALID_HANDLE};
 
-    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_DEPTH_TEST);
 
     RenderDraw current_state;
     draw_clear(&current_state, WR_RHI_DISCARD_ALL);
