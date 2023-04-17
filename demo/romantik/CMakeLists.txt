@@ -1,7 +1,7 @@
 find_package(stb REQUIRED)
 
-add_executable(romantik src/main.c src/camera.c src/game_logic.c src/hex.c
-                        src/hex_map.c)
+add_executable(romantik src/main.c src/camera.c src/game_logic.c
+                        src/game_state.c src/hex.c src/hex_map.c)
 
 target_compile_options(romantik PUBLIC -Wall -Wextra -Wundef -pedantic)
 

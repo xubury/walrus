@@ -14,10 +14,10 @@ typedef struct {
     u32 score;
     u32 num_placed_grids;
     u32 num_avail_grids;
-} RomantikGame;
+} Romantik_Game;
 
-void romantik_game_init(RomantikGame *game);
+void romantik_game_init(Romantik_Game *game);
 
-bool romantik_place_grid(RomantikGame *game, i32 q, i32 r);
+bool romantik_place_grid(Romantik_Game *game, i32 q, i32 r);
 
-bool romantik_set_avail(RomantikGame *game, i32 q, i32 r);
+bool romantik_set_avail(Romantik_Game *game, i32 q, i32 r);

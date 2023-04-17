@@ -1,6 +1,6 @@
 #include "game_logic.h"
 
-void romantik_game_init(RomantikGame *game)
+void romantik_game_init(Romantik_Game *game)
 {
     hex_map_init(&game->map, 2, 10, 10);
 
@@ -9,7 +9,7 @@ void romantik_game_init(RomantikGame *game)
     game->num_avail_grids  = 0;
 }
 
-static void set_neighbor_avails(RomantikGame *game, i32 q, i32 r, vec2 *new_avails, u8 *num_avails)
+static void set_neighbor_avails(Romantik_Game *game, i32 q, i32 r, vec2 *new_avails, u8 *num_avails)
 {
     vec2 const dirs[] = {{1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}};
     *num_avails       = 0;
@@ -24,7 +24,7 @@ static void set_neighbor_avails(RomantikGame *game, i32 q, i32 r, vec2 *new_avai
     }
 }
 
-bool romantik_place_grid(RomantikGame *game, i32 q, i32 r)
+bool romantik_place_grid(Romantik_Game *game, i32 q, i32 r)
 {
     vec2 new_avails[6];
     u8   num_avails = 0;
@@ -38,7 +38,7 @@ bool romantik_place_grid(RomantikGame *game, i32 q, i32 r)
     return false;
 }
 
-bool romantik_set_avail(RomantikGame *game, i32 q, i32 r)
+bool romantik_set_avail(Romantik_Game *game, i32 q, i32 r)
 {
     if (hex_map_check_in_bound(&game->map, q, r) && !hex_map_test_flags(&game->map, q, r, HEX_FLAG_PLACED) &&
         !hex_map_test_flags(&game->map, q, r, HEX_FLAG_AVAIL)) {
