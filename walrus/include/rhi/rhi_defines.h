@@ -67,6 +67,87 @@
      WR_RHI_CLEAR_DISCARD_COLOR_3 | WR_RHI_CLEAR_DISCARD_COLOR_4 | WR_RHI_CLEAR_DISCARD_COLOR_5 |     \
      WR_RHI_CLEAR_DISCARD_COLOR_6 | WR_RHI_CLEAR_DISCARD_COLOR_7)
 
+#define WR_RHI_STATE_MASK UINT64_C(0xffffffffffffffff)  //!< State bit mask
+/**
+ * Color RGB/alpha/depth write. When it's not specified write will be disabled.
+ */
+#define WR_RHI_STATE_WRITE_R UINT64_C(0x0000000000000001)  //!< Enable R write.
+#define WR_RHI_STATE_WRITE_G UINT64_C(0x0000000000000002)  //!< Enable G write.
+#define WR_RHI_STATE_WRITE_B UINT64_C(0x0000000000000004)  //!< Enable B write.
+#define WR_RHI_STATE_WRITE_A UINT64_C(0x0000000000000008)  //!< Enable alpha write.
+#define WR_RHI_STATE_WRITE_Z UINT64_C(0x0000004000000000)  //!< Enable depth write.
+/// Enable RGB write.
+#define WR_RHI_STATE_WRITE_RGB (0 | WR_RHI_STATE_WRITE_R | WR_RHI_STATE_WRITE_G | WR_RHI_STATE_WRITE_B)
+
+/// Write all channels mask.
+#define WR_RHI_STATE_WRITE_MASK (0 | WR_RHI_STATE_WRITE_RGB | WR_RHI_STATE_WRITE_A | WR_RHI_STATE_WRITE_Z)
+
+/**
+ * Depth test state. When `WR_RHI_STATE_DEPTH_` is not specified depth test will be disabled.
+ */
+#define WR_RHI_STATE_DEPTH_TEST_LESS     UINT64_C(0x0000000000000010)  //!< Enable depth test, less.
+#define WR_RHI_STATE_DEPTH_TEST_LEQUAL   UINT64_C(0x0000000000000020)  //!< Enable depth test, less or equal.
+#define WR_RHI_STATE_DEPTH_TEST_EQUAL    UINT64_C(0x0000000000000030)  //!< Enable depth test, equal.
+#define WR_RHI_STATE_DEPTH_TEST_GEQUAL   UINT64_C(0x0000000000000040)  //!< Enable depth test, greater or equal.
+#define WR_RHI_STATE_DEPTH_TEST_GREATER  UINT64_C(0x0000000000000050)  //!< Enable depth test, greater.
+#define WR_RHI_STATE_DEPTH_TEST_NOTEQUAL UINT64_C(0x0000000000000060)  //!< Enable depth test, not equal.
+#define WR_RHI_STATE_DEPTH_TEST_NEVER    UINT64_C(0x0000000000000070)  //!< Enable depth test, never.
+#define WR_RHI_STATE_DEPTH_TEST_ALWAYS   UINT64_C(0x0000000000000080)  //!< Enable depth test, always.
+#define WR_RHI_STATE_DEPTH_TEST_SHIFT    4                             //!< Depth test state bit shift
+#define WR_RHI_STATE_DEPTH_TEST_MASK     UINT64_C(0x00000000000000f0)  //!< Depth test state bit mask
+
+/**
+ * Use WR_RHI_STATE_BLEND_FUNC(_src, _dst) or WR_RHI_STATE_BLEND_FUNC_SEPARATE(_srcRGB, _dstRGB, _srcA, _dstA)
+ * helper macros.
+ */
+#define WR_RHI_STATE_BLEND_ZERO          UINT64_C(0x0000000000001000)  //!< 0, 0, 0, 0
+#define WR_RHI_STATE_BLEND_ONE           UINT64_C(0x0000000000002000)  //!< 1, 1, 1, 1
+#define WR_RHI_STATE_BLEND_SRC_COLOR     UINT64_C(0x0000000000003000)  //!< Rs, Gs, Bs, As
+#define WR_RHI_STATE_BLEND_INV_SRC_COLOR UINT64_C(0x0000000000004000)  //!< 1-Rs, 1-Gs, 1-Bs, 1-As
+#define WR_RHI_STATE_BLEND_SRC_ALPHA     UINT64_C(0x0000000000005000)  //!< As, As, As, As
+#define WR_RHI_STATE_BLEND_INV_SRC_ALPHA UINT64_C(0x0000000000006000)  //!< 1-As, 1-As, 1-As, 1-As
+#define WR_RHI_STATE_BLEND_DST_ALPHA     UINT64_C(0x0000000000007000)  //!< Ad, Ad, Ad, Ad
+#define WR_RHI_STATE_BLEND_INV_DST_ALPHA UINT64_C(0x0000000000008000)  //!< 1-Ad, 1-Ad, 1-Ad ,1-Ad
+#define WR_RHI_STATE_BLEND_DST_COLOR     UINT64_C(0x0000000000009000)  //!< Rd, Gd, Bd, Ad
+#define WR_RHI_STATE_BLEND_INV_DST_COLOR UINT64_C(0x000000000000a000)  //!< 1-Rd, 1-Gd, 1-Bd, 1-Ad
+#define WR_RHI_STATE_BLEND_SRC_ALPHA_SAT UINT64_C(0x000000000000b000)  //!< f, f, f, 1; f = min(As, 1-Ad)
+#define WR_RHI_STATE_BLEND_FACTOR        UINT64_C(0x000000000000c000)  //!< Blend factor
+#define WR_RHI_STATE_BLEND_INV_FACTOR    UINT64_C(0x000000000000d000)  //!< 1-Blend factor
+#define WR_RHI_STATE_BLEND_SHIFT         12                            //!< Blend state bit shift
+#define WR_RHI_STATE_BLEND_MASK          UINT64_C(0x000000000ffff000)  //!< Blend state bit mask
+
+/// Blend function separate.
+#define WR_RHI_STATE_BLEND_FUNC_SEPARATE(_srcRGB, _dstRGB, _srcA, _dstA)  \
+    (UINT64_C(0) | (((uint64_t)(_srcRGB) | ((uint64_t)(_dstRGB) << 4))) | \
+     (((uint64_t)(_srcA) | ((uint64_t)(_dstA) << 4)) << 8))
+
+/// Blend function.
+#define WR_RHI_STATE_BLEND_FUNC(_src, _dst) WR_RHI_STATE_BLEND_FUNC_SEPARATE(_src, _dst, _src, _dst)
+
+#define WR_RHI_STATE_BLEND_ALPHA \
+    (0 | WR_RHI_STATE_BLEND_FUNC(WR_RHI_STATE_BLEND_SRC_ALPHA, WR_RHI_STATE_BLEND_INV_SRC_ALPHA))
+
+#define WR_RHI_STATE_NONE UINT64_C(0)
+#define WR_RHI_STATE_DEFAULT \
+    (0 | WR_RHI_STATE_WRITE_RGB | WR_RHI_STATE_WRITE_A | WR_RHI_STATE_WRITE_Z | WR_RHI_STATE_DEPTH_TEST_LESS)
+
+/**
+ * Cull state. When `WR_RHI_STATE_CULL_*` is not specified culling will be disabled.
+ *
+ */
+#define WR_RHI_STATE_CULL_CW    UINT64_C(0x0000001000000000)  //!< Cull clockwise triangles.
+#define WR_RHI_STATE_CULL_CCW   UINT64_C(0x0000002000000000)  //!< Cull counter-clockwise triangles.
+#define WR_RHI_STATE_CULL_SHIFT 36                            //!< Culling mode bit shift
+#define WR_RHI_STATE_CULL_MASK  UINT64_C(0x0000003000000000)  //!< Culling mode bit mask
+
+/* Primitive draw mode */
+#define WR_RHI_STATE_DRAW_TRIANGLE_STRIP UINT64_C(0x0000010000000000)  //!< Triangle Strip
+#define WR_RHI_STATE_DRAW_LINE           UINT64_C(0x0000020000000000)  //!< Line
+#define WR_RHI_STATE_DRAW_SHIFT          40                            //!< Primitive mode bit shift
+#define WR_RHI_STATE_DRAW_MASK           UINT64_C(0x00000f0000000000)  //!< Primitive mode bit mask
+
+#define WR_RHI_STATE_WIREFRAME UINT64_C(0x0000100000000000)  //!< Wireframe
+
 #define WR_RHI_DISCARD_NONE           UINT8_C(0x00)  //!< Preserve everything.
 #define WR_RHI_DISCARD_BINDINGS       UINT8_C(0x01)  //!< Discard texture sampler and buffer bindings.
 #define WR_RHI_DISCARD_INDEX_BUFFER   UINT8_C(0x02)  //!< Discard index buffer.
@@ -173,4 +254,4 @@
 #define WR_RHI_BUFFER_INDEX              UINT16_C(0x1000)  //!< Index buffer.
 #define WR_RHI_BUFFER_UNIFORM_BLOCK      UINT16_C(0x2000)  //!< Uniform block buffer.
 #define WR_RHI_BUFFER_CLIENT_READ        UINT16_C(0x4000)  //!< Buffer will be read by the application.
-#define WR_RHI_BUFFER_COMPUTE_READ_WRITE (BD_BUFFER_COMPUTE_READ | BD_BUFFER_COMPUTE_WRITE)
+#define WR_RHI_BUFFER_COMPUTE_READ_WRITE (WR_RHI_BUFFER_COMPUTE_READ | WR_RHI_BUFFER_COMPUTE_WRITE)

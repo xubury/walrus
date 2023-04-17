@@ -36,6 +36,9 @@ typedef struct {
     Walrus_BufferHandle instance_buffer;
     Walrus_LayoutHandle instance_layout;
 
+    uint64_t state_flags;
+    uint32_t blend_factor;
+
     u32 start_matrix;
     u32 num_matrices;
 } RenderDraw;

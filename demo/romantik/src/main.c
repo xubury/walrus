@@ -61,7 +61,7 @@ char const *fs_src =
 char const *fs_grid_src =
     "out vec4 frag_color;\n"
     "void main() {\n"
-    "    frag_color = vec4(0.3);\n"
+    "    frag_color = vec4(0.2);\n"
     "}\n";
 
 typedef struct {
@@ -93,22 +93,23 @@ void on_render(Walrus_App *app)
     AppData    *data = walrus_app_userdata(app);
     CameraData *cam  = &data->cam;
 
+    walrus_rhi_set_state(WR_RHI_STATE_DEFAULT | WR_RHI_STATE_BLEND_ALPHA, 0);
     walrus_rhi_set_view_transform(0, cam->view, NULL);
 
     walrus_rhi_set_vertex_buffer(0, data->buffer, data->layout, 0, UINT32_MAX);
     walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
 
-    walrus_rhi_set_instance_buffer(data->avail_buffer, data->model_layout, 0, data->game.num_avail_grids);
-    walrus_rhi_submit(0, data->grid_shader, WR_RHI_DISCARD_INSTANCE_DATA);
+    if (!data->hide_picker) {
+        walrus_rhi_set_transform(data->model);
+        walrus_rhi_submit(0, data->pick_shader, WR_RHI_DISCARD_TRANSFORM);
+    }
 
     walrus_rhi_set_texture(0, data->u_texture, data->texture);
     walrus_rhi_set_instance_buffer(data->placed_buffer, data->model_layout, 0, data->game.num_placed_grids);
     walrus_rhi_submit(0, data->map_shader, WR_RHI_DISCARD_INSTANCE_DATA);
 
-    if (!data->hide_picker) {
-        walrus_rhi_set_transform(data->model);
-        walrus_rhi_submit(0, data->pick_shader, WR_RHI_DISCARD_ALL);
-    }
+    walrus_rhi_set_instance_buffer(data->avail_buffer, data->model_layout, 0, data->game.num_avail_grids);
+    walrus_rhi_submit(0, data->grid_shader, WR_RHI_DISCARD_ALL);
 }
 
 void on_tick(Walrus_App *app, float dt)
@@ -224,7 +225,7 @@ Walrus_AppError on_init(Walrus_App *app)
     /* romantik_set_avail(game, 0, 0); */
     for (i8 q = -5; q <= 5; ++q) {
         for (i8 r = -5; r <= 5; ++r) {
-            u32 dist  = hex_distance(q, r, 0, 0);
+            u32 dist = hex_distance(q, r, 0, 0);
             if (dist <= 2) {
                 romantik_set_avail(game, q, r);
             }

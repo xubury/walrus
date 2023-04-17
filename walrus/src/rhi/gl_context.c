@@ -71,6 +71,40 @@ static GLenum const s_image_format[WR_RHI_FORMAT_COUNT] = {
     GL_ZERO,  // Depth24Stencil8
 };
 
+typedef struct {
+    GLenum src;
+    GLenum dst;
+    bool   is_factor;
+} Blend;
+
+static Blend const s_blend[] = {
+    {0, 0, false},                                                     // ignored
+    {GL_ZERO, GL_ZERO, false},                                         // ZERO
+    {GL_ONE, GL_ONE, false},                                           // ONE
+    {GL_SRC_COLOR, GL_SRC_COLOR, false},                               // SRC_COLOR
+    {GL_ONE_MINUS_SRC_COLOR, GL_ONE_MINUS_SRC_COLOR, false},           // INV_SRC_COLOR
+    {GL_SRC_ALPHA, GL_SRC_ALPHA, false},                               // SRC_ALPHA
+    {GL_ONE_MINUS_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, false},           // INV_SRC_ALPHA
+    {GL_DST_ALPHA, GL_DST_ALPHA, false},                               // DST_ALPHA
+    {GL_ONE_MINUS_DST_ALPHA, GL_ONE_MINUS_DST_ALPHA, false},           // INV_DST_ALPHA
+    {GL_DST_COLOR, GL_DST_COLOR, false},                               // DST_COLOR
+    {GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_DST_COLOR, false},           // INV_DST_COLOR
+    {GL_SRC_ALPHA_SATURATE, GL_ONE, false},                            // SRC_ALPHA_SAT
+    {GL_CONSTANT_COLOR, GL_CONSTANT_COLOR, true},                      // FACTOR
+    {GL_ONE_MINUS_CONSTANT_COLOR, GL_ONE_MINUS_CONSTANT_COLOR, true},  // INV_FACTOR
+};
+
+static GLenum const s_cmp_func[] = {
+    0,            // ignored
+    GL_LESS,      // TEST_LESS
+    GL_LEQUAL,    // TEST_LEQUAL
+    GL_EQUAL,     // TEST_EQUAL
+    GL_GEQUAL,    // TEST_GEQUAL
+    GL_GREATER,   // TEST_GREATER
+    GL_NOTEQUAL,  // TEST_NOTEQUAL
+    GL_NEVER,     // TEST_NEVER
+    GL_ALWAYS,    // TEST_ALWAYS
+};
 static u64 s_vao_current_enabled = 0;
 static u64 s_vao_pending_disable = 0;
 static u64 s_vao_pending_enable  = 0;
@@ -218,9 +252,11 @@ static void submit(RenderFrame *frame)
     Walrus_ProgramHandle current_prog = {WR_INVALID_HANDLE};
 
     glDisable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
 
     RenderDraw current_state;
     draw_clear(&current_state, WR_RHI_DISCARD_ALL);
+    uint32_t blend_factor = 0;
 
     RenderBind current_bind;
     bind_clear(&current_bind, WR_RHI_DISCARD_ALL);
@@ -269,6 +305,57 @@ static void submit(RenderFrame *frame)
         if (program_changed) {
             current_prog = prog;
             glUseProgram(g_ctx->programs[current_prog.id].id);
+        }
+        u64 const new_flags       = draw->state_flags;
+        uint64_t  changed_flags   = current_state.state_flags ^ draw->state_flags;
+        current_state.state_flags = new_flags;
+        const bool resetState = view_changed;
+
+        if (resetState) {
+            draw_clear(&current_state, WR_RHI_DISCARD_ALL);
+            changed_flags = WR_RHI_STATE_MASK;
+        }
+
+        if (WR_RHI_STATE_BLEND_MASK & changed_flags || draw->blend_factor != blend_factor) {
+            u32 const blend  = (u32)((new_flags & WR_RHI_STATE_BLEND_MASK) >> WR_RHI_STATE_BLEND_SHIFT);
+            u32 const srcRgb = (blend)&0xf;
+            u32 const dstRgb = (blend >> 4) & 0xf;
+            u32 const srcA   = (blend >> 8) & 0xf;
+            u32 const dstA   = (blend >> 12) & 0xf;
+            if (srcRgb != 0 && dstRgb != 0 && srcA != 0 && dstA != 0) {
+                glBlendFuncSeparate(s_blend[srcRgb].src, s_blend[dstRgb].dst, s_blend[srcA].src, s_blend[dstA].dst);
+                if ((s_blend[srcRgb].is_factor || s_blend[dstRgb].is_factor) && blend_factor != draw->blend_factor) {
+                    const uint32_t rgba = draw->blend_factor;
+
+                    GLclampf rr = ((rgba >> 24)) / 255.0f;
+                    GLclampf gg = ((rgba >> 16) & 0xff) / 255.0f;
+                    GLclampf bb = ((rgba >> 8) & 0xff) / 255.0f;
+                    GLclampf aa = (rgba & 0xff) / 255.0f;
+
+                    glBlendColor(rr, gg, bb, aa);
+                    blend_factor = draw->blend_factor;
+                }
+                glEnable(GL_BLEND);
+            }
+            else {
+                glDisable(GL_BLEND);
+            }
+        }
+        if (WR_RHI_STATE_DEPTH_TEST_MASK & changed_flags) {
+            const uint32_t func = (new_flags & WR_RHI_STATE_DEPTH_TEST_MASK) >> WR_RHI_STATE_DEPTH_TEST_SHIFT;
+            if (func != 0) {
+                glEnable(GL_DEPTH_TEST);
+                glDepthFunc(s_cmp_func[func]);
+            }
+            else {
+                if (new_flags & WR_RHI_STATE_WRITE_Z) {
+                    glEnable(GL_DEPTH_TEST);
+                    glDepthFunc(GL_ALWAYS);
+                }
+                else {
+                    glDisable(GL_DEPTH_TEST);
+                }
+            }
         }
 
         bool const constants_changed = draw->uniform_begin < draw->uniform_end;

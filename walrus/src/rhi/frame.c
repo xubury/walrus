@@ -59,6 +59,9 @@ void draw_clear(RenderDraw *draw, u8 flags)
     if (flags & WR_RHI_DISCARD_STATE) {
         draw->uniform_begin = 0;
         draw->uniform_end   = 0;
+
+        draw->state_flags  = WR_RHI_STATE_DEFAULT;
+        draw->blend_factor = 0;
     }
     if (flags & WR_RHI_DISCARD_TRANSFORM) {
         draw->start_matrix = 0;

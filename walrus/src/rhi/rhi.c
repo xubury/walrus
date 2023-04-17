@@ -239,6 +239,13 @@ void walrus_rhi_decompose_rgba(u32 rgba, u8* r, u8* g, u8* b, u8* a)
     *a = (u8)(rgba >> 0);
 }
 
+void walrus_rhi_set_state(u64 state, u32 rgba)
+{
+    /* u8 const blend           = ((state & WR_RHI_STATE_BLEND_MASK) >> WR_RHI_STATE_BLEND_SHIFT) & 0xff; */
+    s_ctx->draw.state_flags  = state;
+    s_ctx->draw.blend_factor = rgba;
+}
+
 void walrus_rhi_set_view_rect(u16 view_id, i32 x, i32 y, u32 width, u32 height)
 {
     width            = walrus_max(width, 1);
