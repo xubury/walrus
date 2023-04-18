@@ -10,25 +10,7 @@
 void on_render(Walrus_App *app)
 {
     Romantik_GameState *state = walrus_app_userdata(app);
-    CameraData         *cam   = &state->cam;
-
-    walrus_rhi_set_state(WR_RHI_STATE_DEFAULT | WR_RHI_STATE_BLEND_ALPHA, 0);
-    walrus_rhi_set_view_transform(0, cam->view, NULL);
-
-    walrus_rhi_set_vertex_buffer(0, state->buffer, state->layout, 0, UINT32_MAX);
-    walrus_rhi_set_index_buffer(state->index_buffer, 0, UINT32_MAX);
-
-    if (!state->hide_picker) {
-        walrus_rhi_set_transform(state->model);
-        walrus_rhi_submit(0, state->pick_shader, WR_RHI_DISCARD_TRANSFORM);
-    }
-
-    walrus_rhi_set_texture(0, state->u_texture, state->texture);
-    walrus_rhi_set_instance_buffer(state->placed_buffer, state->model_layout, 0, state->game.num_placed_grids);
-    walrus_rhi_submit(0, state->map_shader, WR_RHI_DISCARD_INSTANCE_DATA);
-
-    walrus_rhi_set_instance_buffer(state->avail_buffer, state->model_layout, 0, state->game.num_avail_grids);
-    walrus_rhi_submit(0, state->grid_shader, WR_RHI_DISCARD_ALL);
+    game_state_render(state);
 }
 
 void on_tick(Walrus_App *app, float dt)
@@ -64,11 +46,17 @@ Walrus_AppError on_init(Walrus_App *app)
 
 int main(void)
 {
+    u8 bin = 0x81;
+    walrus_trace("0b%d%d%d%d%d%d%d%d", (bin >> 7) & 1, (bin >> 6) & 1, (bin >> 5) & 1, (bin >> 4) & 1, (bin >> 3) & 1,
+                 (bin >> 2) & 1, (bin >> 1) & 1, (bin >> 0) & 1);
+    bin = walrus_u8rol(bin, 2);
+    walrus_trace("0b%d%d%d%d%d%d%d%d", (bin >> 7) & 1, (bin >> 6) & 1, (bin >> 5) & 1, (bin >> 4) & 1, (bin >> 3) & 1,
+                 (bin >> 2) & 1, (bin >> 1) & 1, (bin >> 0) & 1);
     Walrus_EngineOption opt;
     opt.window_title  = "romantik";
     opt.window_width  = 1440;
     opt.window_height = 900;
-    opt.window_flags  = WR_WINDOW_FLAG_VSYNC | WR_WINDOW_FLAG_OPENGL;
+    opt.window_flags  = WR_WINDOW_FLAG_OPENGL;
     opt.minfps        = 30.f;
 
     Walrus_App *app = walrus_app_create(walrus_malloc(sizeof(Romantik_GameState)));

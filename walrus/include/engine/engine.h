@@ -27,7 +27,7 @@ typedef enum {
 char const *walrus_engine_error_msg(Walrus_EngineError err);
 
 // Helper function to init engine, runs an app and shutdown engine.
-void walrus_engine_init_run(Walrus_EngineOption *opt, Walrus_App *app);
+Walrus_AppError walrus_engine_init_run(Walrus_EngineOption *opt, Walrus_App *app);
 
 // Initialize engine
 Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt);

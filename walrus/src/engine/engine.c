@@ -171,15 +171,18 @@ char const *walrus_engine_error_msg(Walrus_EngineError err)
     return err_msg[err];
 }
 
-void walrus_engine_init_run(Walrus_EngineOption *opt, Walrus_App *app)
+Walrus_AppError walrus_engine_init_run(Walrus_EngineOption *opt, Walrus_App *app)
 {
-    i32 err = walrus_engine_init(opt);
+    Walrus_EngineError err = walrus_engine_init(opt);
+
     if (err == WR_ENGINE_SUCCESS) {
-        walrus_engine_run(app);
+        return walrus_engine_run(app);
     }
     else {
         walrus_error("%s", walrus_engine_error_msg(err));
     }
+
+    return WR_APP_NO_ENGINE;
 }
 
 Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
@@ -197,7 +200,7 @@ Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
     s_engine->app  = NULL;
     s_engine->quit = true;
 
-    i32 error = WR_ENGINE_SUCCESS;
+    Walrus_EngineError error = WR_ENGINE_SUCCESS;
 
     error = register_service();
 
@@ -238,8 +241,10 @@ static void app_shutdown(void)
 
 Walrus_AppError walrus_engine_run(Walrus_App *app)
 {
-    walrus_assert_msg(s_engine != NULL, "Engine should be initialized first");
     walrus_assert_msg(app != NULL, "App can't be NULL!");
+    if (s_engine == NULL) {
+        return WR_APP_NO_ENGINE;
+    }
 
     // If engine has running app, exit the app first
     if (s_engine->app != NULL) {

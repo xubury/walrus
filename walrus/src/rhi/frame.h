@@ -31,13 +31,13 @@ typedef struct {
     u8                  index_size;
     u64                 index_offset;
 
-    uint32_t            instance_offset;
-    uint32_t            num_instances;
+    u32                 instance_offset;
+    u32                 num_instances;
     Walrus_BufferHandle instance_buffer;
     Walrus_LayoutHandle instance_layout;
 
-    uint64_t state_flags;
-    uint32_t blend_factor;
+    u64 state_flags;
+    u32 blend_factor;
 
     u32 start_matrix;
     u32 num_matrices;

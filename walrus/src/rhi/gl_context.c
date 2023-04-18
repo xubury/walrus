@@ -256,7 +256,7 @@ static void submit(RenderFrame *frame)
 
     RenderDraw current_state;
     draw_clear(&current_state, WR_RHI_DISCARD_ALL);
-    uint32_t blend_factor = 0;
+    u32 blend_factor = 0;
 
     RenderBind current_bind;
     bind_clear(&current_bind, WR_RHI_DISCARD_ALL);
@@ -307,9 +307,9 @@ static void submit(RenderFrame *frame)
             glUseProgram(g_ctx->programs[current_prog.id].id);
         }
         u64 const new_flags       = draw->state_flags;
-        uint64_t  changed_flags   = current_state.state_flags ^ draw->state_flags;
+        u64       changed_flags   = current_state.state_flags ^ draw->state_flags;
         current_state.state_flags = new_flags;
-        const bool resetState = view_changed;
+        const bool resetState     = view_changed;
 
         if (resetState) {
             draw_clear(&current_state, WR_RHI_DISCARD_ALL);
@@ -317,15 +317,15 @@ static void submit(RenderFrame *frame)
         }
 
         if (WR_RHI_STATE_BLEND_MASK & changed_flags || draw->blend_factor != blend_factor) {
-            u32 const blend  = (u32)((new_flags & WR_RHI_STATE_BLEND_MASK) >> WR_RHI_STATE_BLEND_SHIFT);
-            u32 const srcRgb = (blend)&0xf;
-            u32 const dstRgb = (blend >> 4) & 0xf;
-            u32 const srcA   = (blend >> 8) & 0xf;
-            u32 const dstA   = (blend >> 12) & 0xf;
-            if (srcRgb != 0 && dstRgb != 0 && srcA != 0 && dstA != 0) {
-                glBlendFuncSeparate(s_blend[srcRgb].src, s_blend[dstRgb].dst, s_blend[srcA].src, s_blend[dstA].dst);
-                if ((s_blend[srcRgb].is_factor || s_blend[dstRgb].is_factor) && blend_factor != draw->blend_factor) {
-                    const uint32_t rgba = draw->blend_factor;
+            u32 const blend   = (u32)((new_flags & WR_RHI_STATE_BLEND_MASK) >> WR_RHI_STATE_BLEND_SHIFT);
+            u32 const src_rgb = (blend)&0xf;
+            u32 const dst_rgb = (blend >> 4) & 0xf;
+            u32 const src_a   = (blend >> 8) & 0xf;
+            u32 const dst_a   = (blend >> 12) & 0xf;
+            if (src_rgb != 0 && dst_rgb != 0 && src_a != 0 && dst_a != 0) {
+                glBlendFuncSeparate(s_blend[src_rgb].src, s_blend[dst_rgb].dst, s_blend[src_a].src, s_blend[dst_a].dst);
+                if ((s_blend[src_rgb].is_factor || s_blend[dst_rgb].is_factor) && blend_factor != draw->blend_factor) {
+                    u32 const rgba = draw->blend_factor;
 
                     GLclampf rr = ((rgba >> 24)) / 255.0f;
                     GLclampf gg = ((rgba >> 16) & 0xff) / 255.0f;
@@ -342,7 +342,7 @@ static void submit(RenderFrame *frame)
             }
         }
         if (WR_RHI_STATE_DEPTH_TEST_MASK & changed_flags) {
-            const uint32_t func = (new_flags & WR_RHI_STATE_DEPTH_TEST_MASK) >> WR_RHI_STATE_DEPTH_TEST_SHIFT;
+            u32 const func = (new_flags & WR_RHI_STATE_DEPTH_TEST_MASK) >> WR_RHI_STATE_DEPTH_TEST_SHIFT;
             if (func != 0) {
                 glEnable(GL_DEPTH_TEST);
                 glDepthFunc(s_cmp_func[func]);
@@ -357,6 +357,8 @@ static void submit(RenderFrame *frame)
                 }
             }
         }
+
+        renderer_uniform_updates(frame->uniforms, draw->uniform_begin, draw->uniform_end);
 
         bool const constants_changed = draw->uniform_begin < draw->uniform_end;
         if (current_prog.id != WR_INVALID_HANDLE) {
@@ -606,7 +608,7 @@ static void gl_uniform_destroy(Walrus_UniformHandle handle)
 
 static void gl_uniform_update(Walrus_UniformHandle handle, u32 offset, u32 size, void const *data)
 {
-    memcpy((u8 *)&g_ctx->uniforms[handle.id] + offset, data, size);
+    memcpy((u8 *)g_ctx->uniforms[handle.id] + offset, data, size);
 }
 
 static void gl_vertex_layout_create(Walrus_LayoutHandle handle, Walrus_VertexLayout const *layout)

@@ -96,7 +96,7 @@ void uniform_buffer_write_uniform_handle(UniformBuffer *buffer, Walrus_UniformTy
 #define OP_TYPE_MASK  ((((u64)1 << OP_TYPE_NBITS) - 1) << OP_TYPE_SHIFT)
 
 #define OP_LOC_NBITS (32)
-#define OP_LOC_SHIFT (OP_TYPE_SHIFT - OP_TYPE_NBITS)
+#define OP_LOC_SHIFT (OP_TYPE_SHIFT - OP_LOC_NBITS)
 #define OP_LOC_MASK  ((((u64)1 << OP_LOC_NBITS) - 1) << OP_LOC_SHIFT)
 
 #define OP_NUM_NBITS (8)

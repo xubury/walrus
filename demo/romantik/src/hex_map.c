@@ -58,6 +58,53 @@ bool hex_map_set_flags(HexMap *map, i32 q, i32 r, u32 flags)
     return false;
 }
 
+bool hex_map_connect_friends(HexMap *map, i32 q, i32 r)
+{
+    // **00 0001
+
+    // **00 0011
+    // **00 0101
+    // **00 1001
+
+    // **00 0111
+    // **00 1011
+    // **01 0011
+    // **10 0101
+    // **10 1001
+
+    // **00 1111
+    // **01 0111
+    // **10 0111
+    
+    // **01 1111
+    if (hex_map_check_in_bound(map, q, r)) {
+        vec2 const dirs[] = {{1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}};
+        HexGrid   *center = &map->grids[get_index(map, q, r)];
+        u64        flag   = center->flags;
+        for (i32 i = 0; i < 6; ++i) {
+            i32 n_q = q + dirs[i][0];
+            i32 n_r = r + dirs[i][1];
+            if (!hex_map_check_in_bound(map, n_q, n_r)) {
+                continue;
+            }
+
+            HexGrid *neighbor = &map->grids[get_index(map, n_q, n_r)];
+
+            i32 const neighbor_i = (i + 3) % 6;
+            if (neighbor->flags & flag) {
+                center->friend |= 1 << i;
+                neighbor->friend |= 1 << neighbor_i;
+            }
+            else {
+                center->friend &= ~(1 << i);
+                neighbor->friend &= ~(1 << neighbor_i);
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 void hex_map_compute_model_pixel(HexMap *map, mat4 model, f32 x, f32 y)
 {
     i32 q, r;
@@ -93,4 +140,9 @@ u32 hex_map_compute_models(HexMap *map, mat4 *models, u64 max_size, u32 flags)
         }
     }
     return cnt;
+}
+
+HexGrid *hex_map_get_grid(HexMap *map, i32 q, i32 r)
+{
+    return &map->grids[get_index(map, q, r)];
 }

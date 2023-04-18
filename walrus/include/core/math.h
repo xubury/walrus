@@ -63,7 +63,7 @@ WR_INLINE u32 walrus_u32satadd(u32 a, u32 b)
     return result;
 }
 
-WR_INLINE uint32_t walrus_u32satsub(uint32_t a, uint32_t b)
+WR_INLINE u32 walrus_u32satsub(u32 a, u32 b)
 {
     u32 const sub    = walrus_u32sub(a, b);
     u32 const le     = walrus_u32cmple(sub, a);
@@ -111,4 +111,14 @@ WR_INLINE u32 walrus_u32cnttz(u32 val)
 
     return result;
 #endif
+}
+
+WR_INLINE u8 walrus_u8ror(u8 x, u8 n)
+{
+    return (x << (sizeof(u8) * 8 - n) | (x >> n));
+}
+
+WR_INLINE u8 walrus_u8rol(u8 x, u8 n)
+{
+    return (x >> (sizeof(u8) * 8 - n) | (x << n));
 }

@@ -10,6 +10,7 @@ typedef struct {
     Walrus_ProgramHandle map_shader;
     Walrus_ProgramHandle grid_shader;
     Walrus_UniformHandle u_texture;
+    Walrus_UniformHandle u_color;
     Walrus_BufferHandle  buffer;
 
     Walrus_BufferHandle  index_buffer;
@@ -17,7 +18,7 @@ typedef struct {
     Walrus_TextureHandle texture;
 
     Walrus_LayoutHandle model_layout;
-    Walrus_BufferHandle placed_buffer;
+    Walrus_BufferHandle placed_buffer[TERRAIN_COUNT];
     Walrus_BufferHandle avail_buffer;
 
     mat4 model;
@@ -32,3 +33,5 @@ typedef struct {
 void game_state_init(Romantik_GameState *state);
 
 void game_state_tick(Romantik_GameState *state, f32 dt);
+
+void game_state_render(Romantik_GameState *state);

@@ -6,7 +6,8 @@
 typedef enum {
     WR_APP_SUCCESS = 0,
 
-    WR_APP_INIT_FAIL = 1,
+    WR_APP_INIT_FAIL = 1,  // init app failed
+    WR_APP_NO_ENGINE = 2,  // engine is not init
 } Walrus_AppError;
 
 typedef struct _Walrus_App Walrus_App;

@@ -1,15 +1,28 @@
 #pragma once
 
 #include "hex_map.h"
+typedef enum {
+    TERRAIN_GRASSLAND,
+    TERRAIN_WATER,
+    TERRAIN_SAND,
+    TERRAIN_SNOW,
+    TERRAIN_COUNT,
+} Terrain;
 
 typedef enum {
-    HEX_FLAG_NONE   = 0,
-    HEX_FLAG_AVAIL  = 1 << 0,
-    HEX_FLAG_PLACED = 1 << 1,
+    HEX_FLAG_NONE      = 0,
+    HEX_FLAG_GRASSLAND = 1 << TERRAIN_GRASSLAND,
+    HEX_FLAG_WATER     = 1 << TERRAIN_WATER,
+    HEX_FLAG_SAND      = 1 << TERRAIN_SAND,
+    HEX_FLAG_SNOW      = 1 << TERRAIN_SNOW,
+    HEX_FLAG_AVAIL     = 1 << TERRAIN_COUNT,
+    HEX_FLAG_PLACED    = HEX_FLAG_GRASSLAND | HEX_FLAG_WATER | HEX_FLAG_SAND | HEX_FLAG_SNOW,
 } HexFlag;
 
 typedef struct {
     HexMap map;
+
+    Terrain next_terrain;
 
     u32 score;
     u32 num_placed_grids;
