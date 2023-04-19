@@ -46,12 +46,6 @@ Walrus_AppError on_init(Walrus_App *app)
 
 int main(void)
 {
-    u8 bin = 0x81;
-    walrus_trace("0b%d%d%d%d%d%d%d%d", (bin >> 7) & 1, (bin >> 6) & 1, (bin >> 5) & 1, (bin >> 4) & 1, (bin >> 3) & 1,
-                 (bin >> 2) & 1, (bin >> 1) & 1, (bin >> 0) & 1);
-    bin = walrus_u8rol(bin, 2);
-    walrus_trace("0b%d%d%d%d%d%d%d%d", (bin >> 7) & 1, (bin >> 6) & 1, (bin >> 5) & 1, (bin >> 4) & 1, (bin >> 3) & 1,
-                 (bin >> 2) & 1, (bin >> 1) & 1, (bin >> 0) & 1);
     Walrus_EngineOption opt;
     opt.window_title  = "romantik";
     opt.window_width  = 1440;

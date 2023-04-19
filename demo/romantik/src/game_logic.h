@@ -1,6 +1,7 @@
 #pragma once
 
 #include "hex_map.h"
+
 typedef enum {
     TERRAIN_GRASSLAND,
     TERRAIN_WATER,

@@ -17,7 +17,7 @@ typedef struct {
     Walrus_LayoutHandle  layout;
     Walrus_TextureHandle texture;
 
-    Walrus_LayoutHandle model_layout;
+    Walrus_LayoutHandle ins_layout;
     Walrus_BufferHandle placed_buffer[TERRAIN_COUNT];
     Walrus_BufferHandle avail_buffer;
 
