@@ -25,7 +25,7 @@ static void set_neighbor_avails(Romantik_Game *game, i32 q, i32 r)
 bool romantik_place_grid(Romantik_Game *game, i32 q, i32 r)
 {
     if (hex_map_test_flags(&game->map, q, r, HEX_FLAG_AVAIL)) {
-        hex_map_set_flags(&game->map, q, r, HEX_FLAG_PLACED);
+        hex_map_set_flags(&game->map, q, r, 1 << TERRAIN_GRASSLAND);
         ++game->num_placed_grids;
         --game->num_avail_grids;
         set_neighbor_avails(game, q, r);
