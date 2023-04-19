@@ -225,7 +225,8 @@ void __on_mouse_scroll(i32 x_offset, i32 y_offset)
     static f64   x = 0;
     static f64   y = 0;
     x += x_offset;
-    y += y_offset;
+    y += -y_offset;
+
     e.type        = WR_EVENT_TYPE_AXIS;
     e.axis.device = WR_INPUT_MOUSE;
     e.axis.axis   = WR_MOUSE_AXIS_WHEEL;
