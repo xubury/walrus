@@ -169,6 +169,10 @@ void game_state_init(Romantik_GameState *state)
 
     state->hide_picker = true;
 
+    for (u8 i = 0; i < TERRAIN_COUNT; ++i) {
+        state->num_instances[i] = 0;
+    }
+
     glm_mat4_identity(state->model);
 
     stbi_set_flip_vertically_on_load(true);
@@ -206,12 +210,15 @@ static void place_grid(Romantik_GameState *state, i32 q, i32 r)
 {
     Romantik_Game *game = &state->game;
     HexMap        *map  = &game->map;
-    u32            flag = 1 << state->game.next_terrain;
+    u32            flag = 1 << game->next_terrain;
     if (romantik_place_grid(game, q, r)) {
         HexInstanceBuffer *buffer = walrus_new(HexInstanceBuffer, game->num_placed_grids);
-        u32                num    = hex_map_compute_instance_buffer(map, buffer, game->num_placed_grids, flag);
+
+        u32 num = hex_map_compute_instance_buffer(map, buffer, game->num_placed_grids, flag);
         walrus_rhi_update_buffer(state->placed_buffer[state->game.next_terrain], 0, num * sizeof(HexInstanceBuffer),
                                  buffer);
+        state->num_instances[game->next_terrain] = num;
+
         walrus_free(buffer);
 
         buffer = walrus_new(HexInstanceBuffer, game->num_avail_grids);
@@ -283,9 +290,11 @@ void game_state_render(Romantik_GameState *state)
 
     walrus_rhi_set_texture(0, state->u_texture, state->texture);
     for (u8 i = 0; i < TERRAIN_COUNT; ++i) {
-        walrus_rhi_set_instance_buffer(state->placed_buffer[i], state->ins_layout, 0, state->game.num_placed_grids);
-        walrus_rhi_set_uniform(state->u_color, 0, sizeof(vec3), color[i]);
-        walrus_rhi_submit(0, state->map_shader, WR_RHI_DISCARD_INSTANCE_DATA | WR_RHI_DISCARD_STATE);
+        if (state->num_instances[i] > 0) {
+            walrus_rhi_set_instance_buffer(state->placed_buffer[i], state->ins_layout, 0, state->num_instances[i]);
+            walrus_rhi_set_uniform(state->u_color, 0, sizeof(vec3), color[i]);
+            walrus_rhi_submit(0, state->map_shader, WR_RHI_DISCARD_INSTANCE_DATA | WR_RHI_DISCARD_STATE);
+        }
     }
 
     walrus_rhi_set_state(WR_RHI_STATE_DEFAULT | WR_RHI_STATE_BLEND_ALPHA, 0);

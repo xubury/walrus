@@ -18,6 +18,7 @@ typedef struct {
     Walrus_TextureHandle texture;
 
     Walrus_LayoutHandle ins_layout;
+    u32                 num_instances[TERRAIN_COUNT];
     Walrus_BufferHandle placed_buffer[TERRAIN_COUNT];
     Walrus_BufferHandle avail_buffer;
 

@@ -168,6 +168,7 @@ u32 hex_map_compute_instance_buffer(HexMap *map, HexInstanceBuffer *buffers, u64
         }
         if (map->grids[i].flags & flags) {
             hex_map_compute_model(map, buffers[cnt].model, q - center_q, r - center_r);
+            buffers[cnt].layer[0] = 0;
             for (u32 j = 0; j < walrus_array_len(border_layer_map); ++j) {
                 if (border_layer_map[j] == map->grids[i].abs_border) {
                     buffers[cnt].layer[0] = j;
