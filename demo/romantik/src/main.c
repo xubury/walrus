@@ -50,7 +50,7 @@ int main(void)
     opt.window_title  = "romantik";
     opt.window_width  = 1440;
     opt.window_height = 900;
-    opt.window_flags  = WR_WINDOW_FLAG_OPENGL;
+    opt.window_flags  = WR_WINDOW_FLAG_VSYNC | WR_WINDOW_FLAG_OPENGL;
     opt.minfps        = 30.f;
 
     Walrus_App *app = walrus_app_create(walrus_malloc(sizeof(Romantik_GameState)));

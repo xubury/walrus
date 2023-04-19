@@ -45,7 +45,7 @@ char const *layer_fs_src =
     "in vec2 v_uv;\n"
     "in float v_layer;\n"
     "uniform sampler2DArray u_texture;\n"
-    "uniform vec3 u_color;\n"
+    "uniform vec4 u_color;\n"
     "vec3 linear_to_srgb(vec3 linear)\n"
     "{\n"
     "    bvec3 cutoff = lessThan(linear, vec3(0.0031308));\n"
@@ -55,8 +55,8 @@ char const *layer_fs_src =
     "}\n"
     "void main() {\n"
     "    vec3 color = texture(u_texture, vec3(v_uv, v_layer)).rgb;\n"
-    "    color = linear_to_srgb(color) * u_color;\n"
-    "    frag_color = vec4(color, 1.0);\n"
+    "    color = linear_to_srgb(color);\n"
+    "    frag_color = vec4(color, 1.0) * u_color;\n"
     "}\n";
 
 char const *fs_src =
@@ -64,7 +64,7 @@ char const *fs_src =
     "in vec2 v_pos;\n"
     "in vec2 v_uv;\n"
     "uniform sampler2DArray u_texture;\n"
-    "uniform vec3 u_color;\n"
+    "uniform vec4 u_color;\n"
     "vec3 linear_to_srgb(vec3 linear)\n"
     "{\n"
     "    bvec3 cutoff = lessThan(linear, vec3(0.0031308));\n"
@@ -74,8 +74,8 @@ char const *fs_src =
     "}\n"
     "void main() {\n"
     "    vec3 color = texture(u_texture, vec3(v_uv, 0)).rgb;\n"
-    "    color = linear_to_srgb(color) * u_color;\n"
-    "    frag_color = vec4(color, 1.0);\n"
+    "    color = linear_to_srgb(color);\n"
+    "    frag_color = vec4(color, 1.0) * u_color;\n"
     "}\n";
 
 char const *fs_grid_src =
@@ -156,7 +156,7 @@ void game_state_init(Romantik_GameState *state)
     walrus_free(buffer);
 
     state->u_texture = walrus_rhi_create_uniform("u_texture", WR_RHI_UNIFORM_SAMPLER, 1);
-    state->u_color   = walrus_rhi_create_uniform("u_color", WR_RHI_UNIFORM_VEC3, 1);
+    state->u_color   = walrus_rhi_create_uniform("u_color", WR_RHI_UNIFORM_VEC4, 1);
 
     Walrus_ShaderHandle vs       = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, hex_src);
     Walrus_ShaderHandle vs_ins   = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, ins_hex_src);
@@ -270,10 +270,10 @@ void game_state_tick(Romantik_GameState *state, f32 dt)
 
 void game_state_render(Romantik_GameState *state)
 {
-    vec3 const color[TERRAIN_COUNT] = {{0.529411, 0.9, 0.556862},
-                                       {0.529411, 0.756862, 1.0},
-                                       {1.0, 0.756862, 0.529411},
-                                       {0.756862, 0.756862, 0.756862}};
+    vec4 colors[TERRAIN_COUNT] = {{0.529411, 0.9, 0.556862, 1.0},
+                                  {0.529411, 0.756862, 1.0, 1.0},
+                                  {1.0, 0.756862, 0.529411, 1.0},
+                                  {0.756862, 0.756862, 0.756862, 1.0}};
 
     CameraData *cam = &state->cam;
 
@@ -283,8 +283,11 @@ void game_state_render(Romantik_GameState *state)
     walrus_rhi_set_index_buffer(state->index_buffer, 0, UINT32_MAX);
 
     if (!state->hide_picker) {
+        walrus_rhi_set_state(WR_RHI_STATE_DEFAULT | WR_RHI_STATE_BLEND_ALPHA, 0);
         walrus_rhi_set_transform(state->model);
-        walrus_rhi_set_uniform(state->u_color, 0, sizeof(vec3), color[state->game.next_terrain]);
+        vec4 color = {1.0, 1.0, 1.0, 0.7};
+        glm_vec4_mul(colors[state->game.next_terrain], color, color);
+        walrus_rhi_set_uniform(state->u_color, 0, sizeof(vec4), color);
         walrus_rhi_submit(0, state->pick_shader, WR_RHI_DISCARD_TRANSFORM | WR_RHI_DISCARD_STATE);
     }
 
@@ -292,7 +295,7 @@ void game_state_render(Romantik_GameState *state)
     for (u8 i = 0; i < TERRAIN_COUNT; ++i) {
         if (state->num_instances[i] > 0) {
             walrus_rhi_set_instance_buffer(state->placed_buffer[i], state->ins_layout, 0, state->num_instances[i]);
-            walrus_rhi_set_uniform(state->u_color, 0, sizeof(vec3), color[i]);
+            walrus_rhi_set_uniform(state->u_color, 0, sizeof(vec4), colors[i]);
             walrus_rhi_submit(0, state->map_shader, WR_RHI_DISCARD_INSTANCE_DATA | WR_RHI_DISCARD_STATE);
         }
     }
