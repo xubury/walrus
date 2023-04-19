@@ -39,7 +39,7 @@ char const *ins_hex_src =
     "    v_layer = a_layer[0];\n"
     "}\n";
 
-char const *fs_src =
+char const *layer_fs_src =
     "out vec4 frag_color;\n"
     "in vec2 v_pos;\n"
     "in vec2 v_uv;\n"
@@ -55,6 +55,25 @@ char const *fs_src =
     "}\n"
     "void main() {\n"
     "    vec3 color = texture(u_texture, vec3(v_uv, v_layer)).rgb;\n"
+    "    color = linear_to_srgb(color) * u_color;\n"
+    "    frag_color = vec4(color, 1.0);\n"
+    "}\n";
+
+char const *fs_src =
+    "out vec4 frag_color;\n"
+    "in vec2 v_pos;\n"
+    "in vec2 v_uv;\n"
+    "uniform sampler2DArray u_texture;\n"
+    "uniform vec3 u_color;\n"
+    "vec3 linear_to_srgb(vec3 linear)\n"
+    "{\n"
+    "    bvec3 cutoff = lessThan(linear, vec3(0.0031308));\n"
+    "    vec3 higher = vec3(1.055) * pow(linear, vec3(1.0 / 2.4)) - vec3(0.055);\n"
+    "    vec3 lower = linear * vec3(12.92);\n"
+    "    return mix(higher, lower, cutoff);\n"
+    "}\n"
+    "void main() {\n"
+    "    vec3 color = texture(u_texture, vec3(v_uv, 0)).rgb;\n"
     "    color = linear_to_srgb(color) * u_color;\n"
     "    frag_color = vec4(color, 1.0);\n"
     "}\n";
@@ -139,20 +158,21 @@ void game_state_init(Romantik_GameState *state)
     state->u_texture = walrus_rhi_create_uniform("u_texture", WR_RHI_UNIFORM_SAMPLER, 1);
     state->u_color   = walrus_rhi_create_uniform("u_color", WR_RHI_UNIFORM_VEC3, 1);
 
-    Walrus_ShaderHandle vs      = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, hex_src);
-    Walrus_ShaderHandle vs_ins  = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, ins_hex_src);
-    Walrus_ShaderHandle fs      = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
-    Walrus_ShaderHandle fs_grid = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_grid_src);
-    state->pick_shader          = walrus_rhi_create_program(vs, fs);
-    state->map_shader           = walrus_rhi_create_program(vs_ins, fs);
-    state->grid_shader          = walrus_rhi_create_program(vs_ins, fs_grid);
+    Walrus_ShaderHandle vs       = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, hex_src);
+    Walrus_ShaderHandle vs_ins   = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, ins_hex_src);
+    Walrus_ShaderHandle fs       = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
+    Walrus_ShaderHandle fs_layer = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, layer_fs_src);
+    Walrus_ShaderHandle fs_grid  = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_grid_src);
+    state->pick_shader           = walrus_rhi_create_program(vs, fs);
+    state->map_shader            = walrus_rhi_create_program(vs_ins, fs_layer);
+    state->grid_shader           = walrus_rhi_create_program(vs_ins, fs_grid);
 
     state->hide_picker = true;
 
     glm_mat4_identity(state->model);
 
     stbi_set_flip_vertically_on_load(true);
-    u8 const  num_layers = 9;
+    u8 const  num_layers = 14;
     u32 const img_size   = 512 * 512 * 4;
     u8       *img_array  = walrus_malloc(num_layers * img_size);
     for (u8 i = 0; i < num_layers; ++i) {

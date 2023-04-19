@@ -87,7 +87,7 @@ u8 get_predefined_type(char const* name)
 char const* get_glsl_header(void)
 {
 #if WR_PLATFORM == WR_PLATFORM_WASM
-    return "#version 300 es\n precision mediump float;\n";
+    return "#version 300 es\n precision mediump float;\nprecision mediump sampler2DArray;\n";
 #else
     return "#version 430 core\n";
 #endif

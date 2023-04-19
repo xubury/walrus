@@ -399,12 +399,12 @@ export function importGl(env)
         glUniform3fv : function(loc, count, value) { 
             var heap = sys.getHeap()
             var HEAPF32 = new Float32Array(heap.buffer);
-            glCtx.glUniform3fv(glUniforms[loc], HEAPF32, value >> 2, count * 3); 
+            glCtx.uniform3fv(glUniforms[loc], HEAPF32, value >> 2, count * 3); 
         },
         glUniform4fv : function(loc, count, value) { 
             var heap = sys.getHeap()
             var HEAPF32 = new Float32Array(heap.buffer);
-            glCtx.glUniform4fv(glUniforms[loc], HEAPF32, value >> 2, count * 4); 
+            glCtx.uniform4fv(glUniforms[loc], HEAPF32, value >> 2, count * 4); 
         },
         glUniformMatrix3fv: function(loc, count, transpose, value) {
             var heap = sys.getHeap()
@@ -470,17 +470,21 @@ export function importGl(env)
             if (data) {
                 pixelData = webGlGetTexPixelData(type, format, width, height, data);
             }
-            glCtx.texSubImage2D(target, level, x, y, z, width, height, depth, format, type, pixelData);
+            glCtx.texSubImage3D(target, level, x, y, z, width, height, depth, format, type, pixelData);
         },
+
         glTexStorage3D: function(target, levels, internal, width, height, depth) {
             glCtx.texStorage3D(target, levels, internal, width, height, depth)
         },
+
         glTexStorage3DMultisample: function(target, msaa, levels, internal, width, height, depth) {
             glCtx.texStorage3DMultisample(target, msaa, levels, internal, width, height, depth)
         },
+
         glTexStorage2D: function(target, levels, internal, width, height) {
             glCtx.texStorage2D(target, levels, internal, width, height)
         },
+
         glTexStorage2DMultisample: function(target, msaa, levels, internal, width, height) {
             glCtx.texStorage2DMultisample(target, msaa, levels, internal, width, height)
         },
@@ -567,5 +571,17 @@ export function importGl(env)
         glVertexAttribDivisor: function(attr, divisor) {
             glCtx.vertexAttribDivisor(attr, divisor);
         },
+
+        glBlendFuncSeparate: function(src, dst, srca, dsta) {
+            glCtx.blendFuncSeparate(src, dst, srca, dsta);
+        },
+
+        glBlendColor: function(r, g, b, a) {
+            glCtx.blendColor(r, g, b, a)
+        },
+
+        glDepthFunc: function(depthFunc) {
+            glCtx.depthFunc(depthFunc)
+        }
     });
 }
