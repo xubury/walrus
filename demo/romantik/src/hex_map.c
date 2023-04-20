@@ -96,12 +96,9 @@ bool hex_map_connect_border(HexMap *map, i32 q, i32 r)
                 center->border |= (1 << i);
                 neighbor->border |= (1 << neighbor_i);
                 compute_abs_border(neighbor);
-                walrus_trace("i: %d, nei_i: %d neighbor abs_border: 0x%x bit shift: %d", i, neighbor_i,
-                             neighbor->abs_border, neighbor->shift_bits);
             }
         }
         compute_abs_border(center);
-        walrus_trace("center border type:%d bit shift: %d", center->abs_border, center->shift_bits);
         return true;
     }
     return false;
@@ -130,29 +127,6 @@ void hex_map_compute_model(HexMap *map, mat4 model, i32 q, i32 r)
     glm_mul(trans, model, model);
 }
 
-// clang-format off
-u8 const border_layer_map[]= {
-    0x0,
-    0x1,
-
-    0x3, //0b11
-    0x5, //0b101
-    0x9, //0b1001
-
-    0x7, //0b111
-    0xb, //0b1011
-    0xd, //0b1101
-    0x15,//0b10101
-
-    0xf, //0b1111
-    0x17,//0b10111
-    0x1b,//0b11011
-
-    0x1f,// 0b11111
-    0x3f,// 0b111111
-} ;
-// clang-format on
-
 u32 hex_map_compute_instance_buffer(HexMap *map, HexInstanceBuffer *buffers, u64 max_size, u32 flags)
 {
     u64 size = map->grid_width * map->grid_height;
@@ -168,13 +142,7 @@ u32 hex_map_compute_instance_buffer(HexMap *map, HexInstanceBuffer *buffers, u64
         }
         if (map->grids[i].flags & flags) {
             hex_map_compute_model(map, buffers[cnt].model, q - center_q, r - center_r);
-            buffers[cnt].layer[0] = 0;
-            for (u32 j = 0; j < walrus_array_len(border_layer_map); ++j) {
-                if (border_layer_map[j] == map->grids[i].abs_border) {
-                    buffers[cnt].layer[0] = j;
-                    break;
-                }
-            }
+            buffers[cnt].layer[0] = hex_map_get_border_type(map->grids[i].abs_border);
             ++cnt;
         }
     }
@@ -184,4 +152,38 @@ u32 hex_map_compute_instance_buffer(HexMap *map, HexInstanceBuffer *buffers, u64
 HexGrid *hex_map_get_grid(HexMap *map, i32 q, i32 r)
 {
     return &map->grids[get_index(map, q, r)];
+}
+
+u8 hex_map_get_border_type(u8 bits)
+{
+    // clang-format off
+    u8 const border_layer_map[]= {
+        0x0,
+        0x1,
+
+        0x3, //0b11
+        0x5, //0b101
+        0x9, //0b1001
+
+        0x7, //0b111
+        0xb, //0b1011
+        0xd, //0b1101
+        0x15,//0b10101
+
+        0xf, //0b1111
+        0x17,//0b10111
+        0x1b,//0b11011
+
+        0x1f,// 0b11111
+        0x3f,// 0b111111
+    } ;
+    // clang-format on
+    u8 type = 0;
+    for (u32 i = 0; i < walrus_array_len(border_layer_map); ++i) {
+        if (border_layer_map[i] == bits) {
+            type = i;
+            break;
+        }
+    }
+    return type;
 }

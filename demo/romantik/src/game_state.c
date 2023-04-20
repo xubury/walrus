@@ -212,7 +212,9 @@ static void place_grid(Romantik_GameState *state, i32 q, i32 r)
 {
     Romantik_Game *game = &state->game;
     HexMap        *map  = &game->map;
-    u32            flag = 1 << game->next_terrain;
+
+    u32 flag = romantik_terrain_flag(game->next_terrain);
+
     if (romantik_place_grid(game, q, r)) {
         HexInstanceBuffer *buffer = walrus_new(HexInstanceBuffer, game->num_placed_grids);
 

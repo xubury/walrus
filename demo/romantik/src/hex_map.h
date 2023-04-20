@@ -42,3 +42,5 @@ void hex_map_compute_model_pixel(HexMap *map, mat4 model, f32 x, f32 y);
 u32 hex_map_compute_instance_buffer(HexMap *map, HexInstanceBuffer *buffers, u64 max_size, u32 flags);
 
 HexGrid *hex_map_get_grid(HexMap *map, i32 q, i32 r);
+
+u8 hex_map_get_border_type(u8 bits);

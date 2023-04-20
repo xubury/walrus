@@ -10,14 +10,13 @@ typedef enum {
     TERRAIN_COUNT,
 } Terrain;
 
+#define romantik_terrain_flag(type) (1 << (type))
+
 typedef enum {
-    HEX_FLAG_NONE      = 0,
-    HEX_FLAG_GRASSLAND = 1 << TERRAIN_GRASSLAND,
-    HEX_FLAG_WATER     = 1 << TERRAIN_WATER,
-    HEX_FLAG_SAND      = 1 << TERRAIN_SAND,
-    HEX_FLAG_SNOW      = 1 << TERRAIN_SNOW,
-    HEX_FLAG_AVAIL     = 1 << TERRAIN_COUNT,
-    HEX_FLAG_PLACED    = HEX_FLAG_GRASSLAND | HEX_FLAG_WATER | HEX_FLAG_SAND | HEX_FLAG_SNOW,
+    HEX_FLAG_NONE   = 0,
+    HEX_FLAG_PLACED = romantik_terrain_flag(TERRAIN_GRASSLAND) | romantik_terrain_flag(TERRAIN_WATER) |
+                      romantik_terrain_flag(TERRAIN_SAND) | romantik_terrain_flag(TERRAIN_SNOW),
+    HEX_FLAG_AVAIL = romantik_terrain_flag(TERRAIN_COUNT),
 } HexFlag;
 
 typedef struct {
