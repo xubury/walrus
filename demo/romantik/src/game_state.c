@@ -151,7 +151,7 @@ void game_state_init(Romantik_GameState *state)
     state->avail_buffer = walrus_rhi_create_buffer(NULL, 2000 * sizeof(HexInstanceBuffer), 0);
 
     HexInstanceBuffer *buffer = walrus_new(HexInstanceBuffer, game->num_avail_grids);
-    hex_map_compute_instance_buffer(&game->map, buffer, game->num_avail_grids, HEX_FLAG_AVAIL);
+    romantik_compute_instance_buffer(&game->map, buffer, game->num_avail_grids, HEX_FLAG_AVAIL);
     walrus_rhi_update_buffer(state->avail_buffer, 0, game->num_avail_grids * sizeof(HexInstanceBuffer), buffer);
     walrus_free(buffer);
 
@@ -213,20 +213,20 @@ static void place_grid(Romantik_GameState *state, i32 q, i32 r)
     Romantik_Game *game = &state->game;
     HexMap        *map  = &game->map;
 
-    u32 flag = romantik_terrain_flag(game->next_terrain);
-
+    Terrain terrain = game->next_terrain;
     if (romantik_place_grid(game, q, r)) {
-        HexInstanceBuffer *buffer = walrus_new(HexInstanceBuffer, game->num_placed_grids);
+        HexInstanceBuffer *buffer     = walrus_new(HexInstanceBuffer, game->num_placed_grids);
+        u32                num        = romantik_compute_instance_buffer(map, buffer, game->num_placed_grids,
+                                                                         romantik_terrain_flag(game->next_terrain));
+        state->num_instances[terrain] = num;
 
-        u32 num = hex_map_compute_instance_buffer(map, buffer, game->num_placed_grids, flag);
         walrus_rhi_update_buffer(state->placed_buffer[state->game.next_terrain], 0, num * sizeof(HexInstanceBuffer),
                                  buffer);
-        state->num_instances[game->next_terrain] = num;
 
         walrus_free(buffer);
 
         buffer = walrus_new(HexInstanceBuffer, game->num_avail_grids);
-        hex_map_compute_instance_buffer(map, buffer, game->num_avail_grids, HEX_FLAG_AVAIL);
+        romantik_compute_instance_buffer(map, buffer, game->num_avail_grids, HEX_FLAG_AVAIL);
         walrus_rhi_update_buffer(state->avail_buffer, 0, game->num_avail_grids * sizeof(HexInstanceBuffer), buffer);
         walrus_free(buffer);
     }
@@ -261,8 +261,8 @@ void game_state_tick(Romantik_GameState *state, f32 dt)
         if (walrus_intersect_ray_plane(select, world_pos, world_dir, (vec3 const){0, 1, 0}, (vec3 const){0, 0, 0})) {
             i32 q, r;
             hex_pixel_to_qr(map->hex_size, select[0], select[2], &q, &r);
-            if (hex_map_test_flags(map, q, r, HEX_FLAG_AVAIL)) {
-                hex_map_compute_model(map, state->model, q, r);
+            if (romantik_test_flags(map, q, r, HEX_FLAG_AVAIL)) {
+                romantik_compute_model(map, state->model, q, r);
                 state->hide_picker = false;
                 if (walrus_input_pressed(input->mouse, WR_MOUSE_BTN_LEFT)) {
                     place_grid(state, q, r);
