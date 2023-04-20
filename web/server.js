@@ -57,6 +57,7 @@ app.get("/fd_close", function (req, res) {
     const fd = Number(req.query.fd);
     console.log("[TRACE] fd_close on fd: " + fd);
     fs.closeSync(fd);
+    res.sendStatus(200)
 });
 
 function getWasm(filename)

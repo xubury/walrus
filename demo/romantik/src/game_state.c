@@ -187,8 +187,10 @@ void game_state_init(Romantik_GameState *state)
         if (img == NULL) {
             walrus_error("fail to load image: %s", stbi_failure_reason());
         }
-        memcpy(img_array + img_size * i, img, img_size);
-        stbi_image_free(img);
+        else {
+            memcpy(img_array + img_size * i, img, img_size);
+            stbi_image_free(img);
+        }
     }
     Walrus_TextureCreateInfo info;
     info.width       = 512;

@@ -330,9 +330,8 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
             var len = heap.getUint32(iov + 8 * i + 4, true);
             var read = Math.min(len, fds[fd].data.length - fds[fd].pos);
 
-            // Write the requested data onto the heap and advance the seek cursor
             var sub = fds[fd].data.subarray(fds[fd].pos, fds[fd].pos + read);
-            new Uint8Array(WASM_MEMORY.buffer).set(sub, ptr);
+            new Uint8Array(heap.buffer).set(sub, ptr);
 
             fds[fd].pos += read;
             ret += read;
@@ -343,22 +342,23 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
         return WASI_ESUCCESS;
 	};
 
-    wasi.fd_seek = function(fd, offset_low, offset_high, whence, pOutResult)
+    wasi.fd_seek = function(fd, offset_low, whence, pOutResult)
     {
         if (fds[fd] == null || fds[fd].data == null) {
             return WASI_EBADF;
         }
+        offset_low = Number(offset_low)
         var heap = getHeap();
+        var newposition;
         // Move seek cursor according to fseek behavior
-        if (whence == 0) fds[fd].pos = offset_low; //set
-        if (whence == 1) fds[fd].pos += offset_low; //cur
-        if (whence == 2) fds[fd].pos = fds[fd].data.length - offset_low; //end
-        if (fds[fd].pos < 0) fds[fd].pos = 0;
-        if (fds[fd].pos > fds[fd].data.length) fds[fd].pos = fds[fd].data.length;
+        if (whence == 0) newposition = offset_low; //set
+        if (whence == 1) newposition = fds[fd].pos + offset_low; //cur
+        if (whence == 2) newposition = fds[fd].data.length; //end
+        if (newposition < 0) newposition = 0;
+        if (newposition > fds[fd].data.length) return WASI_EINVAL;
+        fds[fd].pos = newposition;
 
-        // Write the result back (write only lower 32-bit of 64-bit number)
         heap.setUint32(pOutResult, fds[fd].pos, true);
-        heap.setUint32(pOutResult + 4, 0, true);
         return WASI_ESUCCESS; // no error
     };
 
@@ -443,14 +443,13 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
     wasi.path_open = function(parent_fd, dirflags, path, path_len, oflags, fs_rights_base, fs_rights_inheriting, fdflags, opened_fd)
     {
         const filename = readHeapString(path, path_len);
+        var code = WASI_ESUCCESS;
         var heap = getHeap()
 
         var xhr = new XMLHttpRequest();
         xhr.open('GET', "/fd_open?" + new URLSearchParams({filename : filename}), false);
-        var code = WASI_ESUCCESS;
         xhr.onload = function() {
-            if (xhr.status != 200)
-            {
+            if (xhr.status != 200) {
                 code = WASI_EIO;
                 return;
             }
@@ -461,7 +460,7 @@ function SYSCALLS_WASM_IMPORTS(env, wasi)
             {
                 if (this.fd == null) return;
                 var xhr = new XMLHttpRequest();
-                xhr.open('GET', "/fd_close?" + new URLSearchParams({fd : this.fd}));
+                xhr.open('GET', "/fd_close?" + new URLSearchParams({fd : this.fd}), false);
                 xhr.send();
             };
             file.fd = fd;
