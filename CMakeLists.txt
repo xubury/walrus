@@ -38,7 +38,7 @@ endif()
 
 include(${cnoan_cmake})
 
-set(conan_packages stb/cci.20210910 cglm/0.8.5)
+set(conan_packages stb/cci.20210910 cglm/0.8.5 cgltf/1.13)
 
 if(NOT WASM)
   list(APPEND conan_packages glew/2.2.0 glfw/3.3.8)

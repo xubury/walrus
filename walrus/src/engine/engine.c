@@ -54,7 +54,7 @@ static Walrus_EngineError register_service(void)
     s_engine->window =
         walrus_window_create(opt->window_title, opt->window_width, opt->window_height, opt->window_flags);
     if (s_engine->window == NULL) {
-        return WR_ENGINE_INIT_WR_WINDOW_ERROR;
+        return WR_ENGINE_INIT_WINDOW_ERROR;
     }
 
     i32 rhi_flags = 0;

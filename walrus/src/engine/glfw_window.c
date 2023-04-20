@@ -345,12 +345,7 @@ void *glfw_create_window(char const *title, u32 width, u32 height, u32 flags)
     if (handle != NULL) {
         glfwMakeContextCurrent(handle);
 
-        if (flags & WR_WINDOW_FLAG_VSYNC) {
-            glfwSwapInterval(1);
-        }
-        else {
-            glfwSwapInterval(0);
-        }
+        glfwSwapInterval(flags & WR_WINDOW_FLAG_VSYNC ? 1 : 0);
         glfwSetWindowCloseCallback(handle, window_close_callback);
         glfwSetFramebufferSizeCallback(handle, framebuffer_size_callback);
         glfwSetKeyCallback(handle, key_callback);

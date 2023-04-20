@@ -17,7 +17,7 @@ typedef struct _Walrus_Engine Walrus_Engine;
 typedef enum {
     WR_ENGINE_SUCCESS = 0,
 
-    WR_ENGINE_INIT_WR_WINDOW_ERROR,
+    WR_ENGINE_INIT_WINDOW_ERROR,
     WR_ENGINE_INIT_RHI_ERROR,
     WR_ENGINE_INIT_INPUT_ERROR,
 
