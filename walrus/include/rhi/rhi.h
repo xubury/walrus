@@ -36,7 +36,7 @@ void walrus_rhi_set_transform(mat4 const transform);
 Walrus_ShaderHandle walrus_rhi_create_shader(Walrus_ShaderType type, char const* source);
 void                walrus_rhi_destroy_shader(Walrus_ShaderHandle handle);
 
-Walrus_ProgramHandle walrus_rhi_create_program(Walrus_ShaderHandle vs, Walrus_ShaderHandle fs);
+Walrus_ProgramHandle walrus_rhi_create_program(Walrus_ShaderHandle *shaders, u32 num, bool destroy_shader);
 void                 walrus_rhi_destroy_program(Walrus_ProgramHandle handle);
 
 Walrus_UniformHandle walrus_rhi_create_uniform(char const* name, Walrus_UniformType type, i8 num);

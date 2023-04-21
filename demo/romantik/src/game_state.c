@@ -4,6 +4,7 @@
 #include <core/log.h>
 #include <core/memory.h>
 #include <core/ray.h>
+#include <core/macro.h>
 #include <engine/engine.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -25,17 +26,20 @@ char const *hex_src =
 char const *ins_hex_src =
     "layout (location = 0) in vec3 a_pos;\n"
     "layout (location = 1) in vec2 a_uv;\n"
-    "layout (location = 2) in vec4 a_layer;\n"
-    "layout (location = 3) in mat4 a_model;\n"
+    "layout (location = 2) in vec3 a_color;\n"
+    "layout (location = 3) in float a_layer;\n"
+    "layout (location = 4) in mat4 a_model;\n"
     "out vec2 v_pos;\n"
     "out vec2 v_uv;\n"
+    "out vec3 v_color;\n"
     "out float v_layer;\n"
     "uniform mat4 u_viewproj;\n"
     "void main() { \n"
     "    gl_Position = u_viewproj * a_model * vec4(a_pos, 1.0);\n"
     "    v_pos = a_pos.xy;\n"
     "    v_uv = a_uv;\n"
-    "    v_layer = a_layer[0];\n"
+    "    v_color = a_color;\n"
+    "    v_layer = a_layer;\n"
     "}\n";
 
 char const *layer_fs_src =
@@ -43,8 +47,8 @@ char const *layer_fs_src =
     "in vec2 v_pos;\n"
     "in vec2 v_uv;\n"
     "in float v_layer;\n"
+    "in vec3 v_color;\n"
     "uniform sampler2DArray u_texture;\n"
-    "uniform vec4 u_color;\n"
     "vec3 linear_to_srgb(vec3 linear)\n"
     "{\n"
     "    bvec3 cutoff = lessThan(linear, vec3(0.0031308));\n"
@@ -55,7 +59,7 @@ char const *layer_fs_src =
     "void main() {\n"
     "    vec3 color = texture(u_texture, vec3(v_uv, v_layer)).rgb;\n"
     "    color = linear_to_srgb(color);\n"
-    "    frag_color = vec4(color, 1.0) * u_color;\n"
+    "    frag_color = vec4(color, 1.0) * vec4(v_color, 1.0);\n"
     "}\n";
 
 char const *fs_src =
@@ -94,10 +98,14 @@ void game_state_init(Romantik_GameState *state)
 
     walrus_rhi_set_view_rect(0, 0, 0, width, height);
     walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_COLOR | WR_RHI_CLEAR_DEPTH, 0xffd580ff, 1.0, 0);
+    walrus_rhi_set_view_rect(1, width - width * 0.3, height - height * 0.3, width * 0.3, height * 0.3);
+    walrus_rhi_set_view_clear(1, WR_RHI_CLEAR_DEPTH, 0, 1.0, 0);
 
     mat4 projection;
     glm_perspective(glm_rad(45.0), (float)width / height, 0.1, 1000.0, projection);
     walrus_rhi_set_view_transform(0, NULL, projection);
+    glm_perspective(glm_rad(45.0), (float)width / height, 0.1, 1000.0, projection);
+    walrus_rhi_set_view_transform(1, GLM_MAT4_IDENTITY, projection);
 
     struct {
         vec3 pos;
@@ -124,11 +132,12 @@ void game_state_init(Romantik_GameState *state)
     state->layout = walrus_rhi_create_vertex_layout(&layout);
 
     walrus_vertex_layout_begin_instance(&layout, 1);
-    walrus_vertex_layout_add(&layout, 2, 4, WR_RHI_ATTR_FLOAT, false);
-    walrus_vertex_layout_add(&layout, 3, 4, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_add(&layout, 2, 3, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_add(&layout, 3, 1, WR_RHI_ATTR_FLOAT, false);
     walrus_vertex_layout_add(&layout, 4, 4, WR_RHI_ATTR_FLOAT, false);
     walrus_vertex_layout_add(&layout, 5, 4, WR_RHI_ATTR_FLOAT, false);
     walrus_vertex_layout_add(&layout, 6, 4, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_add(&layout, 7, 4, WR_RHI_ATTR_FLOAT, false);
     walrus_vertex_layout_end(&layout);
     state->ins_layout = walrus_rhi_create_vertex_layout(&layout);
 
@@ -143,11 +152,20 @@ void game_state_init(Romantik_GameState *state)
         }
     }
 
-    for (u8 i = 0; i < TERRAIN_COUNT; ++i) {
-        state->placed_buffer[i] = walrus_rhi_create_buffer(NULL, 1000 * sizeof(HexInstanceBuffer), 0);
-    }
+    state->placed_buffer = walrus_rhi_create_buffer(NULL, 1000 * TERRAIN_COUNT * sizeof(HexInstanceBuffer), 0);
+    state->avail_buffer  = walrus_rhi_create_buffer(NULL, 2000 * sizeof(HexInstanceBuffer), 0);
 
-    state->avail_buffer = walrus_rhi_create_buffer(NULL, 2000 * sizeof(HexInstanceBuffer), 0);
+    HexInstanceBuffer queue_hexs[5];
+    u32               queue_len = walrus_array_len(queue_hexs);
+    for (u8 i = 0; i < queue_len; ++i) {
+        mat4 model = GLM_MAT4_IDENTITY_INIT;
+        glm_translate(model, (vec3){0, (i - queue_len / 2.0) * 0.2, -3});
+        glm_rotate(model, glm_rad(30), (vec3){1, 0, 0});
+        glm_mat4_copy(model, queue_hexs[i].model);
+        romantik_get_terrain_color(i % TERRAIN_COUNT, queue_hexs[i].terrain);
+        queue_hexs[i].terrain[3] = 0;
+    }
+    state->queue_buffer = walrus_rhi_create_buffer(queue_hexs, queue_len * sizeof(HexInstanceBuffer), 0);
 
     HexInstanceBuffer *buffer = walrus_new(HexInstanceBuffer, game->num_avail_grids);
     romantik_compute_instance_buffer(&game->map, buffer, game->num_avail_grids, HEX_FLAG_AVAIL);
@@ -162,15 +180,11 @@ void game_state_init(Romantik_GameState *state)
     Walrus_ShaderHandle fs       = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
     Walrus_ShaderHandle fs_layer = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, layer_fs_src);
     Walrus_ShaderHandle fs_grid  = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_grid_src);
-    state->pick_shader           = walrus_rhi_create_program(vs, fs);
-    state->map_shader            = walrus_rhi_create_program(vs_ins, fs_layer);
-    state->grid_shader           = walrus_rhi_create_program(vs_ins, fs_grid);
+    state->pick_shader           = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs, fs}, 2, true);
+    state->map_shader            = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_ins, fs_layer}, 2, true);
+    state->grid_shader           = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_ins, fs_grid}, 2, true);
 
     state->hide_picker = true;
-
-    for (u8 i = 0; i < TERRAIN_COUNT; ++i) {
-        state->num_instances[i] = 0;
-    }
 
     glm_mat4_identity(state->model);
 
@@ -212,15 +226,11 @@ static void place_grid(Romantik_GameState *state, i32 q, i32 r)
     Romantik_Game *game = &state->game;
     HexMap        *map  = &game->map;
 
-    Terrain terrain = game->next_terrain;
     if (romantik_place_grid(game, q, r)) {
-        HexInstanceBuffer *buffer     = walrus_new(HexInstanceBuffer, game->num_placed_grids);
-        u32                num        = romantik_compute_instance_buffer(map, buffer, game->num_placed_grids,
-                                                                         romantik_terrain_flag(game->next_terrain));
-        state->num_instances[terrain] = num;
+        HexInstanceBuffer *buffer = walrus_new(HexInstanceBuffer, game->num_placed_grids);
+        romantik_compute_instance_buffer(map, buffer, game->num_placed_grids, HEX_FLAG_PLACED);
 
-        walrus_rhi_update_buffer(state->placed_buffer[state->game.next_terrain], 0, num * sizeof(HexInstanceBuffer),
-                                 buffer);
+        walrus_rhi_update_buffer(state->placed_buffer, 0, game->num_placed_grids * sizeof(HexInstanceBuffer), buffer);
 
         walrus_free(buffer);
 
@@ -273,11 +283,6 @@ void game_state_tick(Romantik_GameState *state, f32 dt)
 
 void game_state_render(Romantik_GameState *state)
 {
-    vec4 colors[TERRAIN_COUNT] = {{0.529411, 0.9, 0.556862, 1.0},
-                                  {0.529411, 0.756862, 1.0, 1.0},
-                                  {1.0, 0.756862, 0.529411, 1.0},
-                                  {0.756862, 0.756862, 0.756862, 1.0}};
-
     CameraData *cam = &state->cam;
 
     walrus_rhi_set_view_transform(0, cam->view, NULL);
@@ -288,22 +293,25 @@ void game_state_render(Romantik_GameState *state)
     if (!state->hide_picker) {
         walrus_rhi_set_state(WR_RHI_STATE_DEFAULT | WR_RHI_STATE_BLEND_ALPHA, 0);
         walrus_rhi_set_transform(state->model);
-        vec4 color = {1.0, 1.0, 1.0, 0.7};
-        glm_vec4_mul(colors[state->game.next_terrain], color, color);
+        vec4 mul_color = {1.0, 1.0, 1.0, 0.7};
+        vec4 color     = {0, 0, 0, 1.0};
+        romantik_get_terrain_color(state->game.next_terrain, color);
+        glm_vec4_mul(color, mul_color, color);
         walrus_rhi_set_uniform(state->u_color, 0, sizeof(vec4), color);
         walrus_rhi_submit(0, state->pick_shader, WR_RHI_DISCARD_TRANSFORM | WR_RHI_DISCARD_STATE);
     }
 
     walrus_rhi_set_texture(0, state->u_texture, state->texture);
-    for (u8 i = 0; i < TERRAIN_COUNT; ++i) {
-        if (state->num_instances[i] > 0) {
-            walrus_rhi_set_instance_buffer(state->placed_buffer[i], state->ins_layout, 0, state->num_instances[i]);
-            walrus_rhi_set_uniform(state->u_color, 0, sizeof(vec4), colors[i]);
-            walrus_rhi_submit(0, state->map_shader, WR_RHI_DISCARD_INSTANCE_DATA | WR_RHI_DISCARD_STATE);
-        }
+    if (state->game.num_placed_grids > 0) {
+        walrus_rhi_set_instance_buffer(state->placed_buffer, state->ins_layout, 0, state->game.num_placed_grids);
+        walrus_rhi_submit(0, state->map_shader, WR_RHI_DISCARD_INSTANCE_DATA | WR_RHI_DISCARD_STATE);
     }
 
     walrus_rhi_set_state(WR_RHI_STATE_DEFAULT | WR_RHI_STATE_BLEND_ALPHA, 0);
     walrus_rhi_set_instance_buffer(state->avail_buffer, state->ins_layout, 0, state->game.num_avail_grids);
-    walrus_rhi_submit(0, state->grid_shader, WR_RHI_DISCARD_ALL);
+    walrus_rhi_submit(0, state->grid_shader, WR_RHI_DISCARD_INSTANCE_DATA | WR_RHI_DISCARD_STATE);
+
+    walrus_rhi_set_state(WR_RHI_STATE_WRITE_RGB | WR_RHI_STATE_WRITE_A | WR_RHI_STATE_BLEND_ALPHA, 0);
+    walrus_rhi_set_instance_buffer(state->queue_buffer, state->ins_layout, 0, 10);
+    walrus_rhi_submit(1, state->map_shader, WR_RHI_DISCARD_ALL);
 }

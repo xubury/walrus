@@ -111,24 +111,17 @@ void gl_shader_destroy(Walrus_ShaderHandle handle)
     g_ctx->shaders[handle.id] = 0;
 }
 
-void gl_program_create(Walrus_ProgramHandle handle, Walrus_ShaderHandle shader0, Walrus_ShaderHandle shader1,
-                       Walrus_ShaderHandle shader2)
+void gl_program_create(Walrus_ProgramHandle handle, Walrus_ShaderHandle *shaders, u32 num)
 {
     GLuint     id         = glCreateProgram();
     GlProgram *prog       = &g_ctx->programs[handle.id];
     prog->id              = id;
     prog->buffer          = NULL;
     prog->num_predefineds = 0;
+    for (u32 i = 0; i < num; ++i) {
+        glAttachShader(id, g_ctx->shaders[shaders[i].id]);
+    }
 
-    if (shader0.id != WR_INVALID_HANDLE) {
-        glAttachShader(id, g_ctx->shaders[shader0.id]);
-    }
-    if (shader1.id != WR_INVALID_HANDLE) {
-        glAttachShader(id, g_ctx->shaders[shader1.id]);
-    }
-    if (shader2.id != WR_INVALID_HANDLE) {
-        glAttachShader(id, g_ctx->shaders[shader2.id]);
-    }
     glLinkProgram(id);
 
     GLint succ;

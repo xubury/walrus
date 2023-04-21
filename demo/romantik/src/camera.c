@@ -104,7 +104,7 @@ void camera_init(CameraData *cam)
     cam->rot_speed  = 4.0f;
 
     cam->angle_movement = 0.0f;
-    cam->arm_len        = 5.f;
+    cam->arm_len        = 15.f;
     cam->arm_movement   = 0.f;
     cam->view_angle     = glm_rad(45);
     cam->view_yangle    = glm_rad(30);

@@ -27,7 +27,7 @@ typedef struct {
 } HexGrid;
 
 typedef struct {
-    vec4 border;
+    vec4 terrain;
     mat4 model;
 } HexInstanceBuffer;
 
@@ -62,3 +62,5 @@ bool romantik_connect_border(HexMap *map, i32 q, i32 r);
 void romantik_compute_model(HexMap *map, mat4 model, i32 q, i32 r);
 
 void romantik_compute_model_pixel(HexMap *map, mat4 model, f32 x, f32 y);
+
+void romantik_get_terrain_color(Terrain terrain, vec4 color);

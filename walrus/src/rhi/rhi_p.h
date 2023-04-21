@@ -10,8 +10,7 @@ typedef void (*RhiSubmitFn)(RenderFrame *frame);
 
 typedef void (*RhiCreateShaderFn)(Walrus_ShaderType type, Walrus_ShaderHandle handle, char const *source);
 typedef void (*RhiDestroyShaderFn)(Walrus_ShaderHandle handle);
-typedef void (*RhiCreateProgramFn)(Walrus_ProgramHandle handle, Walrus_ShaderHandle shader0,
-                                   Walrus_ShaderHandle shader1, Walrus_ShaderHandle shader2);
+typedef void (*RhiCreateProgramFn)(Walrus_ProgramHandle handle, Walrus_ShaderHandle *shaders, u32 num);
 typedef void (*RhiDestroyProgramFn)(Walrus_ProgramHandle handle);
 
 typedef void (*RhiCreateUniformFn)(Walrus_UniformHandle handle, const char *name, u32 size);
@@ -40,7 +39,7 @@ typedef struct {
 
     RhiCreateUniformFn  uniform_create_fn;
     RhiDestroyUniformFn uniform_destroy_fn;
-    RhiResizeUniformFn uniform_resize_fn;
+    RhiResizeUniformFn  uniform_resize_fn;
     RhiUpdateUniformFn  uniform_update_fn;
 
     RhiCreateVertexLayoutFn  vertex_layout_create_fn;
@@ -62,9 +61,13 @@ typedef struct {
 } UniformRef;
 
 typedef struct {
-    u32               ref_count[WR_RHI_MAX_VERTEX_LAYOUTS];
-    Walrus_HashTable *table;
+    u32 ref_count;
 } VertexLayoutRef;
+
+typedef struct {
+    char *source;
+    u32   ref_count;
+} ShaderRef;
 
 typedef struct {
     Walrus_RhiFlag flags;
@@ -82,6 +85,9 @@ typedef struct {
 
     Walrus_HandleAlloc *shaders;
     Walrus_HandleAlloc *programs;
+    Walrus_HashTable   *shader_map;
+    ShaderRef           shader_refs[WR_RHI_MAX_SHADERS];
+
     Walrus_HandleAlloc *uniforms;
     UniformRef          uniform_refs[WR_RHI_MAX_UNIFORMS];
     Walrus_HandleAlloc *vertex_layouts;
@@ -92,7 +98,8 @@ typedef struct {
     u32               uniform_begin;
     u32               uniform_end;
 
-    VertexLayoutRef vertex_layout_ref;
+    VertexLayoutRef   vertex_layout_ref[WR_RHI_MAX_VERTEX_LAYOUTS];
+    Walrus_HashTable *vertex_layout_table;
 
     Walrus_RhiError err;
     char const     *err_msg;

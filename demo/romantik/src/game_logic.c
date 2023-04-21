@@ -154,37 +154,38 @@ u32 romantik_compute_instance_buffer(HexMap *map, HexInstanceBuffer *buffers, u6
         HexGrid *grid = &((HexGrid *)map->grids)[i];
         if (grid->flags & flags) {
             romantik_compute_model(map, buffers[cnt].model, q - center_q, r - center_r);
-            buffers[cnt].border[0] = romantik_get_border_type(grid->abs_border);
+            romantik_get_terrain_color(walrus_u32cnttz(grid->flags), buffers[cnt].terrain);
+            buffers[cnt].terrain[3] = romantik_get_border_type(grid->abs_border);
             ++cnt;
         }
     }
     return cnt;
 }
+// clang-format off
+static u8 const border_layer_map[] = {
+    0x0,
+    0x1,
+
+    0x3, //0b11
+    0x5, //0b101
+    0x9, //0b1001
+
+    0x7, //0b111
+    0xb, //0b1011
+    0xd, //0b1101
+    0x15,//0b10101
+
+    0xf, //0b1111
+    0x17,//0b10111
+    0x1b,//0b11011
+
+    0x1f,// 0b11111
+    0x3f,// 0b111111
+} ;
+// clang-format on
 
 u8 romantik_get_border_type(u8 bits)
 {
-    // clang-format off
-    u8 const border_layer_map[]= {
-        0x0,
-        0x1,
-
-        0x3, //0b11
-        0x5, //0b101
-        0x9, //0b1001
-
-        0x7, //0b111
-        0xb, //0b1011
-        0xd, //0b1101
-        0x15,//0b10101
-
-        0xf, //0b1111
-        0x17,//0b10111
-        0x1b,//0b11011
-
-        0x1f,// 0b11111
-        0x3f,// 0b111111
-    } ;
-    // clang-format on
     u8 type = 0;
     for (u32 i = 0; i < walrus_array_len(border_layer_map); ++i) {
         if (border_layer_map[i] == bits) {
@@ -193,4 +194,12 @@ u8 romantik_get_border_type(u8 bits)
         }
     }
     return type;
+}
+
+static vec3 colors[TERRAIN_COUNT] = {
+    {0.529411, 0.9, 0.556862}, {0.529411, 0.756862, 1.0}, {1.0, 0.756862, 0.529411}, {0.756862, 0.756862, 0.756862}};
+
+void romantik_get_terrain_color(Terrain terrain, vec4 color)
+{
+    glm_vec3_copy(colors[walrus_clamp(terrain, 0, TERRAIN_COUNT - 1)], color);
 }

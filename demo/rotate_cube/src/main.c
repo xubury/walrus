@@ -213,7 +213,7 @@ Walrus_AppError on_init(Walrus_App *app)
 
     Walrus_ShaderHandle vs = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, ins_hex_src);
     Walrus_ShaderHandle fs = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, layer_fs_src);
-    app_data->map_shader       = walrus_rhi_create_program(vs, fs);
+    app_data->map_shader   = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs, fs}, 2, true);
 
     glm_mat4_identity(app_data->model);
     glm_translate(app_data->model, (vec3){0, 0, -2});
