@@ -606,6 +606,11 @@ static void gl_uniform_destroy(Walrus_UniformHandle handle)
     g_ctx->uniform_names[handle.id] = NULL;
 }
 
+static void gl_uniform_resize(Walrus_UniformHandle handle, u32 size)
+{
+    walrus_realloc(g_ctx->uniforms[handle.id], size);
+}
+
 static void gl_uniform_update(Walrus_UniformHandle handle, u32 offset, u32 size, void const *data)
 {
     memcpy((u8 *)g_ctx->uniforms[handle.id] + offset, data, size);
@@ -666,6 +671,7 @@ static void init_api(RhiVTable *vtable)
 
     vtable->uniform_create_fn  = gl_uniform_create;
     vtable->uniform_destroy_fn = gl_uniform_destroy;
+    vtable->uniform_resize_fn  = gl_uniform_resize;
     vtable->uniform_update_fn  = gl_uniform_update;
 
     vtable->vertex_layout_create_fn  = gl_vertex_layout_create;

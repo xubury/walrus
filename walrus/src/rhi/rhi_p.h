@@ -16,6 +16,7 @@ typedef void (*RhiDestroyProgramFn)(Walrus_ProgramHandle handle);
 
 typedef void (*RhiCreateUniformFn)(Walrus_UniformHandle handle, const char *name, u32 size);
 typedef void (*RhiDestroyUniformFn)(Walrus_UniformHandle handle);
+typedef void (*RhiResizeUniformFn)(Walrus_UniformHandle handle, u32 size);
 typedef void (*RhiUpdateUniformFn)(Walrus_UniformHandle handle, u32 offset, u32 size, void const *data);
 
 typedef void (*RhiCreateVertexLayoutFn)(Walrus_LayoutHandle handle, Walrus_VertexLayout const *layout);
@@ -39,6 +40,7 @@ typedef struct {
 
     RhiCreateUniformFn  uniform_create_fn;
     RhiDestroyUniformFn uniform_destroy_fn;
+    RhiResizeUniformFn uniform_resize_fn;
     RhiUpdateUniformFn  uniform_update_fn;
 
     RhiCreateVertexLayoutFn  vertex_layout_create_fn;

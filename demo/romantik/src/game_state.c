@@ -1,11 +1,10 @@
 #include "game_state.h"
+#include "hex.h"
 
 #include <core/log.h>
 #include <core/memory.h>
 #include <core/ray.h>
 #include <engine/engine.h>
-
-#include "hex.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>

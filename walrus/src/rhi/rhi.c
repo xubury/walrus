@@ -413,7 +413,8 @@ Walrus_UniformHandle walrus_rhi_create_uniform(char const* name, Walrus_UniformT
         handle.id       = walrus_ptr_to_u32(walrus_hash_table_lookup(s_ctx->uniform_map, name));
         UniformRef* ref = &s_ctx->uniform_refs[handle.id];
         if (ref->size < size) {
-            // resize uniform
+            s_table->uniform_resize_fn(handle, size);
+            ref->size = size;
         }
 
         ++ref->ref_count;
