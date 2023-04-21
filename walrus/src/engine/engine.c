@@ -79,14 +79,13 @@ static void release_service(void)
 
 static void event_process(void)
 {
-    Walrus_Event   e;
-    i32            ret;
-    Walrus_App    *app    = s_engine->app;
-    Walrus_Input  *input  = s_engine->input;
-    Walrus_Window *window = s_engine->window;
+    static Walrus_Event e;
+    Walrus_App         *app    = s_engine->app;
+    Walrus_Input       *input  = s_engine->input;
+    Walrus_Window      *window = s_engine->window;
 
     walrus_window_poll_events(window);
-    while ((ret = walrus_event_poll(&e)) == WR_EVENT_SUCCESS) {
+    while (walrus_event_poll(&e) == WR_EVENT_SUCCESS) {
         switch (e.type) {
             case WR_EVENT_TYPE_AXIS: {
                 Walrus_AxisEvent *axis = &e.axis;

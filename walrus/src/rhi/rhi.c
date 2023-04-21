@@ -93,6 +93,36 @@ char const* get_glsl_header(void)
 #endif
 }
 
+static void compute_texture_size_from_ratio(Walrus_BackBufferRatio ratio, u32* width, u32* height)
+{
+    switch (ratio) {
+        case WR_RHI_RATIO_DOUBLE:
+            *width *= 2;
+            *height *= 2;
+            break;
+        case WR_RHI_RATIO_HALF:
+            *width /= 2;
+            *height /= 2;
+            break;
+        case WR_RHI_RATIO_QUARTER:
+            *width /= 4;
+            *height /= 4;
+            break;
+        case WR_RHI_RATIO_EIGHTH:
+            *width /= 8;
+            *height /= 8;
+            break;
+        case WR_RHI_RATIO_SIXTEENTH:
+            *width /= 16;
+            *height /= 16;
+            break;
+        default:
+            break;
+    }
+    *width  = walrus_max(*width, 1);
+    *height = walrus_max(*height, 1);
+}
+
 Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags)
 {
     s_ctx = walrus_malloc(sizeof(RhiContext));
@@ -301,7 +331,7 @@ void walrus_rhi_screen_to_world(u16 view_id, vec2 const screen, vec3 world)
     walrus_rhi_screen_to_clip(view_id, screen, clip);
 
     mat4 inv_vp;
-    glm_mat4_mul((vec4 *)v->projection, (vec4 *)v->view, inv_vp);
+    glm_mat4_mul((vec4*)v->projection, (vec4*)v->view, inv_vp);
     glm_mat4_inv(inv_vp, inv_vp);
 
     glm_mat4_mulv(inv_vp, clip, clip);
@@ -318,7 +348,7 @@ void walrus_rhi_screen_to_world_dir(u16 view_id, vec2 const screen, vec3 world_d
     walrus_rhi_screen_to_clip(view_id, screen, far_clip);
 
     mat4 inv_vp;
-    glm_mat4_mul((vec4 *)v->projection, (vec4 *)v->view, inv_vp);
+    glm_mat4_mul((vec4*)v->projection, (vec4*)v->view, inv_vp);
     glm_mat4_inv(inv_vp, inv_vp);
 
     glm_mat4_mulv(inv_vp, near_clip, near_clip);
@@ -641,9 +671,26 @@ void walrus_rhi_set_index32_buffer(Walrus_BufferHandle handle, u32 offset, u32 n
     s_ctx->draw.num_indices  = num_indices;
 }
 
-static u8 calculteMipmap(u16 width, u16 height)
+static u8 compute_mipmap(u32 width, u32 height)
 {
     return 1 + floor(log2(walrus_max(width, height)));
+}
+
+static void resize_texture(Walrus_TextureHandle handle, u32 width, u32 height, u32 depth, u8 num_mipmaps, u8 num_layers)
+{
+    TextureRef* ref = &s_ctx->texture_refs[handle.id];
+    if (ref->ratio != WR_RHI_RATIO_COUNT) {
+        compute_texture_size_from_ratio(ref->ratio, &width, &height);
+    }
+    if (num_mipmaps == 0) {
+        num_mipmaps = compute_mipmap(width, height);
+    }
+    ref->width       = width;
+    ref->height      = height;
+    ref->depth       = depth;
+    ref->num_layers  = num_layers;
+    ref->num_mipmaps = num_mipmaps;
+    s_table->texture_resize_fn(handle, width, height, depth, num_layers, num_mipmaps);
 }
 
 Walrus_TextureHandle walrus_rhi_create_texture(Walrus_TextureCreateInfo const* info)
@@ -655,15 +702,29 @@ Walrus_TextureHandle walrus_rhi_create_texture(Walrus_TextureCreateInfo const* i
     }
 
     Walrus_TextureCreateInfo _info = *info;
+
+    if (_info.ratio != WR_RHI_RATIO_COUNT) {
+        compute_texture_size_from_ratio(_info.ratio, &_info.width, &_info.height);
+    }
+
     // if no mip mode is selected, force num_mipmaps to be 1
     u32 const mip = (_info.flags & WR_RHI_SAMPLER_MIP_MASK) >> WR_RHI_SAMPLER_MIP_SHIFT;
     if (mip == 0) {
         _info.num_mipmaps = 1;
     }
 
-    _info.num_mipmaps = _info.num_mipmaps == 0 ? calculteMipmap(_info.width, _info.height) : _info.num_mipmaps;
+    _info.num_mipmaps = _info.num_mipmaps == 0 ? compute_mipmap(_info.width, _info.height) : _info.num_mipmaps;
 
     s_table->texture_create_fn(handle, &_info);
+
+    TextureRef* ref  = &s_ctx->texture_refs[handle.id];
+    ref->ratio       = _info.ratio;
+    ref->width       = _info.width;
+    ref->height      = _info.height;
+    ref->depth       = _info.depth;
+    ref->num_layers  = _info.num_layers;
+    ref->num_mipmaps = _info.num_mipmaps;
+
     return handle;
 }
 

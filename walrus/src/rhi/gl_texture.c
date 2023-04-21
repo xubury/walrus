@@ -171,3 +171,20 @@ void gl_texture_destroy(Walrus_TextureHandle handle)
     g_ctx->textures[handle.id].id  = 0;
     g_ctx->textures[handle.id].rbo = 0;
 }
+
+void gl_texture_resize(Walrus_TextureHandle handle, u32 width, u32 height, u32 depth, u8 num_mipmaps, u8 num_layers)
+{
+    GlTexture               *tex = &g_ctx->textures[handle.id];
+    Walrus_TextureCreateInfo info;
+    info.width       = width;
+    info.height      = height;
+    info.depth       = depth;
+    info.num_mipmaps = num_mipmaps;
+    info.num_layers  = num_layers;
+    info.format      = tex->format;
+    info.data        = NULL;
+    info.flags       = tex->flags;
+
+    gl_texture_destroy(handle);
+    gl_texture_create(handle, &info);
+}

@@ -27,6 +27,8 @@ typedef void (*RhiUpdateBufferFn)(Walrus_BufferHandle handle, u64 offset, u64 si
 
 typedef void (*RhiCreateTextureFn)(Walrus_TextureHandle handle, Walrus_TextureCreateInfo const *info);
 typedef void (*RhiDestroyTextureFn)(Walrus_TextureHandle handle);
+typedef void (*RhiResizeTextureFn)(Walrus_TextureHandle handle, u32 width, u32 height, u32 depth, u8 num_layers,
+                                   u8 num_mipmaps);
 
 typedef struct {
     RhiSubmitFn submit_fn;
@@ -51,6 +53,7 @@ typedef struct {
 
     RhiCreateTextureFn  texture_create_fn;
     RhiDestroyTextureFn texture_destroy_fn;
+    RhiResizeTextureFn  texture_resize_fn;
 } RhiVTable;
 
 typedef struct {
@@ -68,6 +71,15 @@ typedef struct {
     char *source;
     u32   ref_count;
 } ShaderRef;
+
+typedef struct {
+    Walrus_BackBufferRatio ratio;
+    u32                    width;
+    u32                    height;
+    u32                    depth;
+    u8                     num_layers;
+    u8                     num_mipmaps;
+} TextureRef;
 
 typedef struct {
     Walrus_RhiFlag flags;
@@ -93,6 +105,7 @@ typedef struct {
     Walrus_HandleAlloc *vertex_layouts;
     Walrus_HandleAlloc *buffers;
     Walrus_HandleAlloc *textures;
+    TextureRef          texture_refs[WR_RHI_MAX_TEXTURES];
 
     Walrus_HashTable *uniform_map;
     u32               uniform_begin;

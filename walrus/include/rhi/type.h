@@ -110,9 +110,9 @@ typedef enum {
 } Walrus_BackBufferRatio;
 
 typedef struct {
-    u16                    width;
-    u16                    height;
-    u16                    depth;
+    u32                    width;
+    u32                    height;
+    u32                    depth;
     u8                     num_mipmaps;
     u8                     num_layers;
     Walrus_PixelFormat     format;

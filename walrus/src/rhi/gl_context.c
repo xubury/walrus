@@ -683,6 +683,7 @@ static void init_api(RhiVTable *vtable)
 
     vtable->texture_create_fn  = gl_texture_create;
     vtable->texture_destroy_fn = gl_texture_destroy;
+    vtable->texture_resize_fn  = gl_texture_resize;
 }
 
 void gl_backend_init(RhiContext *rhi, RhiVTable *vtable)
