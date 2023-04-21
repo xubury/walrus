@@ -7,9 +7,9 @@ typedef struct _Walrus_Window Walrus_Window;
 typedef enum {
     WR_WINDOW_FLAG_NONE = 0,
 
-    WR_WINDOW_FLAG_VSYNC = 1 << 0,
-
-    WR_WINDOW_FLAG_OPENGL = 1 << 1
+    WR_WINDOW_FLAG_VSYNC      = 1 << 0,
+    WR_WINDOW_FLAG_OPENGL     = 1 << 1,
+    WR_WINDOW_FLAG_RESIZABLE = 1 << 2
 } WindowFlag;
 
 Walrus_Window *walrus_window_create(char const *title, u32 width, u32 height, u32 flags);

@@ -98,13 +98,12 @@ void game_state_init(Romantik_GameState *state)
 
     walrus_rhi_set_view_rect(0, 0, 0, width, height);
     walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_COLOR | WR_RHI_CLEAR_DEPTH, 0xffd580ff, 1.0, 0);
-    walrus_rhi_set_view_rect(1, width - width * 0.3, height - height * 0.3, width * 0.3, height * 0.3);
+    walrus_rhi_set_view_rect(1, width - width * 0.3 + 100, height - height * 0.3, width * 0.3, height * 0.3);
     walrus_rhi_set_view_clear(1, WR_RHI_CLEAR_DEPTH, 0, 1.0, 0);
 
     mat4 projection;
     glm_perspective(glm_rad(45.0), (float)width / height, 0.1, 1000.0, projection);
     walrus_rhi_set_view_transform(0, NULL, projection);
-    glm_perspective(glm_rad(45.0), (float)width / height, 0.1, 1000.0, projection);
     walrus_rhi_set_view_transform(1, GLM_MAT4_IDENTITY, projection);
 
     struct {
@@ -311,7 +310,7 @@ void game_state_render(Romantik_GameState *state)
     walrus_rhi_set_instance_buffer(state->avail_buffer, state->ins_layout, 0, state->game.num_avail_grids);
     walrus_rhi_submit(0, state->grid_shader, WR_RHI_DISCARD_INSTANCE_DATA | WR_RHI_DISCARD_STATE);
 
-    walrus_rhi_set_state(WR_RHI_STATE_WRITE_RGB | WR_RHI_STATE_WRITE_A | WR_RHI_STATE_BLEND_ALPHA, 0);
+    walrus_rhi_set_state(WR_RHI_STATE_DEFAULT | WR_RHI_STATE_BLEND_ALPHA, 0);
     walrus_rhi_set_instance_buffer(state->queue_buffer, state->ins_layout, 0, 10);
     walrus_rhi_submit(1, state->map_shader, WR_RHI_DISCARD_ALL);
 }
