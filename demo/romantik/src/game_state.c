@@ -144,7 +144,7 @@ void renderer_init(Romantik_GameState *state)
     u32               queue_len = walrus_array_len(queue_hexs);
     for (u8 i = 0; i < queue_len; ++i) {
         mat4 model = GLM_MAT4_IDENTITY_INIT;
-        glm_translate(model, (vec3){0, (i - queue_len / 2.0) * 0.2, -3});
+        glm_translate(model, (vec3){0, (i - queue_len / 2.0) * 0.2, -3.5});
         glm_rotate(model, glm_rad(30), (vec3){1, 0, 0});
         glm_mat4_copy(model, queue_hexs[i].model);
         romantik_get_terrain_color(i % TERRAIN_COUNT, queue_hexs[i].terrain);
