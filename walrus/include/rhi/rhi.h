@@ -36,7 +36,7 @@ void walrus_rhi_set_transform(mat4 const transform);
 Walrus_ShaderHandle walrus_rhi_create_shader(Walrus_ShaderType type, char const* source);
 void                walrus_rhi_destroy_shader(Walrus_ShaderHandle handle);
 
-Walrus_ProgramHandle walrus_rhi_create_program(Walrus_ShaderHandle *shaders, u32 num, bool destroy_shader);
+Walrus_ProgramHandle walrus_rhi_create_program(Walrus_ShaderHandle* shaders, u32 num, bool destroy_shader);
 void                 walrus_rhi_destroy_program(Walrus_ProgramHandle handle);
 
 Walrus_UniformHandle walrus_rhi_create_uniform(char const* name, Walrus_UniformType type, i8 num);
@@ -51,6 +51,7 @@ Walrus_BufferHandle walrus_rhi_create_buffer(void const* data, u64 size, u16 fla
 void                walrus_rhi_destroy_buffer(Walrus_BufferHandle handle);
 void                walrus_rhi_update_buffer(Walrus_BufferHandle handle, u64 offset, u64 size, void const* data);
 
+void walrus_rhi_set_vertex_count(u32 num_vertices);
 void walrus_rhi_set_vertex_buffer(u8 stream_id, Walrus_BufferHandle handle, Walrus_LayoutHandle layout_handle,
                                   u32 offset, u32 num_vertices);
 void walrus_rhi_set_instance_buffer(Walrus_BufferHandle handle, Walrus_LayoutHandle layout_handle, u32 offset,

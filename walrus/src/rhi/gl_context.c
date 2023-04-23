@@ -105,6 +105,9 @@ static GLenum const s_cmp_func[] = {
     GL_NEVER,     // TEST_NEVER
     GL_ALWAYS,    // TEST_ALWAYS
 };
+
+static GLenum const s_primitives[] = {GL_TRIANGLES, GL_TRIANGLE_STRIP, GL_LINES};
+
 static u64 s_vao_current_enabled = 0;
 static u64 s_vao_pending_disable = 0;
 static u64 s_vao_pending_enable  = 0;
@@ -261,6 +264,7 @@ static void submit(RenderFrame *frame)
     RenderBind current_bind;
     bind_clear(&current_bind, WR_RHI_DISCARD_ALL);
 
+    GLenum primitive = GL_TRIANGLES;
     for (u32 i = 0; i < frame->num_render_items; ++i) {
         RenderItem const          *render_item = &frame->render_items[i];
         RenderBind const          *render_bind = &frame->render_binds[i];
@@ -274,8 +278,8 @@ static void submit(RenderFrame *frame)
         if (view_changed) {
             view_id = frame->view_ids[i];
 
-            Walrus_RenderClear const *clear    = &view->clear;
-            Walrus_Rect const        *viewport = &view->viewport;
+            RenderClear const *clear    = &view->clear;
+            ViewRect const    *viewport = &view->viewport;
 
             glViewport(viewport->x, resolution_height - viewport->height - viewport->y, viewport->width,
                        viewport->height);
@@ -357,6 +361,9 @@ static void submit(RenderFrame *frame)
                 }
             }
         }
+        if (WR_RHI_STATE_DRAW_MASK & changed_flags) {
+            primitive = s_primitives[((new_flags & WR_RHI_STATE_DRAW_MASK) >> WR_RHI_STATE_DRAW_SHIFT)];
+        }
 
         renderer_uniform_updates(frame->uniforms, draw->uniform_begin, draw->uniform_end);
 
@@ -395,7 +402,7 @@ static void submit(RenderFrame *frame)
             walrus_unused(barrier);
 
             bool bind_attributes = false;
-            if (draw->stream_mask != 0) {
+            if (draw->stream_mask != UINT16_MAX) {
                 for (u32 id = 0, stream_mask = draw->stream_mask; 0 != stream_mask; stream_mask >>= 1, ++id) {
                     u32 const ntz = walrus_u32cnttz(stream_mask);
                     stream_mask >>= ntz;
@@ -438,7 +445,7 @@ static void submit(RenderFrame *frame)
 
             u32 num_vertices  = draw->num_vertices;
             u32 num_instances = draw->num_instances;
-            if (draw->stream_mask != 0 && num_vertices == UINT32_MAX) {
+            if (num_vertices == UINT32_MAX) {
                 for (u32 id = 0, stream_mask = draw->stream_mask; 0 != stream_mask; stream_mask >>= 1, ++id) {
                     u32 const ntz = walrus_u32cnttz(stream_mask);
                     stream_mask >>= ntz;
@@ -471,7 +478,7 @@ static void submit(RenderFrame *frame)
                 GlBuffer const             instance_buffer = g_ctx->buffers[draw->instance_buffer.id];
                 num_instances = walrus_min(num_instances, instance_buffer.size / layout->stride);
             }
-            if (bind_attributes) {
+            if (bind_attributes && draw->stream_mask != UINT16_MAX) {
                 for (u8 i = 0; i < WR_RHI_MAX_VERTEX_ATTRIBUTES; ++i) {
                     lazy_disable_vertex_attribute(i);
                     glVertexAttribDivisor(i, 0);
@@ -549,11 +556,11 @@ static void submit(RenderFrame *frame)
                 if (num_indices == UINT32_MAX) {
                     num_indices = ib->size / draw->index_size;
                 }
-                glDrawElementsInstanced(GL_TRIANGLES, num_indices, gl_index_type[draw->index_size],
+                glDrawElementsInstanced(primitive, num_indices, gl_index_type[draw->index_size],
                                         (void *)draw->index_offset, num_instances);
             }
             else if (num_vertices != UINT32_MAX) {
-                glDrawArraysInstanced(GL_TRIANGLES, 0, num_vertices, num_instances);
+                glDrawArraysInstanced(primitive, 0, num_vertices, num_instances);
             }
         }
 

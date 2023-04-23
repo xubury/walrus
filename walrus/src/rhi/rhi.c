@@ -296,7 +296,7 @@ void walrus_rhi_set_view_rect(u16 view_id, i32 x, i32 y, u32 width, u32 height)
 
 void walrus_rhi_set_view_clear(u16 view_id, u16 flags, u32 rgba, f32 depth, u8 stencil)
 {
-    Walrus_RenderClear* clear = &s_ctx->views[view_id].clear;
+    RenderClear* clear = &s_ctx->views[view_id].clear;
 
     walrus_rhi_decompose_rgba(rgba, &clear->index[0], &clear->index[1], &clear->index[2], &clear->index[3]);
     clear->flags   = flags;
@@ -317,10 +317,10 @@ void walrus_rhi_set_view_transform(u16 view_id, mat4 view, mat4 projection)
 
 void walrus_rhi_screen_to_clip(u16 view_id, vec2 const screen, vec2 clip)
 {
-    RenderView const*  v    = &s_ctx->views[view_id];
-    Walrus_Rect const* rect = &v->viewport;
-    clip[0]                 = 2.f * (screen[0] - rect->x) / rect->width - 1.f;
-    clip[1]                 = 1.f - 2.f * (screen[1] - rect->y) / rect->height;
+    RenderView const* v    = &s_ctx->views[view_id];
+    ViewRect const*   rect = &v->viewport;
+    clip[0]                = 2.f * (screen[0] - rect->x) / rect->width - 1.f;
+    clip[1]                = 1.f - 2.f * (screen[1] - rect->y) / rect->height;
 }
 
 void walrus_rhi_screen_to_world(u16 view_id, vec2 const screen, vec3 world)
@@ -629,6 +629,17 @@ static bool set_stream_bit(RenderDraw* draw, u8 stream, Walrus_BufferHandle hand
     u16 const tmp     = handle.id != WR_INVALID_HANDLE ? bit : 0;
     draw->stream_mask = mask | tmp;
     return tmp != 0;
+}
+
+void walrus_rhi_set_vertex_count(u32 num_vertices)
+{
+    walrus_assert_msg(0 == s_ctx->draw.stream_mask, "setVertexBuffer was already called for this draw call.");
+    s_ctx->draw.stream_mask  = UINT16_MAX;
+    VertexStream* stream     = &s_ctx->draw.streams[0];
+    stream->offset           = 0;
+    stream->handle.id        = WR_INVALID_HANDLE;
+    stream->layout_handle.id = WR_INVALID_HANDLE;
+    s_ctx->num_vertices[0]   = num_vertices;
 }
 
 void walrus_rhi_set_vertex_buffer(u8 stream_id, Walrus_BufferHandle handle, Walrus_LayoutHandle layout_handle,

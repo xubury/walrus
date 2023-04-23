@@ -48,7 +48,7 @@ typedef struct {
     Walrus_BufferHandle  index_buffer;
     Walrus_LayoutHandle  layout;
     Walrus_LayoutHandle  uv_layout;
-    Walrus_TextureHandle texture;
+    Walrus_TextureHandle font;
 
     mat4 model;
 
@@ -62,7 +62,7 @@ void on_render(Walrus_App *app)
     walrus_rhi_set_vertex_buffer(0, data->buffer, data->layout, 0, UINT32_MAX);
     walrus_rhi_set_vertex_buffer(1, data->uv_buffer, data->uv_layout, 0, UINT32_MAX);
     walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
-    walrus_rhi_set_texture(0, data->u_texture, data->texture);
+    walrus_rhi_set_texture(0, data->u_texture, data->font);
     /* walrus_rhi_set_image(0, data->texture, 0, WR_RHI_ACCESS_READ, WR_RHI_FORMAT_RGBA8); */
     walrus_rhi_submit(0, data->map_shader, WR_RHI_DISCARD_ALL);
 }
@@ -227,7 +227,7 @@ Walrus_AppError on_init(Walrus_App *app)
     if (img != NULL) {
         walrus_trace("load image width: %d height: %d channel: %d", x, y, c);
 
-        app_data->texture = walrus_rhi_create_texture2d(
+        app_data->font = walrus_rhi_create_texture2d(
             x, y, WR_RHI_FORMAT_RGBA8, 0, WR_RHI_SAMPLER_MIN_LINEAR | WR_RHI_SAMPLER_MIP_LINEAR | WR_RHI_TEXTURE_SRGB,
             img, x * y * 4);
 
