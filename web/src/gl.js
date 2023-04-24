@@ -604,7 +604,7 @@ export function importGl(env)
         glDisableVertexAttribArray: function(index) { glCtx.disableVertexAttribArray(index); },
 
         glVertexAttribIPointer:  function(index, size, type, stride, ptr) { 
-            glCtx.vertexAttribPointer(index, size, type, stride, ptr); 
+            glCtx.vertexAttribIPointer(index, size, type, stride, ptr); 
         },
 
         glVertexAttribPointer:  function(index, size, type, normalized, stride, ptr) { 

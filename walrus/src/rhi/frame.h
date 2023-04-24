@@ -91,9 +91,17 @@ typedef struct {
 
     mat4 matrix_cache[WR_RHI_MAX_MATRIX_CACHE];
     u32  num_matrices;
+
+    u32 vbo_offset;
+    u32 ibo_offset;
+    u32 max_transient_vb;
+    u32 max_transient_ib;
+
+    Walrus_TransientBuffer *transient_vb;
+    Walrus_TransientBuffer *transient_ib;
 } RenderFrame;
 
-void frame_init(RenderFrame *frame);
+void frame_init(RenderFrame *frame, u32 max_transient_vb, u32 max_transient_ib);
 
 void frame_shutdown(RenderFrame *frame);
 
@@ -102,6 +110,14 @@ void frame_start(RenderFrame *frame);
 void frame_finish(RenderFrame *frame);
 
 u32 frame_add_matrices(RenderFrame *frame, mat4 const mat, u32 *num);
+
+u32 frame_avail_transient_vb_size(RenderFrame *frame, u32 num, u16 stride);
+
+u32 frame_alloc_transient_vb(RenderFrame *frame, u32 *num, u16 stride);
+
+u32 frame_avail_transient_ib_size(RenderFrame *frame, u32 num, u16 stride);
+
+u32 frame_alloc_transient_ib(RenderFrame *frame, u32 *num, u16 stride);
 
 void draw_clear(RenderDraw *draw, u8 flags);
 

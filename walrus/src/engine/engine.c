@@ -1,5 +1,6 @@
 #include <engine/engine.h>
 #include <engine/event.h>
+#include <engine/batch_renderer.h>
 #include <rhi/rhi.h>
 #include <core/type.h>
 #include <core/sys.h>
@@ -67,11 +68,15 @@ static Walrus_EngineError register_service(void)
     }
     walrus_rhi_set_resolution(opt->window_width, opt->window_height);
 
+    walrus_batch_render_init();
+
     return WR_ENGINE_SUCCESS;
 }
 
 static void release_service(void)
 {
+    walrus_batch_render_shutdown();
+    walrus_rhi_shutdown();
     walrus_inputs_destroy(s_engine->input);
     walrus_window_destroy(s_engine->window);
     walrus_event_shutdown();

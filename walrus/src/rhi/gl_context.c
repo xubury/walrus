@@ -244,8 +244,110 @@ static void set_predefineds(GlProgram const *prog, RenderFrame const *frame, Ren
     }
 }
 
+static void init_ctx(RhiContext *rhi)
+{
+#if WR_PLATFORM != WR_PLATFORM_WASM
+    GLenum err = glew_init();
+    if (err != GLEW_OK) {
+        rhi->err     = WR_RHI_INIT_GLEW_ERROR;
+        rhi->err_msg = (char const *)glewGetErrorString(err);
+
+        return;
+    }
+#else
+    wajs_setup_gl_context();
+#endif
+    g_ctx = walrus_malloc(sizeof(GlContext));
+    if (g_ctx == NULL) {
+        rhi->err     = WR_RHI_ALLOC_ERROR;
+        rhi->err_msg = WR_RHI_GL_ALLOC_FAIL_STR;
+        return;
+    }
+
+    g_ctx->uniform_registry = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
+
+    glGenVertexArrays(1, &g_ctx->vao);
+}
+
+static void gl_uniform_create(Walrus_UniformHandle handle, const char *name, u32 size)
+{
+    g_ctx->uniforms[handle.id]      = walrus_malloc0(size);
+    g_ctx->uniform_names[handle.id] = walrus_str_dup(name);
+    walrus_hash_table_insert(g_ctx->uniform_registry, g_ctx->uniform_names[handle.id], walrus_u32_to_ptr(handle.id));
+}
+
+static void gl_uniform_destroy(Walrus_UniformHandle handle)
+{
+    walrus_hash_table_remove(g_ctx->uniform_registry, g_ctx->uniform_names[handle.id]);
+    walrus_free(g_ctx->uniforms[handle.id]);
+    walrus_str_free(g_ctx->uniform_names[handle.id]);
+
+    g_ctx->uniforms[handle.id]      = NULL;
+    g_ctx->uniform_names[handle.id] = NULL;
+}
+
+static void gl_uniform_resize(Walrus_UniformHandle handle, u32 size)
+{
+    walrus_realloc(g_ctx->uniforms[handle.id], size);
+}
+
+static void gl_uniform_update(Walrus_UniformHandle handle, u32 offset, u32 size, void const *data)
+{
+    memcpy((u8 *)g_ctx->uniforms[handle.id] + offset, data, size);
+}
+
+static void gl_vertex_layout_create(Walrus_LayoutHandle handle, Walrus_VertexLayout const *layout)
+{
+    memcpy(&g_ctx->vertex_layouts[handle.id], layout, sizeof(Walrus_VertexLayout));
+}
+
+static void gl_vertex_layout_destroy(Walrus_LayoutHandle handle)
+{
+    walrus_unused(handle);
+}
+
+static void gl_buffer_create(Walrus_BufferHandle handle, void const *data, u64 size, u16 flags)
+{
+    GLuint vbo    = 0;
+    GLenum target = flags & WR_RHI_BUFFER_INDEX ? GL_ELEMENT_ARRAY_BUFFER : GL_ARRAY_BUFFER;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(target, vbo);
+    glBufferData(target, size, data, data == NULL ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
+
+    glBindBuffer(target, 0);
+
+    g_ctx->buffers[handle.id].id     = vbo;
+    g_ctx->buffers[handle.id].size   = size;
+    g_ctx->buffers[handle.id].target = target;
+}
+
+static void gl_buffer_destroy(Walrus_BufferHandle handle)
+{
+    glDeleteBuffers(1, &g_ctx->buffers[handle.id].id);
+    g_ctx->buffers[handle.id].id   = 0;
+    g_ctx->buffers[handle.id].size = 0;
+}
+
+static void gl_buffer_update(Walrus_BufferHandle handle, u64 offset, u64 size, void const *data)
+{
+    GLenum target = g_ctx->buffers[handle.id].target;
+    GLint  id     = g_ctx->buffers[handle.id].id;
+    glBindBuffer(target, id);
+    glBufferSubData(target, offset, size, data);
+    glBindBuffer(target, 0);
+}
+
 static void submit(RenderFrame *frame)
 {
+    if (frame->vbo_offset > 0) {
+        Walrus_TransientBuffer *vb = frame->transient_vb;
+        gl_buffer_update(vb->handle, 0, frame->vbo_offset, vb->data);
+    }
+    if (frame->ibo_offset > 0) {
+        Walrus_TransientBuffer *ib = frame->transient_ib;
+        gl_buffer_update(ib->handle, 0, frame->ibo_offset, ib->data);
+    }
+
     u32 const resolution_height = frame->resolution.height;
 
     glBindVertexArray(g_ctx->vao);
@@ -317,7 +419,8 @@ static void submit(RenderFrame *frame)
 
         if (resetState) {
             draw_clear(&current_state, WR_RHI_DISCARD_ALL);
-            changed_flags = WR_RHI_STATE_MASK;
+            changed_flags             = WR_RHI_STATE_MASK;
+            current_state.state_flags = new_flags;
         }
 
         if (WR_RHI_STATE_BLEND_MASK & changed_flags || draw->blend_factor != blend_factor) {
@@ -569,101 +672,6 @@ static void submit(RenderFrame *frame)
 
     glBindVertexArray(0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-}
-
-static void init_ctx(RhiContext *rhi)
-{
-#if WR_PLATFORM != WR_PLATFORM_WASM
-    GLenum err = glew_init();
-    if (err != GLEW_OK) {
-        rhi->err     = WR_RHI_INIT_GLEW_ERROR;
-        rhi->err_msg = (char const *)glewGetErrorString(err);
-
-        return;
-    }
-#else
-    wajs_setup_gl_context();
-#endif
-    g_ctx = walrus_malloc(sizeof(GlContext));
-    if (g_ctx == NULL) {
-        rhi->err     = WR_RHI_ALLOC_ERROR;
-        rhi->err_msg = WR_RHI_GL_ALLOC_FAIL_STR;
-        return;
-    }
-
-    g_ctx->uniform_registry = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
-
-    glGenVertexArrays(1, &g_ctx->vao);
-}
-
-static void gl_uniform_create(Walrus_UniformHandle handle, const char *name, u32 size)
-{
-    g_ctx->uniforms[handle.id]      = walrus_malloc0(size);
-    g_ctx->uniform_names[handle.id] = walrus_str_dup(name);
-    walrus_hash_table_insert(g_ctx->uniform_registry, g_ctx->uniform_names[handle.id], walrus_u32_to_ptr(handle.id));
-}
-
-static void gl_uniform_destroy(Walrus_UniformHandle handle)
-{
-    walrus_hash_table_remove(g_ctx->uniform_registry, g_ctx->uniform_names[handle.id]);
-    walrus_free(g_ctx->uniforms[handle.id]);
-    walrus_str_free(g_ctx->uniform_names[handle.id]);
-
-    g_ctx->uniforms[handle.id]      = NULL;
-    g_ctx->uniform_names[handle.id] = NULL;
-}
-
-static void gl_uniform_resize(Walrus_UniformHandle handle, u32 size)
-{
-    walrus_realloc(g_ctx->uniforms[handle.id], size);
-}
-
-static void gl_uniform_update(Walrus_UniformHandle handle, u32 offset, u32 size, void const *data)
-{
-    memcpy((u8 *)g_ctx->uniforms[handle.id] + offset, data, size);
-}
-
-static void gl_vertex_layout_create(Walrus_LayoutHandle handle, Walrus_VertexLayout const *layout)
-{
-    memcpy(&g_ctx->vertex_layouts[handle.id], layout, sizeof(Walrus_VertexLayout));
-}
-
-static void gl_vertex_layout_destroy(Walrus_LayoutHandle handle)
-{
-    walrus_unused(handle);
-}
-
-static void gl_buffer_create(Walrus_BufferHandle handle, void const *data, u64 size, u16 flags)
-{
-    walrus_unused(flags);
-
-    GLuint vbo    = 0;
-    GLenum target = flags & WR_RHI_BUFFER_INDEX ? GL_ELEMENT_ARRAY_BUFFER : GL_ARRAY_BUFFER;
-    glGenBuffers(1, &vbo);
-    glBindBuffer(target, vbo);
-    glBufferData(target, size, data, GL_STATIC_DRAW);
-
-    glBindBuffer(target, 0);
-
-    g_ctx->buffers[handle.id].id     = vbo;
-    g_ctx->buffers[handle.id].size   = size;
-    g_ctx->buffers[handle.id].target = target;
-}
-
-static void gl_buffer_destroy(Walrus_BufferHandle handle)
-{
-    glDeleteBuffers(1, &g_ctx->buffers[handle.id].id);
-    g_ctx->buffers[handle.id].id   = 0;
-    g_ctx->buffers[handle.id].size = 0;
-}
-
-static void gl_buffer_update(Walrus_BufferHandle handle, u64 offset, u64 size, void const *data)
-{
-    GLenum target = g_ctx->buffers[handle.id].target;
-    GLint  id     = g_ctx->buffers[handle.id].id;
-    glBindBuffer(target, id);
-    glBufferSubData(target, offset, size, data);
-    glBindBuffer(target, 0);
 }
 
 static void init_api(RhiVTable *vtable)

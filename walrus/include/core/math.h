@@ -40,6 +40,11 @@ WR_INLINE u32 walrus_u32and(u32 a, u32 b)
     return a & b;
 }
 
+WR_INLINE u32 walrus_u32andc(u32 a, u32 b)
+{
+    return a & ~b;
+}
+
 WR_INLINE u32 walrus_u32not(u32 a)
 {
     return ~a;
@@ -53,6 +58,25 @@ WR_INLINE u32 walrus_u32dec(u32 a)
 WR_INLINE u32 walrus_u32srl(u32 a, u32 sa)
 {
     return a >> sa;
+}
+
+WR_INLINE u32 walrus_u32mod(u32 a, u32 b)
+{
+    return a % b;
+}
+
+WR_INLINE u32 walrus_u32cmpeq(u32 a, u32 b)
+{
+    return -(a == b);
+}
+
+WR_INLINE u32 walrus_u32selb(u32 mask, u32 a, u32 b)
+{
+    u32 const sel_a  = walrus_u32and(a, mask);
+    u32 const sel_b  = walrus_u32andc(b, mask);
+    u32 const result = walrus_u32or(sel_a, sel_b);
+
+    return (result);
 }
 
 WR_INLINE u32 walrus_u32satadd(u32 a, u32 b)
@@ -121,4 +145,21 @@ WR_INLINE u8 walrus_u8ror(u8 x, u8 n)
 WR_INLINE u8 walrus_u8rol(u8 x, u8 n)
 {
     return (x >> (sizeof(u8) * 8 - n) | (x << n));
+}
+
+WR_INLINE uint32_t walrus_stride_align(uint32_t offset, uint32_t stride)
+{
+    const uint32_t mod    = walrus_u32mod(offset, stride);
+    const uint32_t add    = walrus_u32sub(stride, mod);
+    const uint32_t mask   = walrus_u32cmpeq(mod, 0);
+    const uint32_t tmp    = walrus_u32selb(mask, 0, add);
+    const uint32_t result = walrus_u32add(offset, tmp);
+
+    return result;
+}
+
+WR_INLINE u32 walrus_align_up(u32 a, u32 align)
+{
+    u32 const mask = align - 1;
+    return (a + mask) & ~mask;
 }

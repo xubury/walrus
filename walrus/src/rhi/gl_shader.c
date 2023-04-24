@@ -152,7 +152,7 @@ void gl_program_create(Walrus_ProgramHandle handle, Walrus_ShaderHandle *shaders
         u32   loc     = glGetUniformLocation(id, name);
         char *bracket = strstr(name, "[");
         if (bracket) {
-            bracket = 0;
+            *bracket = 0;
         }
 
         switch (gl_type) {

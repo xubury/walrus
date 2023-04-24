@@ -136,3 +136,11 @@ WR_RHI_HANDLE(Walrus_UniformHandle);
 WR_RHI_HANDLE(Walrus_BufferHandle);
 WR_RHI_HANDLE(Walrus_LayoutHandle);
 WR_RHI_HANDLE(Walrus_TextureHandle);
+
+typedef struct {
+    u8*                 data;
+    u32                 size;
+    u32                 offset;
+    u16                 stride;
+    Walrus_BufferHandle handle;
+} Walrus_TransientBuffer;

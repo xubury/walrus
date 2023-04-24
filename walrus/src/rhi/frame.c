@@ -5,11 +5,14 @@
 #include <cglm/mat4.h>
 #include <string.h>
 
-void frame_init(RenderFrame *frame)
+void frame_init(RenderFrame *frame, u32 max_transient_vb, u32 max_transient_ib)
 {
     frame->num_render_items = 0;
     frame->uniforms         = uniform_buffer_create(1 << 20);
     frame->num_matrices     = 1;
+    frame->vbo_offset       = 0;
+    frame->max_transient_vb = max_transient_vb;
+    frame->max_transient_ib = max_transient_ib;
 
     glm_mat4_copy((mat4)GLM_MAT4_IDENTITY_INIT, frame->matrix_cache[0]);
 }
@@ -23,6 +26,8 @@ void frame_start(RenderFrame *frame)
 {
     frame->num_render_items = 0;
     frame->num_matrices     = 1;
+    frame->vbo_offset       = 0;
+    frame->ibo_offset       = 0;
     uniform_buffer_start(frame->uniforms, 0);
 }
 
@@ -52,6 +57,39 @@ u32 frame_add_matrices(RenderFrame *frame, mat4 const mat, u32 *num)
         return first;
     }
     return 0;
+}
+u32 frame_avail_transient_vb_size(RenderFrame *frame, u32 num, u16 stride)
+{
+    u32 const offset     = walrus_stride_align(frame->vbo_offset, stride);
+    u32       vbo_offset = offset + num * stride;
+    vbo_offset           = walrus_min(vbo_offset, frame->max_transient_vb);
+    u32 const availNum   = (vbo_offset - offset) / stride;
+    return availNum;
+}
+
+u32 frame_alloc_transient_vb(RenderFrame *frame, u32 *num, u16 stride)
+{
+    u32 offset        = walrus_stride_align(frame->vbo_offset, stride);
+    *num              = frame_avail_transient_vb_size(frame, *num, stride);
+    frame->vbo_offset = offset + *num * stride;
+    return offset;
+}
+
+u32 frame_avail_transient_ib_size(RenderFrame *frame, u32 num, u16 stride)
+{
+    u32 const offset     = walrus_stride_align(frame->ibo_offset, stride);
+    u32       ibo_offset = offset + num * stride;
+    ibo_offset           = walrus_min(ibo_offset, frame->max_transient_ib);
+    u32 const avail_num  = (ibo_offset - offset) / stride;
+    return avail_num;
+}
+
+u32 frame_alloc_transient_ib(RenderFrame *frame, u32 *num, u16 stride)
+{
+    u32 offset        = walrus_stride_align(frame->ibo_offset, stride);
+    *num              = frame_avail_transient_ib_size(frame, *num, stride);
+    frame->ibo_offset = offset + *num * stride;
+    return offset;
 }
 
 void draw_clear(RenderDraw *draw, u8 flags)

@@ -3,8 +3,6 @@
 #include <rhi/rhi_defines.h>
 #include <rhi/type.h>
 
-#include "gl.h"
-
 #include <cglm/types.h>
 
 Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags);
@@ -54,11 +52,16 @@ void                walrus_rhi_update_buffer(Walrus_BufferHandle handle, u64 off
 void walrus_rhi_set_vertex_count(u32 num_vertices);
 void walrus_rhi_set_vertex_buffer(u8 stream_id, Walrus_BufferHandle handle, Walrus_LayoutHandle layout_handle,
                                   u32 offset, u32 num_vertices);
+void walrus_rhi_set_transient_buffer(u8 stream_id, Walrus_TransientBuffer* buffer, Walrus_LayoutHandle layout_handle,
+                                     u32 offset, u32 num_vertices);
 void walrus_rhi_set_instance_buffer(Walrus_BufferHandle handle, Walrus_LayoutHandle layout_handle, u32 offset,
                                     u32 num_instance);
+void walrus_rhi_set_transient_instance_buffer(Walrus_TransientBuffer* buffer, Walrus_LayoutHandle layout_handle,
+                                              u32 offset, u32 num_instance);
 
 void walrus_rhi_set_index_buffer(Walrus_BufferHandle handle, u32 offset, u32 num_indices);
 void walrus_rhi_set_index32_buffer(Walrus_BufferHandle handle, u32 offset, u32 num_indices);
+void walrus_rhi_set_transient_index_buffer(Walrus_TransientBuffer* buffer, u32 offset, u32 num_indices);
 
 Walrus_TextureHandle walrus_rhi_create_texture(Walrus_TextureCreateInfo const* info);
 Walrus_TextureHandle walrus_rhi_create_texture2d(u32 width, u32 height, Walrus_PixelFormat format, u8 mipmaps,
@@ -67,7 +70,12 @@ Walrus_TextureHandle walrus_rhi_create_texture2d_ratio(Walrus_BackBufferRatio ra
                                                        u8 mipmaps, u64 flags, void const* data, u64 size);
 void                 walrus_rhi_destroy_texture(Walrus_TextureHandle handle);
 
-void walrus_rhi_set_texture(u8 unit, Walrus_UniformHandle sampler, Walrus_TextureHandle texture);
+void walrus_rhi_set_texture(u8 unit, Walrus_TextureHandle texture);
 
 void walrus_rhi_set_image(uint8_t unit, Walrus_TextureHandle handle, u8 mip, Walrus_DataAccess access,
                           Walrus_PixelFormat format);
+
+u32  walrus_rhi_avail_transient_buffer(u32 num, u32 stride);
+bool walrus_rhi_alloc_transient_buffer(Walrus_TransientBuffer* buffer, u32 num, u32 stride);
+u32  walrus_rhi_avail_transient_index_buffer(u32 num, u32 stride);
+bool walrus_rhi_alloc_transient_index_buffer(Walrus_TransientBuffer* buffer, u32 num, u32 stride);

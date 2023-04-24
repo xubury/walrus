@@ -105,7 +105,7 @@ void renderer_init(Romantik_GameState *state)
 
     struct {
         vec3 pos;
-        vec2 uv;
+        u16 uv[4];
     } vertices[6];
     f32 rad = glm_rad(90);
     for (u8 i = 0; i < 6; ++i) {
@@ -303,7 +303,9 @@ void game_state_render(Romantik_GameState *state)
         walrus_rhi_submit(0, state->pick_shader, WR_RHI_DISCARD_TRANSFORM | WR_RHI_DISCARD_STATE);
     }
 
-    walrus_rhi_set_texture(0, state->u_texture, state->texture);
+    u32 unit = 0;
+    walrus_rhi_set_texture(0, state->texture);
+    walrus_rhi_set_uniform(state->u_texture, 0, sizeof(u32), &unit);
     if (state->game.num_placed_grids > 0) {
         walrus_rhi_set_instance_buffer(state->placed_buffer, state->ins_layout, 0, state->game.num_placed_grids);
         walrus_rhi_submit(0, state->map_shader, WR_RHI_DISCARD_INSTANCE_DATA | WR_RHI_DISCARD_STATE);

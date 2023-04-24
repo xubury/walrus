@@ -62,7 +62,9 @@ void on_render(Walrus_App *app)
     walrus_rhi_set_vertex_buffer(0, data->buffer, data->layout, 0, UINT32_MAX);
     walrus_rhi_set_vertex_buffer(1, data->uv_buffer, data->uv_layout, 0, UINT32_MAX);
     walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
-    walrus_rhi_set_texture(0, data->u_texture, data->font);
+    u32 unit = 0;
+    walrus_rhi_set_texture(unit, data->font);
+    walrus_rhi_set_uniform(data->u_texture, 0, sizeof(u32), &unit);
     /* walrus_rhi_set_image(0, data->texture, 0, WR_RHI_ACCESS_READ, WR_RHI_FORMAT_RGBA8); */
     walrus_rhi_submit(0, data->map_shader, WR_RHI_DISCARD_ALL);
 }
@@ -222,7 +224,7 @@ Walrus_AppError on_init(Walrus_App *app)
     stbi_set_flip_vertically_on_load(true);
     i32 x, y, c;
     u64 ts  = walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC);
-    u8 *img = stbi_load("imgs/test.png", &x, &y, &c, 4);
+    u8 *img = stbi_load("imgs/0.png", &x, &y, &c, 4);
     walrus_trace("stbi_load time: %llu ms", walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC) - ts);
     if (img != NULL) {
         walrus_trace("load image width: %d height: %d channel: %d", x, y, c);

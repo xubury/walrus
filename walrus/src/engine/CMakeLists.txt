@@ -1,13 +1,24 @@
 find_package(stb REQUIRED)
 
-add_library(walrus_engine STATIC engine.c app.c event.c font.c window.c input_device.c
-                                 input.c)
+add_library(
+  walrus_engine STATIC
+  engine.c
+  app.c
+  batch_renderer.c
+  event.c
+  font.c
+  window.c
+  input_device.c
+  input.c)
 
 target_compile_options(walrus_engine PRIVATE -Wall -Wextra -Wundef -pedantic)
 
 target_include_directories(walrus_engine PUBLIC ${walrus_root_dir}/include)
 
-target_link_libraries(walrus_engine PUBLIC walrus_core walrus_rhi PRIVATE stb::stb)
+target_link_libraries(
+  walrus_engine
+  PUBLIC walrus_core walrus_rhi
+  PRIVATE stb::stb)
 
 if(WASM)
   target_link_options(walrus_engine PUBLIC -Wl,-export=__engine_should_close)

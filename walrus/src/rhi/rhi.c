@@ -123,6 +123,26 @@ static void compute_texture_size_from_ratio(Walrus_BackBufferRatio ratio, u32* w
     *height = walrus_max(*height, 1);
 }
 
+static Walrus_TransientBuffer* create_transient_buffer(u32 size, u16 flags)
+{
+    Walrus_BufferHandle     handle = {walrus_handle_alloc(s_ctx->buffers)};
+    Walrus_TransientBuffer* tvb    = NULL;
+    if (handle.id == WR_INVALID_HANDLE) {
+        s_ctx->err = WR_RHI_ALLOC_HADNLE_ERROR;
+        return tvb;
+    }
+
+    s_table->buffer_create_fn(handle, NULL, size, flags);
+    u64 const tvb_size = walrus_align_up(sizeof(Walrus_TransientBuffer), 16) + walrus_align_up(size, 16);
+    tvb                = (Walrus_TransientBuffer*)walrus_malloc(tvb_size);
+    tvb->data          = (uint8_t*)tvb + walrus_align_up(sizeof(Walrus_TransientBuffer), 16);
+    tvb->size          = size;
+    tvb->offset        = 0;
+    tvb->stride        = 0;
+    tvb->handle        = handle;
+    return tvb;
+}
+
 Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags)
 {
     s_ctx = walrus_malloc(sizeof(RhiContext));
@@ -148,7 +168,7 @@ Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags)
         walrus_assert_msg(false, no_backend_str);
     }
 
-    frame_init(s_ctx->submit_frame);
+    frame_init(s_ctx->submit_frame, 6 << 25, 6 << 12);
     handles_init();
 
     s_ctx->shader_map          = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
@@ -166,6 +186,12 @@ Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags)
     }
 
     discard(WR_RHI_DISCARD_ALL);
+
+    s_ctx->submit_frame->transient_vb =
+        create_transient_buffer(s_ctx->submit_frame->max_transient_vb, WR_RHI_BUFFER_NONE);
+    s_ctx->submit_frame->transient_ib =
+        create_transient_buffer(s_ctx->submit_frame->max_transient_ib, WR_RHI_BUFFER_INDEX);
+    walrus_rhi_frame();
 
     return s_ctx->err;
 }
@@ -633,7 +659,7 @@ static bool set_stream_bit(RenderDraw* draw, u8 stream, Walrus_BufferHandle hand
 
 void walrus_rhi_set_vertex_count(u32 num_vertices)
 {
-    walrus_assert_msg(0 == s_ctx->draw.stream_mask, "setVertexBuffer was already called for this draw call.");
+    walrus_assert_msg(0 == s_ctx->draw.stream_mask, "set_vertex_buffer was already called for this draw call.");
     s_ctx->draw.stream_mask  = UINT16_MAX;
     VertexStream* stream     = &s_ctx->draw.streams[0];
     stream->offset           = 0;
@@ -655,6 +681,18 @@ void walrus_rhi_set_vertex_buffer(u8 stream_id, Walrus_BufferHandle handle, Walr
     }
 }
 
+void walrus_rhi_set_transient_buffer(u8 stream_id, Walrus_TransientBuffer* buffer, Walrus_LayoutHandle layout_handle,
+                                     u32 offset, u32 num_vertices)
+{
+    walrus_assert(buffer->handle.id != WR_INVALID_HANDLE);
+    if (set_stream_bit(&s_ctx->draw, stream_id, buffer->handle)) {
+        VertexStream* stream           = &s_ctx->draw.streams[stream_id];
+        stream->offset                 = offset + buffer->offset;
+        stream->handle                 = buffer->handle;
+        stream->layout_handle          = layout_handle;
+        s_ctx->num_vertices[stream_id] = walrus_clamp(0, (buffer->size - offset) / buffer->stride, num_vertices);
+    }
+}
 void walrus_rhi_set_instance_buffer(Walrus_BufferHandle handle, Walrus_LayoutHandle layout_handle, u32 offset,
                                     u32 num_instance)
 {
@@ -664,6 +702,17 @@ void walrus_rhi_set_instance_buffer(Walrus_BufferHandle handle, Walrus_LayoutHan
     s_ctx->draw.instance_layout = layout_handle;
     s_ctx->draw.instance_offset = offset;
     s_ctx->draw.num_instances   = num_instance;
+}
+
+void walrus_rhi_set_transient_instance_buffer(Walrus_TransientBuffer* buffer, Walrus_LayoutHandle layout_handle,
+                                              u32 offset, u32 num_instance)
+{
+    walrus_assert(buffer->handle.id != WR_INVALID_HANDLE);
+
+    s_ctx->draw.instance_buffer = buffer->handle;
+    s_ctx->draw.instance_layout = layout_handle;
+    s_ctx->draw.instance_offset = offset + buffer->offset;
+    s_ctx->draw.num_instances   = walrus_clamp(0, (buffer->size - offset) / buffer->stride, num_instance);
 }
 
 void walrus_rhi_set_index_buffer(Walrus_BufferHandle handle, u32 offset, u32 num_indices)
@@ -680,6 +729,14 @@ void walrus_rhi_set_index32_buffer(Walrus_BufferHandle handle, u32 offset, u32 n
     s_ctx->draw.index_size   = sizeof(u32);
     s_ctx->draw.index_offset = offset;
     s_ctx->draw.num_indices  = num_indices;
+}
+
+void walrus_rhi_set_transient_index_buffer(Walrus_TransientBuffer* buffer, u32 offset, u32 num_indices)
+{
+    s_ctx->draw.index_buffer = buffer->handle;
+    s_ctx->draw.index_size   = buffer->stride;
+    s_ctx->draw.index_offset = offset + buffer->offset;
+    s_ctx->draw.num_indices  = walrus_min(num_indices, (buffer->size - buffer->offset) / buffer->stride);
 }
 
 static u8 compute_mipmap(u32 width, u32 height)
@@ -786,16 +843,11 @@ void walrus_rhi_destroy_texture(Walrus_TextureHandle handle)
     s_table->texture_destroy_fn(handle);
 }
 
-void walrus_rhi_set_texture(u8 unit, Walrus_UniformHandle sampler, Walrus_TextureHandle texture)
+void walrus_rhi_set_texture(u8 unit, Walrus_TextureHandle texture)
 {
     if (unit >= WR_RHI_MAX_TEXTURE_SAMPLERS) {
         s_ctx->err = WR_RHI_TEXTURE_UNIT_ERROR;
         return;
-    }
-
-    if (sampler.id != WR_INVALID_HANDLE) {
-        u32 _unit = unit;
-        walrus_rhi_set_uniform(sampler, 0, sizeof(_unit), &unit);
     }
 
     Binding* bind = &s_ctx->bind.bindings[unit];
@@ -812,4 +864,52 @@ void walrus_rhi_set_image(uint8_t unit, Walrus_TextureHandle handle, u8 mip, Wal
     bind->mip     = (uint8_t)(mip);
     bind->format  = format;
     bind->access  = (uint8_t)(access);
+}
+
+u32 walrus_rhi_avail_transient_buffer(u32 num, u32 stride)
+{
+    return frame_avail_transient_vb_size(s_ctx->submit_frame, num, stride);
+}
+
+bool walrus_rhi_alloc_transient_buffer(Walrus_TransientBuffer* buffer, u32 num, u32 stride)
+{
+    if (num == walrus_rhi_avail_transient_buffer(num, stride)) {
+        walrus_assert_msg(buffer != NULL, "buffer can't be NULL!");
+        walrus_assert_msg(num > 0, "num must be greater than 0!");
+
+        const uint32_t offset = frame_alloc_transient_vb(s_ctx->submit_frame, &num, stride);
+
+        Walrus_TransientBuffer const* tvb = s_ctx->submit_frame->transient_vb;
+        buffer->data                      = &tvb->data[offset];
+        buffer->size                      = num * stride;
+        buffer->offset                    = offset;
+        buffer->stride                    = stride;
+        buffer->handle                    = tvb->handle;
+        return true;
+    }
+    return false;
+}
+
+u32 walrus_rhi_avail_transient_index_buffer(u32 num, u32 stride)
+{
+    return frame_avail_transient_ib_size(s_ctx->submit_frame, num, stride);
+}
+
+bool walrus_rhi_alloc_transient_index_buffer(Walrus_TransientBuffer* buffer, u32 num, u32 stride)
+{
+    if (num == walrus_rhi_avail_transient_index_buffer(num, stride)) {
+        walrus_assert_msg(buffer != NULL, "buffer can't be NULL!");
+        walrus_assert_msg(num > 0, "num must be greater than 0!");
+
+        const uint32_t offset = frame_alloc_transient_ib(s_ctx->submit_frame, &num, stride);
+
+        Walrus_TransientBuffer const* tib = s_ctx->submit_frame->transient_ib;
+        buffer->data                      = &tib->data[offset];
+        buffer->size                      = num * stride;
+        buffer->offset                    = offset;
+        buffer->stride                    = stride;
+        buffer->handle                    = tib->handle;
+        return true;
+    }
+    return false;
 }

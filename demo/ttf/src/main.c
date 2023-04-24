@@ -1,4 +1,5 @@
 #include <engine/engine.h>
+#include <engine/batch_renderer.h>
 #include <rhi/rhi.h>
 #include <core/memory.h>
 #include <core/log.h>
@@ -42,6 +43,10 @@ Walrus_AppError on_init(Walrus_App *app)
     u32 width  = 1440;
     u32 height = 900;
     walrus_rhi_set_view_rect(0, 0, 0, width, height);
+    mat4 p;
+    glm_ortho(0, width, height, 0, 0, 1000, p);
+    walrus_rhi_set_view_transform(0, GLM_MAT4_IDENTITY, p);
+    walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_DEPTH | WR_RHI_CLEAR_COLOR, 0, 1.0, 0);
 
     Walrus_Font *font = walrus_font_load_from_file("c:/windows/fonts/arialbd.ttf");
     walrus_font_texture_cook(font, &data->font, 512, 512, 20, 0, WR_RHI_SAMPLER_LINEAR, 33, 93);
@@ -52,10 +57,16 @@ Walrus_AppError on_init(Walrus_App *app)
 void on_render(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
-    walrus_rhi_set_vertex_count(4);
-    walrus_rhi_set_state(WR_RHI_STATE_DRAW_TRIANGLE_STRIP, 0);
-    walrus_rhi_set_texture(0, data->u_texture, data->font.handle);
-    walrus_rhi_submit(0, data->shader, WR_RHI_DISCARD_ALL);
+
+    walrus_batch_render_begin(0, WR_RHI_STATE_DEFAULT);
+    mat4 m = GLM_MAT4_IDENTITY_INIT;
+    glm_rotate(m, glm_rad(45), (vec3){1, 0, 0});
+    versor q;
+    glm_mat4_quat(m, q);
+    warlus_batch_render_quad((vec3){0, 0, 0}, GLM_QUAT_IDENTITY, (vec2){100, 100}, 0xffffffff, 0.1, 0xffffffff, 0.1);
+    warlus_batch_render_texture(data->font.handle, (vec3){500, 500, -1}, GLM_QUAT_IDENTITY, (vec2){512, 512},
+                                0xffffffff, 0, 0xffffffff, 0);
+    walrus_batch_render_end();
 }
 
 int main(void)

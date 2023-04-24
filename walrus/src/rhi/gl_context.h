@@ -2,6 +2,7 @@
 
 #include "rhi_p.h"
 #include "uniform_buffer.h"
+#include "gl.h"
 
 #include <core/hash.h>
 
