@@ -15,6 +15,28 @@ static u8 s_attr_stride[WR_RHI_ATTR_COUNT][4] = {
     {4, 8, 12, 16}   // Float
 };
 
+#ifndef CGLM_ALL_UNALIGNED
+static u8 s_attr_align[WR_RHI_ATTR_COUNT][4] = {
+    {1, 1, 1, 1},   // UInt8
+    {1, 1, 1, 1},   // Int8
+    {2, 2, 2, 2},   // Int16
+    {2, 2, 2, 2},   // UInt16
+    {4, 4, 4, 16},  // Int32
+    {4, 4, 4, 16},  // UInt32
+    {4, 4, 4, 16}   // Float
+};
+#else
+static u8 s_attr_align[WR_RHI_ATTR_COUNT][4] = {
+    {1, 1, 1, 1},  // UInt8
+    {1, 1, 1, 1},  // Int8
+    {2, 2, 2, 2},  // Int16
+    {2, 2, 2, 2},  // UInt16
+    {4, 4, 4, 4},  // Int32
+    {4, 4, 4, 4},  // UInt32
+    {4, 4, 4, 4}   // Float
+};
+#endif
+
 struct _Walrus_VertexLayout {
     u8  instance_strde;
     u16 stride;
@@ -54,8 +76,8 @@ static u16 encode(u8 attr_id, u8 num, Walrus_Attribute type, bool normalized, bo
 void walrus_vertex_layout_add(Walrus_VertexLayout* layout, u8 attr_id, u8 num, Walrus_Attribute type, bool normalized)
 {
     layout->attributes[layout->num_attributes] = encode(attr_id, num, type, normalized, false);
-    layout->align                              = walrus_max(layout->align, s_attr_stride[type][num - 1]);
-    layout->offsets[layout->num_attributes]    = walrus_align_up(layout->stride, s_attr_stride[type][num - 1]);
+    layout->align                              = walrus_max(layout->align, s_attr_align[type][num - 1]);
+    layout->offsets[layout->num_attributes]    = walrus_align_up(layout->stride, s_attr_align[type][num - 1]);
     layout->stride                             = layout->stride + s_attr_stride[type][num - 1];
     ++layout->num_attributes;
     walrus_assert_msg(layout->num_attributes <= walrus_array_len(layout->attributes),
@@ -65,8 +87,8 @@ void walrus_vertex_layout_add(Walrus_VertexLayout* layout, u8 attr_id, u8 num, W
 void walrus_vertex_layout_add_int(Walrus_VertexLayout* layout, u8 attr_id, u8 num, Walrus_Attribute type)
 {
     layout->attributes[layout->num_attributes] = encode(attr_id, num, type, false, true);
-    layout->align                              = walrus_max(layout->align, s_attr_stride[type][num - 1]);
-    layout->offsets[layout->num_attributes]    = walrus_align_up(layout->stride, s_attr_stride[type][num - 1]);
+    layout->align                              = walrus_max(layout->align, s_attr_align[type][num - 1]);
+    layout->offsets[layout->num_attributes]    = walrus_align_up(layout->stride, s_attr_align[type][num - 1]);
     layout->stride                             = layout->stride + s_attr_stride[type][num - 1];
     ++layout->num_attributes;
     walrus_assert_msg(layout->num_attributes <= walrus_array_len(layout->attributes),
@@ -75,7 +97,7 @@ void walrus_vertex_layout_add_int(Walrus_VertexLayout* layout, u8 attr_id, u8 nu
 
 void walrus_vertex_layout_end(Walrus_VertexLayout* layout)
 {
-    layout->stride = walrus_stride_align(layout->stride, layout->align);
+    layout->stride = walrus_align_up(layout->stride, layout->align);
     u32 hash       = walrus_array_hash(layout, offsetof(Walrus_VertexLayout, hash));
     layout->hash   = hash;
 }

@@ -105,7 +105,7 @@ void renderer_init(Romantik_GameState *state)
 
     struct {
         vec3 pos;
-        u16 uv[4];
+        vec2 uv;
     } vertices[6];
     f32 rad = glm_rad(90);
     for (u8 i = 0; i < 6; ++i) {
