@@ -127,22 +127,19 @@ void walrus_batch_render_init(void)
     walrus_rhi_destroy_shader(fs);
 
     Walrus_VertexLayout layout;
-    walrus_vertex_layout_begin(&layout);
-    walrus_vertex_layout_add(&layout, 0, 2, WR_RHI_ATTR_FLOAT, false);  // Pos
-    walrus_vertex_layout_add(&layout, 1, 2, WR_RHI_ATTR_FLOAT, false);  // TexCoord
+    walrus_vertex_layout_begin(&layout, 0);
+    walrus_vertex_layout_add(&layout, 2, WR_RHI_ATTR_FLOAT, false);  // Pos
+    walrus_vertex_layout_add(&layout, 2, WR_RHI_ATTR_FLOAT, false);  // TexCoord
     walrus_vertex_layout_end(&layout);
     s_renderer->vertex_layout = walrus_rhi_create_vertex_layout(&layout);
 
-    walrus_vertex_layout_begin_instance(&layout, 1);
-    walrus_vertex_layout_add(&layout, 2, 1, WR_RHI_ATTR_FLOAT, false);   // Thickness
-    walrus_vertex_layout_add(&layout, 3, 1, WR_RHI_ATTR_FLOAT, false);   // Fade
-    walrus_vertex_layout_add(&layout, 4, 4, WR_RHI_ATTR_UINT8, true);    // Color
-    walrus_vertex_layout_add(&layout, 5, 4, WR_RHI_ATTR_UINT8, true);    // Boarder color
-    walrus_vertex_layout_add(&layout, 6, 1, WR_RHI_ATTR_UINT8, false);   // Texture Id
-    walrus_vertex_layout_add(&layout, 7, 4, WR_RHI_ATTR_FLOAT, false);   // Model
-    walrus_vertex_layout_add(&layout, 8, 4, WR_RHI_ATTR_FLOAT, false);   // Model
-    walrus_vertex_layout_add(&layout, 9, 4, WR_RHI_ATTR_FLOAT, false);   // Model
-    walrus_vertex_layout_add(&layout, 10, 4, WR_RHI_ATTR_FLOAT, false);  // Model
+    walrus_vertex_layout_begin_instance(&layout, 1, 2);
+    walrus_vertex_layout_add(&layout, 1, WR_RHI_ATTR_FLOAT, false);  // Thickness
+    walrus_vertex_layout_add(&layout, 1, WR_RHI_ATTR_FLOAT, false);  // Fade
+    walrus_vertex_layout_add(&layout, 4, WR_RHI_ATTR_UINT8, true);   // Color
+    walrus_vertex_layout_add(&layout, 4, WR_RHI_ATTR_UINT8, true);   // Boarder color
+    walrus_vertex_layout_add(&layout, 1, WR_RHI_ATTR_UINT8, false);  // Texture Id
+    walrus_vertex_layout_add(&layout, 1, WR_RHI_ATTR_MAT4, false);   // Model
     walrus_vertex_layout_end(&layout);
     s_renderer->ins_layout = walrus_rhi_create_vertex_layout(&layout);
 

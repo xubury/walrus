@@ -27,6 +27,8 @@ static GLenum const s_gl_attribute_type[WR_RHI_ATTR_COUNT] = {
     GL_INT,             // Int32
     GL_UNSIGNED_INT,    // Uint32
     GL_FLOAT,           // Float
+    GL_FLOAT,           // Vec4
+    GL_FLOAT,           // Mat4
 };
 
 static GLenum const s_access[] = {

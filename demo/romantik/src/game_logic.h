@@ -27,8 +27,9 @@ typedef struct {
 } HexGrid;
 
 typedef struct {
-    vec4 terrain;
-    mat4 model;
+    vec3  color;
+    float border_type;
+    mat4  model;
 } HexInstanceBuffer;
 
 typedef struct {

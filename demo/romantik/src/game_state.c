@@ -121,19 +121,16 @@ void renderer_init(Romantik_GameState *state)
     state->index_buffer = walrus_rhi_create_buffer(indices, sizeof(indices), WR_RHI_BUFFER_INDEX);
 
     Walrus_VertexLayout layout;
-    walrus_vertex_layout_begin(&layout);
-    walrus_vertex_layout_add(&layout, 0, 3, WR_RHI_ATTR_FLOAT, false);
-    walrus_vertex_layout_add(&layout, 1, 2, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_begin(&layout, 0);
+    walrus_vertex_layout_add(&layout, 3, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_add(&layout, 2, WR_RHI_ATTR_FLOAT, false);
     walrus_vertex_layout_end(&layout);
     state->layout = walrus_rhi_create_vertex_layout(&layout);
 
-    walrus_vertex_layout_begin_instance(&layout, 1);
-    walrus_vertex_layout_add(&layout, 2, 3, WR_RHI_ATTR_FLOAT, false);
-    walrus_vertex_layout_add(&layout, 3, 1, WR_RHI_ATTR_FLOAT, false);
-    walrus_vertex_layout_add(&layout, 4, 4, WR_RHI_ATTR_FLOAT, false);
-    walrus_vertex_layout_add(&layout, 5, 4, WR_RHI_ATTR_FLOAT, false);
-    walrus_vertex_layout_add(&layout, 6, 4, WR_RHI_ATTR_FLOAT, false);
-    walrus_vertex_layout_add(&layout, 7, 4, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_begin_instance(&layout, 1, 2);
+    walrus_vertex_layout_add(&layout, 3, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_add(&layout, 1, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_add(&layout, 1, WR_RHI_ATTR_MAT4, false);
     walrus_vertex_layout_end(&layout);
     state->ins_layout = walrus_rhi_create_vertex_layout(&layout);
 
@@ -147,8 +144,8 @@ void renderer_init(Romantik_GameState *state)
         glm_translate(model, (vec3){0, (i - queue_len / 2.0) * 0.2, -3.5});
         glm_rotate(model, glm_rad(30), (vec3){1, 0, 0});
         glm_mat4_copy(model, queue_hexs[i].model);
-        romantik_get_terrain_color(i % TERRAIN_COUNT, queue_hexs[i].terrain);
-        queue_hexs[i].terrain[3] = 0;
+        romantik_get_terrain_color(i % TERRAIN_COUNT, queue_hexs[i].color);
+        queue_hexs[i].border_type = 0;
     }
     state->queue_buffer = walrus_rhi_create_buffer(queue_hexs, queue_len * sizeof(HexInstanceBuffer), 0);
 

@@ -154,8 +154,8 @@ u32 romantik_compute_instance_buffer(HexMap *map, HexInstanceBuffer *buffers, u6
         HexGrid *grid = &((HexGrid *)map->grids)[i];
         if (grid->flags & flags) {
             romantik_compute_model(map, buffers[cnt].model, q - center_q, r - center_r);
-            romantik_get_terrain_color(walrus_u32cnttz(grid->flags), buffers[cnt].terrain);
-            buffers[cnt].terrain[3] = romantik_get_border_type(grid->abs_border);
+            romantik_get_terrain_color(walrus_u32cnttz(grid->flags), buffers[cnt].color);
+            buffers[cnt].border_type = romantik_get_border_type(grid->abs_border);
             ++cnt;
         }
     }
