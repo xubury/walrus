@@ -14,4 +14,7 @@ void warlus_batch_render_quad(vec3 pos, versor rot, vec2 size, u32 color, f32 th
 void warlus_batch_render_texture(Walrus_TextureHandle texturve, vec3 pos, versor rot, vec2 size, u32 color,
                                  f32 thickness, u32 boarder_color, f32 fade);
 
+void warlus_batch_render_circle(vec3 pos, versor rot, f32 radius, u32 color, f32 thickness, u32 boarder_color,
+                                f32 fade);
+
 void walrus_batch_render_end(void);

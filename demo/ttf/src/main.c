@@ -58,11 +58,13 @@ void on_render(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
 
-    walrus_batch_render_begin(0, WR_RHI_STATE_DEFAULT);
+    walrus_batch_render_begin(0, WR_RHI_STATE_WRITE_RGB | WR_RHI_STATE_WRITE_A);
     mat4 m = GLM_MAT4_IDENTITY_INIT;
     glm_rotate(m, glm_rad(45), (vec3){1, 0, 0});
     versor q;
     glm_mat4_quat(m, q);
+    warlus_batch_render_circle((vec3){200, 200, 0}, GLM_QUAT_IDENTITY, 100.0, 0xffffffff, 0.1, 0xffffffff, 0.1);
+    warlus_batch_render_circle((vec3){500, 500, 0}, GLM_QUAT_IDENTITY, 100.0, 0xffffffff, 0.1, 0xffffffff, 0.1);
     warlus_batch_render_quad((vec3){0, 0, 0}, GLM_QUAT_IDENTITY, (vec2){100, 100}, 0xffffffff, 0.1, 0xffffffff, 0.1);
     warlus_batch_render_texture(data->font.handle, (vec3){500, 500, -1}, GLM_QUAT_IDENTITY, (vec2){512, 512},
                                 0xffffffff, 0, 0xffffffff, 0);
