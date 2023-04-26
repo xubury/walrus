@@ -736,7 +736,7 @@ void walrus_rhi_set_transient_index_buffer(Walrus_TransientBuffer* buffer, u32 o
     s_ctx->draw.index_buffer = buffer->handle;
     s_ctx->draw.index_size   = buffer->stride;
     s_ctx->draw.index_offset = offset + buffer->offset;
-    s_ctx->draw.num_indices  = walrus_min(num_indices, (buffer->size - buffer->offset) / buffer->stride);
+    s_ctx->draw.num_indices  = walrus_clamp(0, (buffer->size - offset) / buffer->stride, num_indices);
 }
 
 static u8 compute_mipmap(u32 width, u32 height)
