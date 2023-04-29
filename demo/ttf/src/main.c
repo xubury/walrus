@@ -66,8 +66,10 @@ void on_render(Walrus_App *app)
     warlus_batch_render_circle((vec3){200, 200, 0}, GLM_QUAT_IDENTITY, 100.0, 0xffffffff, 0.1, 0xffffffff, 0.1);
     warlus_batch_render_circle((vec3){500, 500, 0}, GLM_QUAT_IDENTITY, 100.0, 0xffffffff, 0.1, 0xffffffff, 0.1);
     warlus_batch_render_quad((vec3){0, 0, 0}, GLM_QUAT_IDENTITY, (vec2){100, 100}, 0xffffffff, 0.1, 0xffffffff, 0.1);
-    warlus_batch_render_texture(data->font.handle, (vec3){500, 500, -1}, GLM_QUAT_IDENTITY, (vec2){512, 512},
+    warlus_batch_render_texture(data->font.handle, (vec3){1024, 512, -1}, GLM_QUAT_IDENTITY, (vec2){512, 512},
                                 0xffffffff, 0, 0xffffffff, 0);
+    warlus_batch_render_subtexture(data->font.handle, (vec2){0.5, 0}, (vec2){1.0, 1.0}, (vec3){512, 512, -1},
+                                   GLM_QUAT_IDENTITY, (vec2){256, 512}, 0xffffffff, 0, 0xffffffff, 0);
     walrus_batch_render_end();
 }
 

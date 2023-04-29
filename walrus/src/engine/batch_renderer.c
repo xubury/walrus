@@ -10,12 +10,14 @@
 char const *vs_quad_src =
     "layout (location = 0) in vec2 a_pos;"
     "layout (location = 1) in vec2 a_texcoord;"
-    "layout (location = 2) in float a_thickness;"
-    "layout (location = 3) in float a_fade;"
-    "layout (location = 4) in vec4 a_color;"
-    "layout (location = 5) in vec4 a_border_color;"
-    "layout (location = 6) in float a_tex_id;"
-    "layout (location = 7) in mat4 a_model;"
+    "layout (location = 2) in vec2 a_uv0;"
+    "layout (location = 3) in vec2 a_uv1;"
+    "layout (location = 4) in float a_thickness;"
+    "layout (location = 5) in float a_fade;"
+    "layout (location = 6) in vec4 a_color;"
+    "layout (location = 7) in vec4 a_border_color;"
+    "layout (location = 8) in float a_tex_id;"
+    "layout (location = 9) in mat4 a_model;"
     "uniform mat4 u_viewproj;"
     "out vec2 v_local_pos;"
     "out vec4 v_color;"
@@ -28,7 +30,7 @@ char const *vs_quad_src =
     "{"
     "    gl_Position = u_viewproj * a_model * vec4(a_pos, 0, 1.0);"
     "    v_local_pos = a_pos;"
-    "    v_texcoord = a_texcoord;"
+    "    v_texcoord = a_texcoord * (a_uv1 - a_uv0) + a_uv0;"
     "    v_color = a_color;"
     "    v_thickness = a_thickness;"
     "    v_fade = a_fade;"
@@ -139,6 +141,8 @@ typedef struct {
 
     u32 num_quads;
     struct {
+        vec2 uv0;
+        vec2 uv1;
         f32  thickness;
         f32  fade;
         u32  color;
@@ -196,6 +200,8 @@ void walrus_batch_render_init(void)
     s_renderer->quad_layout = walrus_rhi_create_vertex_layout(&layout);
 
     walrus_vertex_layout_begin_instance(&layout, 1, 2);
+    walrus_vertex_layout_add(&layout, 2, WR_RHI_ATTR_FLOAT, false);  // uv0
+    walrus_vertex_layout_add(&layout, 2, WR_RHI_ATTR_FLOAT, false);  // uv1
     walrus_vertex_layout_add(&layout, 1, WR_RHI_ATTR_FLOAT, false);  // Thickness
     walrus_vertex_layout_add(&layout, 1, WR_RHI_ATTR_FLOAT, false);  // Fade
     walrus_vertex_layout_add(&layout, 4, WR_RHI_ATTR_UINT8, true);   // Color
@@ -342,8 +348,8 @@ void warlus_batch_render_quad(vec3 pos, versor rot, vec2 size, u32 color, f32 th
     s_renderer->num_quads = walrus_u32satadd(s_renderer->num_quads, 1);
 }
 
-void warlus_batch_render_texture(Walrus_TextureHandle texture, vec3 pos, versor rot, vec2 size, u32 color,
-                                 f32 thickness, u32 boarder_color, f32 fade)
+void warlus_batch_render_subtexture(Walrus_TextureHandle texture, vec2 uv0, vec2 uv1, vec3 pos, versor rot, vec2 size,
+                                    u32 color, f32 thickness, u32 boarder_color, f32 fade)
 {
     if (s_renderer->num_quads >= MAX_QUADS || s_renderer->num_textures >= MAX_TEXTURES) {
         flush_quads();
@@ -360,6 +366,8 @@ void warlus_batch_render_texture(Walrus_TextureHandle texture, vec3 pos, versor 
     glm_mat4_mulN((mat4 *[]){&t, &r, &s}, 3, m);
 
     glm_mat4_copy(m, s_renderer->quads[s_renderer->num_quads].model);
+    glm_vec2_copy(uv0, s_renderer->quads[s_renderer->num_quads].uv0);
+    glm_vec2_copy(uv1, s_renderer->quads[s_renderer->num_quads].uv1);
     s_renderer->quads[s_renderer->num_quads].thickness     = thickness;
     s_renderer->quads[s_renderer->num_quads].fade          = fade;
     s_renderer->quads[s_renderer->num_quads].color         = color;
@@ -370,6 +378,13 @@ void warlus_batch_render_texture(Walrus_TextureHandle texture, vec3 pos, versor 
 
     s_renderer->num_quads    = walrus_u32satadd(s_renderer->num_quads, 1);
     s_renderer->num_textures = walrus_u32satadd(s_renderer->num_textures, 1);
+}
+
+void warlus_batch_render_texture(Walrus_TextureHandle texture, vec3 pos, versor rot, vec2 size, u32 color,
+                                 f32 thickness, u32 boarder_color, f32 fade)
+{
+    warlus_batch_render_subtexture(texture, (vec2){0, 0}, (vec2){1, 1}, pos, rot, size, color, thickness, boarder_color,
+                                   fade);
 }
 
 void warlus_batch_render_circle(vec3 pos, versor rot, f32 radius, u32 color, f32 thickness, u32 boarder_color, f32 fade)
