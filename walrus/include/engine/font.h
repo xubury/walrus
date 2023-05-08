@@ -11,6 +11,7 @@ typedef struct {
     u32                  height;
     u32                  first_unicode;
     u32                  num_characters;
+    u32                  font_height;
     void                *characters;
 } Walrus_FontTexture;
 

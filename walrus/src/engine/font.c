@@ -44,6 +44,7 @@ void walrus_font_texture_cook(Walrus_Font *font, Walrus_FontTexture *texture, u3
     texture->width          = width;
     texture->height         = height;
     texture->first_unicode  = first_unicode;
+    texture->font_height    = font_height;
     texture->num_characters = num_chars;
 
     u8 *bitmap = walrus_malloc(width * height);

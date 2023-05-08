@@ -403,6 +403,11 @@ void walrus_batch_render_string(Walrus_FontTexture *font, char const *str, vec3 
     vec3 cur;
     glm_vec3_copy(pos, cur);
     for (u32 i = 0; str[i] != 0; ++i) {
+        if (str[i] == '\n') {
+            cur[0] = pos[0];
+            cur[1] += font->font_height;
+            continue;
+        }
         Walrus_GlyphMetrics metrics;
         if (walrus_font_texture_unicode_metrics(font, str[i], &metrics)) {
             vec3 font_pos;
