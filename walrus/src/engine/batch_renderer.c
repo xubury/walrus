@@ -348,7 +348,7 @@ void warlus_batch_render_quad(vec3 pos, versor rot, vec2 size, u32 color, f32 th
     s_renderer->num_quads = walrus_u32satadd(s_renderer->num_quads, 1);
 }
 
-void warlus_batch_render_subtexture(Walrus_TextureHandle texture, vec2 uv0, vec2 uv1, vec3 pos, versor rot, vec2 size,
+void walrus_batch_render_subtexture(Walrus_TextureHandle texture, vec2 uv0, vec2 uv1, vec3 pos, versor rot, vec2 size,
                                     u32 color, f32 thickness, u32 boarder_color, f32 fade)
 {
     if (s_renderer->num_quads >= MAX_QUADS || s_renderer->num_textures >= MAX_TEXTURES) {
@@ -383,8 +383,35 @@ void warlus_batch_render_subtexture(Walrus_TextureHandle texture, vec2 uv0, vec2
 void warlus_batch_render_texture(Walrus_TextureHandle texture, vec3 pos, versor rot, vec2 size, u32 color,
                                  f32 thickness, u32 boarder_color, f32 fade)
 {
-    warlus_batch_render_subtexture(texture, (vec2){0, 0}, (vec2){1, 1}, pos, rot, size, color, thickness, boarder_color,
+    walrus_batch_render_subtexture(texture, (vec2){0, 0}, (vec2){1, 1}, pos, rot, size, color, thickness, boarder_color,
                                    fade);
+}
+
+void walrus_batch_render_string(Walrus_FontTexture *font, char const *str, vec3 pos, versor rot, vec2 size, u32 color)
+{
+    vec3 cur;
+    glm_vec3_copy(pos, cur);
+    for (u32 i = 0; str[i] != 0; ++i) {
+        Walrus_GlyphMetrics metrics;
+        if (walrus_font_texture_unicode_metrics(font, str[i], &metrics)) {
+            vec3 font_pos;
+            vec2 font_size;
+            vec2 offset0;
+
+            glm_vec2_copy(cur, font_pos);
+            glm_vec2_sub(metrics.offset1, metrics.offset0, font_size);
+            glm_vec2_mul(font_size, size, font_size);
+            font_pos[0] += font_size[0] / 2.f;
+            font_pos[1] += font_size[1] / 2.f;
+            glm_vec2_mul(metrics.offset0, size, offset0);
+            glm_vec2_add(font_pos, offset0, font_pos);
+
+            vec2 uv0, uv1;
+            walrus_font_texture_unicode_uv(font, str[i], uv0, uv1);
+            walrus_batch_render_subtexture(font->handle, uv0, uv1, font_pos, rot, font_size, color, 0, 0, 0);
+            cur[0] += metrics.advance * size[0];
+        }
+    }
 }
 
 void warlus_batch_render_circle(vec3 pos, versor rot, f32 radius, u32 color, f32 thickness, u32 boarder_color, f32 fade)
