@@ -70,7 +70,7 @@ void on_render(Walrus_App *app)
     walrus_batch_render_subtexture(data->font.handle, (vec2){0.5, 0}, (vec2){1.0, 1.0}, (vec3){512, 512, -1},
                                    GLM_QUAT_IDENTITY, (vec2){256, 512}, 0xffffffff, 0, 0xffffffff, 0);
     walrus_batch_render_string(&data->font, "hello world", (vec3){512, 512, 0}, GLM_QUAT_IDENTITY, (vec2){2, 2},
-                               0xffffffff);
+                               0x00ffffff);
     walrus_batch_render_end();
 }
 

@@ -7,6 +7,9 @@
 #include <string.h>
 #include <cglm/cglm.h>
 
+#define LITTLE_ENDIAN_COLOR(color) \
+    (((color)&0xff000000) >> 24 | ((color)&0x00ff0000) >> 8 | ((color)&0x0000ff00) << 8 | ((color)&0xff) << 24)
+
 char const *vs_quad_src =
     "layout (location = 0) in vec2 a_pos;"
     "layout (location = 1) in vec2 a_texcoord;"
@@ -55,7 +58,7 @@ char const *fs_quad =
     "    vec4 color = vec4(0);"
     "    switch(int(v_tex_id))"
     "	{"
-    "		case  0: color = texture(u_textures[ 0], v_texcoord).rrrr; break;"
+    "		case  0: color = texture(u_textures[ 0], v_texcoord); break;"
     "		case  1: color = texture(u_textures[ 1], v_texcoord); break;"
     "		case  2: color = texture(u_textures[ 2], v_texcoord); break;"
     "		case  3: color = texture(u_textures[ 3], v_texcoord); break;"
@@ -177,8 +180,8 @@ void walrus_batch_render_init(void)
 {
     s_renderer = walrus_new(BatchRenderer, 1);
 
-    u8 data                   = 255;
-    s_renderer->white_texture = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_R8, 1, 0, &data, 1);
+    u32 data                  = 0xffffffff;
+    s_renderer->white_texture = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 1, 0, &data, 1);
     s_renderer->u_textures    = walrus_rhi_create_uniform("u_textures", WR_RHI_UNIFORM_SAMPLER, 16);
 
     Walrus_ShaderHandle vs        = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, vs_quad_src);
@@ -328,6 +331,10 @@ void warlus_batch_render_quad(vec3 pos, versor rot, vec2 size, u32 color, f32 th
         flush_quads();
         start_quads();
     }
+
+    color         = LITTLE_ENDIAN_COLOR(color);
+    boarder_color = LITTLE_ENDIAN_COLOR(boarder_color);
+
     mat4 t = GLM_MAT4_IDENTITY_INIT;
     mat4 r;
     mat4 s = GLM_MAT4_IDENTITY_INIT;
@@ -355,6 +362,10 @@ void walrus_batch_render_subtexture(Walrus_TextureHandle texture, vec2 uv0, vec2
         flush_quads();
         start_quads();
     }
+
+    color         = LITTLE_ENDIAN_COLOR(color);
+    boarder_color = LITTLE_ENDIAN_COLOR(boarder_color);
+
     mat4 t = GLM_MAT4_IDENTITY_INIT;
     mat4 r;
     mat4 s = GLM_MAT4_IDENTITY_INIT;
@@ -420,6 +431,9 @@ void warlus_batch_render_circle(vec3 pos, versor rot, f32 radius, u32 color, f32
         flush_circles();
         start_circles();
     }
+
+    color         = LITTLE_ENDIAN_COLOR(color);
+    boarder_color = LITTLE_ENDIAN_COLOR(boarder_color);
 
     mat4 t = GLM_MAT4_IDENTITY_INIT;
     mat4 r;
