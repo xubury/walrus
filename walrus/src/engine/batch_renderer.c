@@ -325,7 +325,7 @@ static void flush_circles(void)
     walrus_rhi_submit(s_renderer->view_id, s_renderer->circle_shader, s_renderer->discard);
 }
 
-void warlus_batch_render_quad(vec3 pos, versor rot, vec2 size, u32 color, f32 thickness, u32 boarder_color, f32 fade)
+void walrus_batch_render_quad(vec3 pos, versor rot, vec2 size, u32 color, f32 thickness, u32 boarder_color, f32 fade)
 {
     if (s_renderer->num_quads >= MAX_QUADS) {
         flush_quads();
@@ -352,7 +352,7 @@ void warlus_batch_render_quad(vec3 pos, versor rot, vec2 size, u32 color, f32 th
     s_renderer->quads[s_renderer->num_quads].boarder_color = boarder_color;
     s_renderer->quads[s_renderer->num_quads].tex_id        = 0;
 
-    s_renderer->num_quads = walrus_u32satadd(s_renderer->num_quads, 1);
+    ++s_renderer->num_quads;
 }
 
 void walrus_batch_render_subtexture(Walrus_TextureHandle texture, vec2 uv0, vec2 uv1, vec3 pos, versor rot, vec2 size,
@@ -383,15 +383,26 @@ void walrus_batch_render_subtexture(Walrus_TextureHandle texture, vec2 uv0, vec2
     s_renderer->quads[s_renderer->num_quads].fade          = fade;
     s_renderer->quads[s_renderer->num_quads].color         = color;
     s_renderer->quads[s_renderer->num_quads].boarder_color = boarder_color;
-    s_renderer->quads[s_renderer->num_quads].tex_id        = s_renderer->num_textures;
 
-    s_renderer->textures[s_renderer->num_textures] = texture;
+    u32 tex_id = s_renderer->num_textures;
+    for (i32 i = s_renderer->num_textures - 1; i > 1; --i) {
+        if (s_renderer->textures[i].id == texture.id) {
+            tex_id = i;
+            break;
+        }
+    }
 
-    s_renderer->num_quads    = walrus_u32satadd(s_renderer->num_quads, 1);
-    s_renderer->num_textures = walrus_u32satadd(s_renderer->num_textures, 1);
+    s_renderer->quads[s_renderer->num_quads].tex_id = tex_id;
+
+    if (tex_id == s_renderer->num_textures) {
+        s_renderer->textures[s_renderer->num_textures] = texture;
+        ++s_renderer->num_textures;
+    }
+
+    ++s_renderer->num_quads;
 }
 
-void warlus_batch_render_texture(Walrus_TextureHandle texture, vec3 pos, versor rot, vec2 size, u32 color,
+void walrus_batch_render_texture(Walrus_TextureHandle texture, vec3 pos, versor rot, vec2 size, u32 color,
                                  f32 thickness, u32 boarder_color, f32 fade)
 {
     walrus_batch_render_subtexture(texture, (vec2){0, 0}, (vec2){1, 1}, pos, rot, size, color, thickness, boarder_color,
@@ -430,7 +441,7 @@ void walrus_batch_render_string(Walrus_FontTexture *font, char const *str, vec3 
     }
 }
 
-void warlus_batch_render_circle(vec3 pos, versor rot, f32 radius, u32 color, f32 thickness, u32 boarder_color, f32 fade)
+void walrus_batch_render_circle(vec3 pos, versor rot, f32 radius, u32 color, f32 thickness, u32 boarder_color, f32 fade)
 {
     if (s_renderer->num_circles >= MAX_QUADS) {
         flush_circles();
@@ -456,7 +467,7 @@ void warlus_batch_render_circle(vec3 pos, versor rot, f32 radius, u32 color, f32
     s_renderer->circles[s_renderer->num_circles].color         = color;
     s_renderer->circles[s_renderer->num_circles].boarder_color = boarder_color;
 
-    s_renderer->num_circles = walrus_u32satadd(s_renderer->num_circles, 1);
+    ++s_renderer->num_circles;
 }
 
 void walrus_batch_render_end(void)

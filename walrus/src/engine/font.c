@@ -54,19 +54,20 @@ void walrus_font_texture_cook(Walrus_Font *font, Walrus_FontTexture *texture, u3
     stbtt_PackFontRange(&pc, font->ttf_buffer, 0, font_height, first_unicode, num_chars, texture->characters);
     stbtt_PackEnd(&pc);
 
-    u8 *rgb = walrus_malloc(width * height * 3);
+    u32 const bytes = width * height * 4;
+    u8       *rgba  = walrus_malloc(bytes);
     for (u64 i = 0; i < width * height; ++i) {
-        u64 stride      = i * 3;
-        rgb[stride + 0] = bitmap[i];
-        rgb[stride + 1] = bitmap[i];
-        rgb[stride + 2] = bitmap[i];
+        u64 stride       = i * 4;
+        rgba[stride + 0] = bitmap[i];
+        rgba[stride + 1] = bitmap[i];
+        rgba[stride + 2] = bitmap[i];
+        rgba[stride + 3] = bitmap[i];
     }
 
-    texture->handle =
-        walrus_rhi_create_texture2d(width, height, WR_RHI_FORMAT_RGB8, num_mipmaps, flags, rgb, width * height * 3);
+    texture->handle = walrus_rhi_create_texture2d(width, height, WR_RHI_FORMAT_RGBA8, num_mipmaps, flags, rgba, bytes);
 
     walrus_free(bitmap);
-    walrus_free(rgb);
+    walrus_free(rgba);
 }
 
 void walrus_font_texture_unload(Walrus_FontTexture *texture)
