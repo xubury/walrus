@@ -88,10 +88,13 @@ typedef struct {
     RenderCompute compute;
     RenderBind    bind;
 
+    Sortkey      key;
     RenderFrame  frames;
     RenderFrame *submit_frame;
 
     RenderView views[WR_RHI_MAX_VIEWS];
+    u32        seqs[WR_RHI_MAX_VIEWS];
+    u16        view_map[WR_RHI_MAX_VIEWS];
 
     u32 num_vertices[WR_RHI_MAX_VERTEX_STREAM];
 

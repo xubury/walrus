@@ -14,7 +14,7 @@ void walrus_rhi_set_resolution(u32 width, u32 height);
 
 void walrus_rhi_frame(void);
 
-void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u8 flags);
+void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u32 depth, u8 flags);
 
 u32  walrus_rhi_compose_rgba(u8 r, u8 g, u8 b, u8 a);
 void walrus_rhi_decompose_rgba(u32 rgba, u8* r, u8* g, u8* b, u8* a);
@@ -24,6 +24,7 @@ void walrus_rhi_set_state(u64 state, u32 rgba);
 void walrus_rhi_set_view_rect(u16 view_id, i32 x, i32 y, u32 width, u32 height);
 void walrus_rhi_set_view_clear(u16 view_id, u16 flags, u32 rgba, f32 depth, u8 stencil);
 void walrus_rhi_set_view_transform(u16 view_id, mat4 view, mat4 projection);
+void walrus_rhi_set_view_mode(u16 view_id, Walrus_ViewMode mode);
 
 void walrus_rhi_screen_to_clip(u16 view_id, vec2 const screen, vec2 clip);
 void walrus_rhi_screen_to_world(u16 view_id, vec2 const screen, vec3 world);

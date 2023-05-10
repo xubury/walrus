@@ -144,3 +144,12 @@ typedef struct {
     u16                 stride;
     Walrus_BufferHandle handle;
 } Walrus_TransientBuffer;
+
+typedef enum {
+    WR_RHI_VIEWMODE_DEFAULT,
+    WR_RHI_VIEWMODE_SEQUENTIAL,
+    WR_RHI_VIEWMODE_DEPTH_ASCENDING,
+    WR_RHI_VIEWMODE_DEPTH_DESCENDING,
+
+    WR_RHI_VIEWMODE_COUNT
+} Walrus_ViewMode;

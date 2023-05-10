@@ -352,13 +352,20 @@ static void submit(RenderFrame *frame)
 
     u32 const resolution_height = frame->resolution.height;
 
+    Sortkey sortkey;
+    frame_sort(frame);
+
     glBindVertexArray(g_ctx->vao);
 
-    u16 view_id = UINT16_MAX;
+    u16             view_id      = UINT16_MAX;
+    const ViewRect *view_scissor = NULL;
 
     Walrus_ProgramHandle current_prog = {WR_INVALID_HANDLE};
 
+    glDisable(GL_STENCIL_TEST);
     glDisable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDisable(GL_CULL_FACE);
     glDisable(GL_BLEND);
 
     RenderDraw current_state;
@@ -370,23 +377,28 @@ static void submit(RenderFrame *frame)
 
     GLenum primitive = GL_TRIANGLES;
     for (u32 i = 0; i < frame->num_render_items; ++i) {
-        RenderItem const          *render_item = &frame->render_items[i];
-        RenderBind const          *render_bind = &frame->render_binds[i];
-        RenderDraw const          *draw        = &render_item->draw;
-        RenderCompute const       *compute     = &render_item->compute;
-        Walrus_ProgramHandle const prog        = frame->program[i];
-        RenderView const          *view        = &frame->views[frame->view_ids[i]];
+        u64 const  key_val    = frame->sortkeys[i];
+        bool const is_compute = sortkey_decode(&sortkey, key_val, frame->view_map);
 
-        bool const view_changed = frame->view_ids[i] != view_id;
+        const u32         item_id     = frame->sortvalues[i];
+        RenderItem const *render_item = &frame->render_items[item_id];
+        RenderBind const *render_bind = &frame->render_binds[item_id];
+        RenderDraw const *draw        = &render_item->draw;
+
+        bool const        view_changed = sortkey.view_id != view_id;
+        RenderView const *view         = &frame->views[sortkey.view_id];
 
         if (view_changed) {
-            view_id = frame->view_ids[i];
+            view_id = sortkey.view_id;
 
             RenderClear const *clear    = &view->clear;
             ViewRect const    *viewport = &view->viewport;
 
             glViewport(viewport->x, resolution_height - viewport->height - viewport->y, viewport->width,
                        viewport->height);
+            if (!viewrect_zero_area(&view->scissor)) {
+                view_scissor = &view->scissor;
+            }
 
             GLbitfield clear_flags = 0;
             if (WR_RHI_CLEAR_COLOR & clear->flags) {
@@ -409,20 +421,42 @@ static void submit(RenderFrame *frame)
             }
         }
 
-        bool const program_changed = prog.id != WR_INVALID_HANDLE && current_prog.id != prog.id;
+        bool const program_changed = current_prog.id != sortkey.program.id;
         if (program_changed) {
-            current_prog = prog;
+            current_prog = sortkey.program;
             glUseProgram(g_ctx->programs[current_prog.id].id);
         }
         u64 const new_flags       = draw->state_flags;
         u64       changed_flags   = current_state.state_flags ^ draw->state_flags;
         current_state.state_flags = new_flags;
-        const bool resetState     = view_changed;
+        const bool reset_state     = view_changed;
 
-        if (resetState) {
+        if (reset_state) {
             draw_clear(&current_state, WR_RHI_DISCARD_ALL);
             changed_flags             = WR_RHI_STATE_MASK;
             current_state.state_flags = new_flags;
+        }
+        if (!viewrect_equal(&current_state.scissor, &draw->scissor)) {
+            current_state.scissor = draw->scissor;
+            if (viewrect_zero_area(&current_state.scissor)) {
+                if (view_scissor) {
+                    glScissor(view_scissor->x, resolution_height - view_scissor->height - view_scissor->y,
+                              view_scissor->width, view_scissor->height);
+                    glEnable(GL_SCISSOR_TEST);
+                }
+                else {
+                    glDisable(GL_SCISSOR_TEST);
+                }
+            }
+            else {
+                ViewRect scissor_rect = current_state.scissor;
+                if (view_scissor) {
+                    viewrect_intersect(&scissor_rect, view_scissor);
+                }
+                glScissor(scissor_rect.x, resolution_height - scissor_rect.height - scissor_rect.y, scissor_rect.width,
+                          scissor_rect.height);
+                glEnable(GL_SCISSOR_TEST);
+            }
         }
 
         if (WR_RHI_STATE_BLEND_MASK & changed_flags || draw->blend_factor != blend_factor) {
@@ -669,7 +703,7 @@ static void submit(RenderFrame *frame)
             }
         }
 
-        walrus_unused(compute);
+        /* walrus_unused(compute); */
     }
 
     glBindVertexArray(0);

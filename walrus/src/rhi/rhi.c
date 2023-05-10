@@ -52,6 +52,20 @@ static void discard(u8 flags)
     bind_clear(&s_ctx->bind, flags);
 }
 
+static void view_reset(RenderView* view)
+{
+    view->viewport = (ViewRect){0, 0, 1, 1};
+    view->scissor  = (ViewRect){0, 0, 0, 0};
+
+    view->mode = WR_RHI_VIEWMODE_DEFAULT;
+
+    walrus_rhi_decompose_rgba(0, view->clear.index, view->clear.index + 1, view->clear.index + 2,
+                              view->clear.index + 3);
+    view->clear.flags   = WR_RHI_CLEAR_NONE;
+    view->clear.depth   = 0;
+    view->clear.stencil = 0;
+}
+
 void renderer_uniform_updates(UniformBuffer* uniform, u32 begin, u32 end)
 {
     uniform_buffer_start(uniform, begin);
@@ -185,6 +199,14 @@ Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags)
         s_ctx->shader_refs[i].ref_count = 0;
     }
 
+    for (u32 i = 0; i < walrus_array_len(s_ctx->views); ++i) {
+        view_reset(&s_ctx->views[i]);
+    }
+
+    for (u32 i = 0; i < walrus_array_len(s_ctx->view_map); ++i) {
+        s_ctx->view_map[i] = i;
+    }
+
     discard(WR_RHI_DISCARD_ALL);
 
     s_ctx->submit_frame->transient_vb =
@@ -233,6 +255,7 @@ void walrus_rhi_set_resolution(u32 width, u32 height)
 void walrus_rhi_frame(void)
 {
     RenderFrame* frame = s_ctx->submit_frame;
+    memcpy(frame->view_map, s_ctx->view_map, sizeof(s_ctx->view_map));
     memcpy(frame->views, s_ctx->views, sizeof(s_ctx->views));
 
     frame_finish(frame);
@@ -243,9 +266,11 @@ void walrus_rhi_frame(void)
     s_ctx->uniform_end   = 0;
 
     frame_start(frame);
+
+    memset(s_ctx->seqs, 0, sizeof(s_ctx->seqs));
 }
 
-void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u8 flags)
+void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u32 depth, u8 flags)
 {
     RenderFrame* frame = s_ctx->submit_frame;
 
@@ -256,8 +281,32 @@ void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u8 flags)
     s_ctx->draw.uniform_begin = s_ctx->uniform_begin;
     s_ctx->draw.uniform_end   = s_ctx->uniform_end;
 
-    frame->program[render_item_id]  = program;
-    frame->view_ids[render_item_id] = view_id;
+    s_ctx->key.view_id = view_id;
+    s_ctx->key.program = program;
+
+    SortKeyType type;
+    switch (s_ctx->views[view_id].mode) {
+        case WR_RHI_VIEWMODE_SEQUENTIAL:
+            s_ctx->key.sequence = s_ctx->seqs[view_id]++;
+            type                = SORT_SEQUENCE;
+            break;
+        case WR_RHI_VIEWMODE_DEPTH_ASCENDING:
+            s_ctx->key.depth = depth;
+            type             = SORT_DEPTH;
+            break;
+        case WR_RHI_VIEWMODE_DEPTH_DESCENDING:
+            s_ctx->key.depth = UINT32_MAX - depth;
+            type             = SORT_DEPTH;
+            break;
+        default:
+            s_ctx->key.depth = depth;
+            type             = SORT_PROGRAM;
+            break;
+    }
+    u64 key_val = sortkey_encode_draw(&s_ctx->key, type);
+
+    frame->sortkeys[render_item_id]   = key_val;
+    frame->sortvalues[render_item_id] = render_item_id;
 
     u16 stream_mask = s_ctx->draw.stream_mask;
     if (stream_mask != UINT16_MAX) {
@@ -303,7 +352,26 @@ void walrus_rhi_decompose_rgba(u32 rgba, u8* r, u8* g, u8* b, u8* a)
 
 void walrus_rhi_set_state(u64 state, u32 rgba)
 {
-    /* u8 const blend           = ((state & WR_RHI_STATE_BLEND_MASK) >> WR_RHI_STATE_BLEND_SHIFT) & 0xff; */
+    u8 const blend = ((state & WR_RHI_STATE_BLEND_MASK) >> WR_RHI_STATE_BLEND_SHIFT) & 0xff;
+
+    // Transparency sort order table:
+    //
+    //                  +----------------------------------------- WR_RHI_STATE_BLEND_ZERO
+    //                  |  +-------------------------------------- WR_RHI_STATE_BLEND_ONE
+    //                  |  |  +----------------------------------- WR_RHI_STATE_BLEND_SRC_COLOR
+    //                  |  |  |  +-------------------------------- WR_RHI_STATE_BLEND_INV_SRC_COLOR
+    //                  |  |  |  |  +----------------------------- WR_RHI_STATE_BLEND_SRC_ALPHA
+    //                  |  |  |  |  |  +-------------------------- WR_RHI_STATE_BLEND_INV_SRC_ALPHA
+    //                  |  |  |  |  |  |  +----------------------- WR_RHI_STATE_BLEND_DST_ALPHA
+    //                  |  |  |  |  |  |  |  +-------------------- WR_RHI_STATE_BLEND_INV_DST_ALPHA
+    //                  |  |  |  |  |  |  |  |  +----------------- WR_RHI_STATE_BLEND_DST_COLOR
+    //                  |  |  |  |  |  |  |  |  |  +-------------- WR_RHI_STATE_BLEND_INV_DST_COLOR
+    //                  |  |  |  |  |  |  |  |  |  |  +----------- WR_RHI_STATE_BLEND_SRC_ALPHA_SAT
+    //                  |  |  |  |  |  |  |  |  |  |  |  +-------- WR_RHI_STATE_BLEND_FACTOR
+    //                  |  |  |  |  |  |  |  |  |  |  |  |  +----- WR_RHI_STATE_BLEND_INV_FACTOR
+    //                  |  |  |  |  |  |  |  |  |  |  |  |  |
+    //               x  |  |  |  |  |  |  |  |  |  |  |  |  |  x  x  x  x  x
+    s_ctx->key.blend         = "\x0\x2\x2\x3\x3\x2\x3\x2\x3\x2\x2\x2\x2\x2\x2\x2\x2\x2\x2"[((blend)&0xf) + (!!blend)];
     s_ctx->draw.state_flags  = state;
     s_ctx->draw.blend_factor = rgba;
 }
@@ -339,6 +407,11 @@ void walrus_rhi_set_view_transform(u16 view_id, mat4 view, mat4 projection)
     if (projection) {
         glm_mat4_copy(projection, v->projection);
     }
+}
+
+void walrus_rhi_set_view_mode(u16 view_id, Walrus_ViewMode mode)
+{
+    s_ctx->views[view_id].mode = mode;
 }
 
 void walrus_rhi_screen_to_clip(u16 view_id, vec2 const screen, vec2 clip)

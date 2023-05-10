@@ -291,7 +291,7 @@ static void flush_quads(void)
     walrus_rhi_set_transient_index_buffer(&index_buffer, 0, 6);
     walrus_rhi_set_transient_instance_buffer(&instance_buffer, s_renderer->quad_ins_layout, 0, num_instances);
     walrus_rhi_set_state(s_renderer->state, 0);
-    walrus_rhi_submit(s_renderer->view_id, s_renderer->quad_shader, s_renderer->discard);
+    walrus_rhi_submit(s_renderer->view_id, s_renderer->quad_shader, 0, s_renderer->discard);
 }
 
 static void flush_circles(void)
@@ -322,7 +322,7 @@ static void flush_circles(void)
     walrus_rhi_set_transient_index_buffer(&index_buffer, 0, 6);
     walrus_rhi_set_transient_instance_buffer(&instance_buffer, s_renderer->circle_ins_layout, 0, num_instances);
     walrus_rhi_set_state(s_renderer->state, 0);
-    walrus_rhi_submit(s_renderer->view_id, s_renderer->circle_shader, s_renderer->discard);
+    walrus_rhi_submit(s_renderer->view_id, s_renderer->circle_shader, 0, s_renderer->discard);
 }
 
 void walrus_batch_render_quad(vec3 pos, versor rot, vec2 size, u32 color, f32 thickness, u32 boarder_color, f32 fade)

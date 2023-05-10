@@ -147,13 +147,35 @@ WR_INLINE u8 walrus_u8rol(u8 x, u8 n)
     return (x >> (sizeof(u8) * 8 - n) | (x << n));
 }
 
-WR_INLINE uint32_t walrus_stride_align(uint32_t offset, uint32_t stride)
+WR_INLINE u32 walrus_u32cntlz(u32 val)
 {
-    const uint32_t mod    = walrus_u32mod(offset, stride);
-    const uint32_t add    = walrus_u32sub(stride, mod);
-    const uint32_t mask   = walrus_u32cmpeq(mod, 0);
-    const uint32_t tmp    = walrus_u32selb(mask, 0, add);
-    const uint32_t result = walrus_u32add(offset, tmp);
+#if WR_COMPILER == WR_COMPILER_GCC || WR_COMPILER == WR_COMPILER_CLANG
+    return 0 == val ? 32 : __builtin_clz(val);
+#else
+    u32 const tmp0   = walrus_u32srl(val, 1);
+    u32 const tmp1   = walrus_u32or(tmp0, val);
+    u32 const tmp2   = walrus_u32srl(tmp1, 2);
+    u32 const tmp3   = walrus_u32or(tmp2, tmp1);
+    u32 const tmp4   = walrus_u32srl(tmp3, 4);
+    u32 const tmp5   = walrus_u32or(tmp4, tmp3);
+    u32 const tmp6   = walrus_u32srl(tmp5, 8);
+    u32 const tmp7   = walrus_u32or(tmp6, tmp5);
+    u32 const tmp8   = walrus_u32srl(tmp7, 16);
+    u32 const tmp9   = walrus_u32or(tmp8, tmp7);
+    u32 const tmpA   = walrus_u32not(tmp9);
+    u32 const result = walrus_u32cntbits(tmpA);
+
+    return result;
+#endif  //
+}
+
+WR_INLINE u32 walrus_stride_align(u32 offset, u32 stride)
+{
+    u32 const mod    = walrus_u32mod(offset, stride);
+    u32 const add    = walrus_u32sub(stride, mod);
+    u32 const mask   = walrus_u32cmpeq(mod, 0);
+    u32 const tmp    = walrus_u32selb(mask, 0, add);
+    u32 const result = walrus_u32add(offset, tmp);
 
     return result;
 }

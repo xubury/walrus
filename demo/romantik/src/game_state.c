@@ -297,7 +297,7 @@ void game_state_render(Romantik_GameState *state)
         romantik_get_terrain_color(state->game.next_terrain, color);
         glm_vec4_mul(color, mul_color, color);
         walrus_rhi_set_uniform(state->u_color, 0, sizeof(vec4), color);
-        walrus_rhi_submit(0, state->pick_shader, WR_RHI_DISCARD_TRANSFORM | WR_RHI_DISCARD_STATE);
+        walrus_rhi_submit(0, state->pick_shader, 0, WR_RHI_DISCARD_TRANSFORM | WR_RHI_DISCARD_STATE);
     }
 
     u32 unit = 0;
@@ -305,14 +305,14 @@ void game_state_render(Romantik_GameState *state)
     walrus_rhi_set_uniform(state->u_texture, 0, sizeof(u32), &unit);
     if (state->game.num_placed_grids > 0) {
         walrus_rhi_set_instance_buffer(state->placed_buffer, state->ins_layout, 0, state->game.num_placed_grids);
-        walrus_rhi_submit(0, state->map_shader, WR_RHI_DISCARD_INSTANCE_DATA | WR_RHI_DISCARD_STATE);
+        walrus_rhi_submit(0, state->map_shader, 0, WR_RHI_DISCARD_INSTANCE_DATA | WR_RHI_DISCARD_STATE);
     }
 
     walrus_rhi_set_state(WR_RHI_STATE_DEFAULT | WR_RHI_STATE_BLEND_ALPHA, 0);
     walrus_rhi_set_instance_buffer(state->avail_buffer, state->ins_layout, 0, state->game.num_avail_grids);
-    walrus_rhi_submit(0, state->grid_shader, WR_RHI_DISCARD_INSTANCE_DATA | WR_RHI_DISCARD_STATE);
+    walrus_rhi_submit(0, state->grid_shader, 0, WR_RHI_DISCARD_INSTANCE_DATA | WR_RHI_DISCARD_STATE);
 
     walrus_rhi_set_state(WR_RHI_STATE_DEFAULT | WR_RHI_STATE_BLEND_ALPHA, 0);
     walrus_rhi_set_instance_buffer(state->queue_buffer, state->ins_layout, 0, 10);
-    walrus_rhi_submit(1, state->map_shader, WR_RHI_DISCARD_ALL);
+    walrus_rhi_submit(1, state->map_shader, 0, WR_RHI_DISCARD_ALL);
 }

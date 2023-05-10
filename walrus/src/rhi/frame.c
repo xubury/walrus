@@ -1,12 +1,168 @@
 #include "frame.h"
 #include <core/macro.h>
 #include <core/math.h>
+#include <core/sort.h>
 
 #include <cglm/mat4.h>
 #include <string.h>
 
+#define SortKeyViewNumBits     (31 - walrus_u32cntlz(WR_RHI_MAX_VIEWS))
+#define SortKeySortTypeNumBits (2)
+#define SortKeyProgramNumBits  (16)
+#define SortKeyBlendNumBits    (2)
+#define SortKeyDepthNumBits    (32)
+#define SortKeySeqNumBits      (20)
+
+#define SortKeyViewBitShift (64 - SortKeyViewNumBits)
+#define SortKeyViewMask     ((u64)((1 << SortKeyViewNumBits) - 1) << SortKeyViewBitShift)
+
+// Bit determine draw or compute
+#define SortKeyDrawBitShift (SortKeyViewBitShift - 1)
+#define SortKeyDrawBit      ((u64)1 << SortKeyDrawBitShift)
+
+// Draw key
+// Bit determine sort type
+#define SortKeySortTypeBitShift (SortKeyDrawBitShift - SortKeySortTypeNumBits)
+
+#define SortKeySortTypeProgram  ((u64)0 << SortKeySortTypeBitShift)
+#define SortKeySortTypeDepth    ((u64)1 << SortKeySortTypeBitShift)
+#define SortKeySortTypeSequence ((u64)2 << SortKeySortTypeBitShift)
+#define SorKeySortTypeMask      ((u64)3 << SortKeySortTypeBitShift)
+
+// Sort by program
+#define SortKeyBlend0BitShift (SortKeySortTypeBitShift - SortKeyBlendNumBits)
+#define SortKeyBlend0Mask     ((((u64)1 << SortKeyBlendNumBits) - 1) << SortKeyBlend0BitShift)
+
+#define SortKeyProgram0BitShift (SortKeyBlend0BitShift - SortKeyProgramNumBits)
+#define SortKeyProgram0Mask     ((((u64)1 << SortKeyProgramNumBits) - 1) << SortKeyProgram0BitShift)
+
+#define SortKeyDepth0BitShift (SortKeyProgram0BitShift - SortKeyDepthNumBits)
+#define SortKeyDepth0Mask     ((((u64)1 << SortKeyDepthNumBits) - 1) << SortKeyDepth0BitShift)
+
+// Sort by depth
+#define SortKeyDepth1BitShift (SortKeySortTypeBitShift - SortKeyDepthNumBits)
+#define SortKeyDepth1Mask     ((((u64)1 << SortKeyDepthNumBits) - 1) << SortKeyDepth1BitShift)
+
+#define SortKeyBlend1BitShift (SortKeyDepth1BitShift - SortKeyBlendNumBits)
+#define SortKeyBlend1Mask     ((((u64)1 << SortKeyBlendNumBits) - 1) << SortKeyBlend1BitShift)
+
+#define SortKeyProgram1BitShift (SortKeyBlend1BitShift - SortKeyProgramNumBits)
+#define SortKeyProgram1Mask     ((((u64)1 << SortKeyProgramNumBits) - 1) << SortKeyProgram1BitShift)
+
+// Sort by sequence
+#define SortKeySeq2BitShift (SortKeySortTypeBitShift - SortKeySeqNumBits)
+#define SortKeySeq2Mask     ((((u64)1 << SortKeySeqNumBits) - 1) << SortKeySeq2BitShift)
+
+#define SortKeyBlend2BitShift (SortKeySeq2BitShift - SortKeyBlendNumBits)
+#define SortKeyBlend2Mask     ((((u64)1 << SortKeyBlendNumBits) - 1) << SortKeyBlend2BitShift)
+
+#define SortKeyProgram2BitShift (SortKeyBlend2BitShift - SortKeyProgramNumBits)
+#define SortKeyProgram2Mask     ((((u64)1 << SortKeyProgramNumBits) - 1) << SortKeyProgram2BitShift)
+
+// Compute key
+#define SortKeyComputeSeqBitShift (SortKeyDrawBitShift - SortKeySeqNumBits)
+#define SortKeyComputeSeqBitMask  ((((u64)1 << SortKeySeqNumBits) - 1) << SortKeyComputeSeqBitShift)
+
+#define SortKeyComputeProgramBitShift (SortKeyComputeSeqBitShift - SortKeyProgramNumBits)
+#define SortKeyComputeProgramBitMask  ((((u64)1 << SortKeyProgramNumBits) - 1) << SortKeyComputeProgramBitShift)
+
+u64 sortkey_encode_draw(Sortkey *key, SortKeyType type)
+{
+    switch (type) {
+        case SORT_PROGRAM: {
+            u64 const view    = ((u64)(key->view_id) << SortKeyViewBitShift) & SortKeyViewMask;
+            u64 const blend   = ((u64)(key->blend) << SortKeyBlend0BitShift) & SortKeyBlend0Mask;
+            u64 const program = ((u64)(key->program.id) << SortKeyProgram0BitShift) & SortKeyProgram0Mask;
+            u64 const depth   = ((u64)(key->depth) << SortKeyDepth0BitShift) & SortKeyDepth0Mask;
+            return view | SortKeyDrawBit | SortKeySortTypeProgram | blend | program | depth;
+        } break;
+        case SORT_DEPTH: {
+            u64 const view    = ((u64)(key->view_id) << SortKeyViewBitShift) & SortKeyViewMask;
+            u64 const blend   = ((u64)(key->blend) << SortKeyBlend1BitShift) & SortKeyBlend1Mask;
+            u64 const depth   = ((u64)(key->depth) << SortKeyDepth1BitShift) & SortKeyDepth1Mask;
+            u64 const program = ((u64)(key->program.id) << SortKeyProgram1BitShift) & SortKeyProgram1Mask;
+
+            return view | SortKeyDrawBit | SortKeySortTypeDepth | depth | blend | program;
+        } break;
+        case SORT_SEQUENCE: {
+            u64 const view    = ((u64)(key->view_id) << SortKeyViewBitShift) & SortKeyViewMask;
+            u64 const seq     = ((u64)(key->sequence) << SortKeySeq2BitShift) & SortKeySeq2Mask;
+            u64 const blend   = ((u64)(key->blend) << SortKeyBlend2BitShift) & SortKeyBlend2Mask;
+            u64 const program = ((u64)(key->program.id) << SortKeyProgram2BitShift) & SortKeyProgram2Mask;
+            return view | SortKeyDrawBit | SortKeySortTypeSequence | seq | blend | program;
+        } break;
+    }
+    return 0;
+}
+
+u64 sortkey_encode_compute(Sortkey *key)
+{
+    u64 const program = ((u64)(key->program.id) << SortKeyComputeProgramBitShift) & SortKeyComputeProgramBitMask;
+    u64 const seq     = ((u64)(key->sequence) << SortKeyComputeSeqBitShift) & SortKeyComputeSeqBitMask;
+    u64 const view    = ((u64)(key->view_id) << SortKeyViewBitShift) & SortKeyViewMask;
+    u64 const key_val = program | seq | view;
+
+    walrus_assert_msg(seq == ((u64)(key->sequence) << SortKeyComputeSeqBitShift),
+                      "SortKey error, sequence is truncated (Sequence: %d).", key->sequence);
+    return key_val;
+}
+
+void sortkey_reset(Sortkey *key)
+{
+    key->depth      = 0;
+    key->blend      = 0;
+    key->view_id    = 0;
+    key->program.id = 0;
+    key->sequence   = 0;
+}
+
+bool sortkey_decode(Sortkey *key, u64 key_val, u16 *view_map)
+{
+    key->view_id = view_map[sortkey_decode_view(key_val)];
+
+    if (key_val & SortKeyDrawBit) {
+        u64 type = key_val & SorKeySortTypeMask;
+
+        if (type == SortKeySortTypeProgram) {
+            key->program.id = (key_val & SortKeyProgram0Mask) >> SortKeyProgram0BitShift;
+        }
+        else if (type == SortKeySortTypeDepth) {
+            key->program.id = (key_val & SortKeyProgram1Mask) >> SortKeyProgram1BitShift;
+        }
+        else if (type == SortKeySortTypeSequence) {
+            key->program.id = (key_val & SortKeyProgram2Mask) >> SortKeyProgram2BitShift;
+        }
+        else {
+            walrus_assert_msg(false, "SortKey error, illegal key!");
+        }
+        return false;
+    }
+    else {
+        key->program.id = (key_val & SortKeyComputeProgramBitMask) >> SortKeyComputeProgramBitShift;
+        return true;
+    }
+}
+
+u16 sortkey_decode_view(u64 key_val)
+{
+    return (u16)((key_val & SortKeyViewMask) >> SortKeyViewBitShift);
+}
+
+u64 sortkey_remapview(u64 key_val, u16 *view_map)
+{
+    u16 const old_view = sortkey_decode_view(key_val);
+    u64 const view     = (u64)(view_map[old_view]) << SortKeyViewBitShift;
+    return (key_val & ~SortKeyViewMask) | view;
+}
+
 void frame_init(RenderFrame *frame, u32 max_transient_vb, u32 max_transient_ib)
 {
+    Sortkey term;
+    sortkey_reset(&term);
+    term.program.id                          = WR_INVALID_HANDLE;
+    frame->sortkeys[WR_RHI_MAX_DRAW_CALLS]   = sortkey_encode_draw(&term, SORT_PROGRAM);
+    frame->sortvalues[WR_RHI_MAX_DRAW_CALLS] = WR_RHI_MAX_DRAW_CALLS;
+
     frame->num_render_items = 0;
     frame->uniforms         = uniform_buffer_create(1 << 20);
     frame->num_matrices     = 1;
@@ -34,6 +190,28 @@ void frame_start(RenderFrame *frame)
 void frame_finish(RenderFrame *frame)
 {
     uniform_buffer_finish(frame->uniforms);
+}
+
+void frame_sort(RenderFrame *frame)
+{
+    u16 view_remap[WR_RHI_MAX_VIEWS];
+    for (u16 i = 0; i < WR_RHI_MAX_VIEWS; ++i) {
+        view_remap[frame->view_map[i]] = i;
+
+        ViewRect rect = {0, 0, frame->resolution.width, frame->resolution.height};
+
+        viewrect_intersect(&frame->views[i].viewport, &rect);
+        if (!viewrect_zero_area(&frame->views[i].scissor)) {
+            viewrect_intersect(&frame->views[i].scissor, &rect);
+        }
+    }
+    for (u32 i = 0; i < frame->num_render_items; ++i) {
+        frame->sortkeys[i] = sortkey_remapview(frame->sortkeys[i], view_remap);
+    }
+    static u64 tmp_keys[WR_RHI_MAX_DRAW_CALLS];
+    static u32 tmp_values[WR_RHI_MAX_DRAW_CALLS];
+    walrus_radix_sort64(frame->sortkeys, tmp_keys, frame->sortvalues, tmp_values, frame->num_render_items,
+                        sizeof(tmp_values[0]));
 }
 
 static u32 frame_reserve_matrices(RenderFrame *frame, u32 *pnum)

@@ -7,6 +7,27 @@
 #include "view.h"
 
 typedef struct {
+    u32                  depth;
+    u8                   blend;
+    u16                  view_id;
+    Walrus_ProgramHandle program;
+    u32                  sequence;
+} Sortkey;
+
+typedef enum {
+    SORT_PROGRAM,
+    SORT_DEPTH,
+    SORT_SEQUENCE
+} SortKeyType;
+
+u64  sortkey_encode_draw(Sortkey *key, SortKeyType type);
+u64  sortkey_encode_compute(Sortkey *key);
+void sortkey_reset(Sortkey *key);
+bool sortkey_decode(Sortkey *key, u64 key_val, u16 *view_map);
+u16  sortkey_decode_view(u64 key_val);
+u64  sortkey_remapview(u64 key_val, u16 *view_map);
+
+typedef struct {
     u32 width;
     u32 height;
 } Resolution;
@@ -41,6 +62,8 @@ typedef struct {
 
     u32 start_matrix;
     u32 num_matrices;
+
+    ViewRect scissor;
 } RenderDraw;
 
 typedef struct {
@@ -77,13 +100,14 @@ typedef struct {
 
 typedef struct {
     RenderView views[WR_RHI_MAX_VIEWS];
+    u16        view_map[WR_RHI_MAX_VIEWS];
 
     u32        num_render_items;
-    RenderItem render_items[WR_RHI_MAX_DRAW_CALLS];
-    RenderBind render_binds[WR_RHI_MAX_DRAW_CALLS];
+    RenderItem render_items[WR_RHI_MAX_DRAW_CALLS + 1];
+    RenderBind render_binds[WR_RHI_MAX_DRAW_CALLS + 1];
 
-    u16                  view_ids[WR_RHI_MAX_DRAW_CALLS];
-    Walrus_ProgramHandle program[WR_RHI_MAX_DRAW_CALLS];
+    u64 sortkeys[WR_RHI_MAX_DRAW_CALLS + 1];
+    u32 sortvalues[WR_RHI_MAX_DRAW_CALLS + 1];
 
     Resolution resolution;
 
@@ -108,6 +132,8 @@ void frame_shutdown(RenderFrame *frame);
 void frame_start(RenderFrame *frame);
 
 void frame_finish(RenderFrame *frame);
+
+void frame_sort(RenderFrame *frame);
 
 u32 frame_add_matrices(RenderFrame *frame, mat4 const mat, u32 *num);
 

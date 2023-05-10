@@ -10,6 +10,7 @@ add_library(
   memory.c
   queue.c
   ray.c
+  sort.c
   string.c
   sys.c)
 

@@ -66,7 +66,7 @@ void on_render(Walrus_App *app)
     walrus_rhi_set_texture(unit, data->font);
     walrus_rhi_set_uniform(data->u_texture, 0, sizeof(u32), &unit);
     /* walrus_rhi_set_image(0, data->texture, 0, WR_RHI_ACCESS_READ, WR_RHI_FORMAT_RGBA8); */
-    walrus_rhi_submit(0, data->map_shader, WR_RHI_DISCARD_ALL);
+    walrus_rhi_submit(0, data->map_shader, 0, WR_RHI_DISCARD_ALL);
 }
 
 void on_tick(Walrus_App *app, float dt)
