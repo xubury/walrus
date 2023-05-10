@@ -2,9 +2,9 @@
 
 #include <string.h>
 
-#define BITS           (11)
-#define HISTOGRAM_SIZE (1 << BITS)
-#define BIT_MASK       (HISTOGRAM_SIZE - 1)
+#define RADIX_SORT_BITS           (11)
+#define RADIX_SORT_HISTOGRAM_SIZE (1 << RADIX_SORT_BITS)
+#define RADIX_SORT_BIT_MASK       (RADIX_SORT_HISTOGRAM_SIZE - 1)
 
 void walrus_radix_sort(u32* keys, u32* temp_keys, void* values, void* temp_values, u32 size, u32 element_size)
 {
@@ -13,21 +13,21 @@ void walrus_radix_sort(u32* keys, u32* temp_keys, void* values, void* temp_value
     void* _values      = values;
     void* _temp_values = temp_values;
 
-    u32 histogram[HISTOGRAM_SIZE];
+    u32 histogram[RADIX_SORT_HISTOGRAM_SIZE];
     u16 shift = 0;
     u32 pass  = 0;
     for (; pass < 3; ++pass) {
-        memset(histogram, 0, sizeof(u32) * HISTOGRAM_SIZE);
+        memset(histogram, 0, sizeof(u32) * RADIX_SORT_HISTOGRAM_SIZE);
 
         bool sorted = true;
         {
             u32 key     = _keys[0];
-            u32 prevKey = key;
-            for (u32 ii = 0; ii < size; ++ii, prevKey = key) {
+            u32 prev_key = key;
+            for (u32 ii = 0; ii < size; ++ii, prev_key = key) {
                 key       = _keys[ii];
-                u16 index = (key >> shift) & BIT_MASK;
+                u16 index = (key >> shift) & RADIX_SORT_BIT_MASK;
                 ++histogram[index];
-                sorted &= prevKey <= key;
+                sorted &= prev_key <= key;
             }
         }
 
@@ -36,7 +36,7 @@ void walrus_radix_sort(u32* keys, u32* temp_keys, void* values, void* temp_value
         }
 
         u32 offset = 0;
-        for (u32 ii = 0; ii < HISTOGRAM_SIZE; ++ii) {
+        for (u32 ii = 0; ii < RADIX_SORT_HISTOGRAM_SIZE; ++ii) {
             u32 count     = histogram[ii];
             histogram[ii] = offset;
             offset += count;
@@ -44,7 +44,7 @@ void walrus_radix_sort(u32* keys, u32* temp_keys, void* values, void* temp_value
 
         for (u32 ii = 0; ii < size; ++ii) {
             u32 key          = _keys[ii];
-            u16 index        = (key >> shift) & BIT_MASK;
+            u16 index        = (key >> shift) & RADIX_SORT_BIT_MASK;
             u32 dest         = histogram[index]++;
             _temp_keys[dest] = key;
             memcpy((u8*)_temp_values + dest * element_size, (u8*)_values + ii * element_size, element_size);
@@ -58,7 +58,7 @@ void walrus_radix_sort(u32* keys, u32* temp_keys, void* values, void* temp_value
         _temp_values      = _values;
         _values           = swap_values;
 
-        shift += BITS;
+        shift += RADIX_SORT_BITS;
     }
 
     if (0 != (pass & 1)) {
@@ -77,11 +77,11 @@ void walrus_radix_sort64(u64* keys, u64* temp_keys, void* values, void* temp_val
     void* _values      = values;
     void* _temp_values = temp_values;
 
-    u32 histogram[HISTOGRAM_SIZE];
+    u32 histogram[RADIX_SORT_HISTOGRAM_SIZE];
     u16 shift = 0;
     u32 pass  = 0;
     for (; pass < 6; ++pass) {
-        memset(histogram, 0, sizeof(u32) * HISTOGRAM_SIZE);
+        memset(histogram, 0, sizeof(u32) * RADIX_SORT_HISTOGRAM_SIZE);
 
         bool sorted = true;
         {
@@ -89,7 +89,7 @@ void walrus_radix_sort64(u64* keys, u64* temp_keys, void* values, void* temp_val
             u64 prevKey = key;
             for (u32 ii = 0; ii < size; ++ii, prevKey = key) {
                 key       = _keys[ii];
-                u16 index = (key >> shift) & BIT_MASK;
+                u16 index = (key >> shift) & RADIX_SORT_BIT_MASK;
                 ++histogram[index];
                 sorted &= prevKey <= key;
             }
@@ -100,7 +100,7 @@ void walrus_radix_sort64(u64* keys, u64* temp_keys, void* values, void* temp_val
         }
 
         u32 offset = 0;
-        for (u32 ii = 0; ii < HISTOGRAM_SIZE; ++ii) {
+        for (u32 ii = 0; ii < RADIX_SORT_HISTOGRAM_SIZE; ++ii) {
             u32 count     = histogram[ii];
             histogram[ii] = offset;
             offset += count;
@@ -108,21 +108,21 @@ void walrus_radix_sort64(u64* keys, u64* temp_keys, void* values, void* temp_val
 
         for (u32 ii = 0; ii < size; ++ii) {
             u64 key          = _keys[ii];
-            u16 index        = (key >> shift) & BIT_MASK;
+            u16 index        = (key >> shift) & RADIX_SORT_BIT_MASK;
             u32 dest         = histogram[index]++;
             _temp_keys[dest] = key;
             memcpy((u8*)_temp_values + dest * element_size, (u8*)_values + ii * element_size, element_size);
         }
 
-        u64* swapKeys = _temp_keys;
+        u64* swap_keys = _temp_keys;
         _temp_keys    = _keys;
-        _keys         = swapKeys;
+        _keys         = swap_keys;
 
-        void* swapValues = _temp_values;
+        void* swap_values = _temp_values;
         _temp_values     = _values;
-        _values          = swapValues;
+        _values          = swap_values;
 
-        shift += BITS;
+        shift += RADIX_SORT_BITS;
     }
 
     if (0 != (pass & 1)) {

@@ -376,11 +376,11 @@ static void submit(RenderFrame *frame)
     bind_clear(&current_bind, WR_RHI_DISCARD_ALL);
 
     GLenum primitive = GL_TRIANGLES;
-    for (u32 i = 0; i < frame->num_render_items; ++i) {
-        u64 const  key_val    = frame->sortkeys[i];
+    for (u32 item = 0; item < frame->num_render_items; ++item) {
+        u64 const  key_val    = frame->sortkeys[item];
         bool const is_compute = sortkey_decode(&sortkey, key_val, frame->view_map);
 
-        const u32         item_id     = frame->sortvalues[i];
+        u32 const         item_id     = frame->sortvalues[item];
         RenderItem const *render_item = &frame->render_items[item_id];
         RenderBind const *render_bind = &frame->render_binds[item_id];
         RenderDraw const *draw        = &render_item->draw;
@@ -429,7 +429,7 @@ static void submit(RenderFrame *frame)
         u64 const new_flags       = draw->state_flags;
         u64       changed_flags   = current_state.state_flags ^ draw->state_flags;
         current_state.state_flags = new_flags;
-        const bool reset_state     = view_changed;
+        bool const reset_state    = view_changed;
 
         if (reset_state) {
             draw_clear(&current_state, WR_RHI_DISCARD_ALL);
