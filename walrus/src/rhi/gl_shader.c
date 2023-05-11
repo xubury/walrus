@@ -2,7 +2,7 @@
 
 #include <core/log.h>
 #include <core/memory.h>
-#include <core/macro.h>
+#include <core/assert.h>
 #include <core/math.h>
 
 #include <string.h>

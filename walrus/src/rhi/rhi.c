@@ -1,5 +1,5 @@
 #include "rhi_p.h"
-#include <core/macro.h>
+#include <core/assert.h>
 #include <core/math.h>
 #include <core/memory.h>
 #include <core/string.h>

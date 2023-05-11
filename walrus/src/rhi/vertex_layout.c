@@ -1,6 +1,6 @@
 #include <rhi/vertex_layout.h>
 #include <core/math.h>
-#include <core/macro.h>
+#include <core/assert.h>
 #include <core/hash.h>
 
 #include <string.h>

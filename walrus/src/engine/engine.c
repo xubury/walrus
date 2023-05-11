@@ -5,10 +5,11 @@
 #include <core/type.h>
 #include <core/sys.h>
 #include <core/log.h>
-#include <core/macro.h>
+#include <core/assert.h>
 #include <core/math.h>
 #include <core/platform.h>
 #include <core/memory.h>
+#include <core/mutex.h>
 
 #include "app_impl.h"
 
@@ -18,6 +19,7 @@
 
 struct _Walrus_Engine {
     Walrus_EngineOption opt;
+    Walrus_Mutex       *log_mutex;
     Walrus_Window      *window;
     Walrus_App         *app;
     Walrus_Input       *input;
@@ -42,9 +44,18 @@ bool __engine_should_close(void)
 
 #endif
 
+static void log_lock_fn(bool lock, void *userdata)
+{
+    Walrus_Mutex *mutex = (Walrus_Mutex *)userdata;
+    lock ? walrus_mutex_lock(mutex) : walrus_mutex_unlock(mutex);
+}
+
 static Walrus_EngineError register_service(void)
 {
     Walrus_EngineOption *opt = &s_engine->opt;
+
+    s_engine->log_mutex = walrus_mutex_create();
+    walrus_log_set_lock(log_lock_fn, s_engine->log_mutex);
 
     walrus_event_init();
 
@@ -80,6 +91,7 @@ static void release_service(void)
     walrus_inputs_destroy(s_engine->input);
     walrus_window_destroy(s_engine->window);
     walrus_event_shutdown();
+    walrus_mutex_destroy(s_engine->log_mutex);
 }
 
 static void event_process(void)
@@ -171,8 +183,18 @@ static void engine_frame(void)
 
 char const *walrus_engine_error_msg(Walrus_EngineError err)
 {
-    char const *err_msg[] = {"No error", "Fail to create window", walrus_rhi_error_msg(), "Fail to create input"};
-    return err_msg[err];
+    switch (err) {
+        case WR_ENGINE_SUCCESS:
+            return "No error";
+        case WR_ENGINE_INIT_WINDOW_ERROR:
+            return "Fail to create window";
+        case WR_ENGINE_INIT_RHI_ERROR:
+            return walrus_rhi_error_msg();
+        case WR_ENGINE_INIT_INPUT_ERROR:
+            return "Fail to create input";
+        case WR_ENGINE_RUN_APP_ERROR:
+            return "Fail to run app";
+    }
 }
 
 Walrus_AppError walrus_engine_init_run(Walrus_EngineOption *opt, Walrus_App *app)

@@ -1,7 +1,7 @@
 #include "uniform_buffer.h"
 
 #include <core/memory.h>
-#include <core/macro.h>
+#include <core/assert.h>
 #include <core/log.h>
 
 #include <string.h>

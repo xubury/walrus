@@ -1,5 +1,6 @@
 #include "frame.h"
-#include <core/macro.h>
+
+#include <core/assert.h>
 #include <core/math.h>
 #include <core/sort.h>
 

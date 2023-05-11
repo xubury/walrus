@@ -5,6 +5,7 @@
 #include <engine/input.h>
 
 #include <core/macro.h>
+#include <core/assert.h>
 #include <core/log.h>
 
 #include <GLFW/glfw3.h>

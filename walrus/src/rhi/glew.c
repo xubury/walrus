@@ -1,5 +1,6 @@
 #include <core/type.h>
 #include <core/log.h>
+#include <core/assert.h>
 #include <core/macro.h>
 
 #include <GL/glew.h>
