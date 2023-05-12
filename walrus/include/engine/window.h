@@ -23,3 +23,7 @@ u32 walrus_window_height(Walrus_Window *win);
 void walrus_window_swap_buffers(Walrus_Window *win);
 
 void walrus_window_poll_events(Walrus_Window *win);
+
+void walrus_window_make_current(Walrus_Window *win);
+
+void walrus_window_set_vsync(Walrus_Window *win, bool vsync);

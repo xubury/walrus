@@ -186,11 +186,9 @@ void renderer_init(Romantik_GameState *state)
     info.num_layers  = num_layers;
     info.format      = WR_RHI_FORMAT_RGBA8;
     info.ratio       = WR_RHI_RATIO_COUNT;
-    info.data        = img_array;
-    info.size        = num_layers * img_size;
     info.flags       = WR_RHI_SAMPLER_MIN_LINEAR | WR_RHI_SAMPLER_MIP_LINEAR | WR_RHI_TEXTURE_SRGB;
     info.cube_map    = false;
-    state->texture   = walrus_rhi_create_texture(&info);
+    state->texture   = walrus_rhi_create_texture(&info, img_array);
     walrus_free(img_array);
 }
 

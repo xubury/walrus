@@ -192,14 +192,14 @@ Walrus_AppError on_init(Walrus_App *app)
     // clang-format on
 
     Walrus_VertexLayout layout;
-    walrus_vertex_layout_begin(&layout);
-    walrus_vertex_layout_add(&layout, 0, 3, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_begin(&layout, 0);
+    walrus_vertex_layout_add(&layout, 3, WR_RHI_ATTR_FLOAT, false);
     walrus_vertex_layout_end(&layout);
     app_data->layout = walrus_rhi_create_vertex_layout(&layout);
     app_data->layout = walrus_rhi_create_vertex_layout(&layout);
 
-    walrus_vertex_layout_begin(&layout);
-    walrus_vertex_layout_add(&layout, 1, 2, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_begin(&layout, 1);
+    walrus_vertex_layout_add(&layout, 2, WR_RHI_ATTR_FLOAT, false);
     walrus_vertex_layout_end(&layout);
     app_data->uv_layout = walrus_rhi_create_vertex_layout(&layout);
 
@@ -231,7 +231,7 @@ Walrus_AppError on_init(Walrus_App *app)
 
         app_data->font = walrus_rhi_create_texture2d(
             x, y, WR_RHI_FORMAT_RGBA8, 0, WR_RHI_SAMPLER_MIN_LINEAR | WR_RHI_SAMPLER_MIP_LINEAR | WR_RHI_TEXTURE_SRGB,
-            img, x * y * 4);
+            img);
 
         stbi_image_free(img);
     }
@@ -255,13 +255,6 @@ int main(int argc, char *argv[])
     walrus_unused(argc);
     walrus_unused(argv);
 
-    Walrus_EngineOption opt;
-    opt.window_title  = "Rotate Cube";
-    opt.window_width  = 640;
-    opt.window_height = 480;
-    opt.window_flags  = WR_WINDOW_FLAG_VSYNC | WR_WINDOW_FLAG_OPENGL;
-    opt.minfps        = 30.f;
-
     Walrus_App *app = walrus_app_create(walrus_malloc(sizeof(AppData)));
     walrus_app_set_init(app, on_init);
     walrus_app_set_shutdown(app, on_shutdown);
@@ -269,7 +262,7 @@ int main(int argc, char *argv[])
     walrus_app_set_render(app, on_render);
     walrus_app_set_event(app, on_event);
 
-    walrus_engine_init_run(&opt, app);
+    walrus_engine_init_run("Rotate Cube", 640, 480, app);
 
     return 0;
 }

@@ -11,6 +11,8 @@
 typedef enum {
     WR_RHI_SUCCESS = 0,
 
+    WR_RHI_INIT_ERROR,
+
     WR_RHI_INIT_GLEW_ERROR,
     WR_RHI_ALLOC_ERROR,
 
@@ -117,8 +119,6 @@ typedef struct {
     u8                     num_layers;
     Walrus_PixelFormat     format;
     Walrus_BackBufferRatio ratio;
-    void const*            data;
-    u64                    size;
 
     // WR_RHI_SAMPLER_NONE set sampler params to default
     // Heres the default values:
@@ -153,3 +153,15 @@ typedef enum {
 
     WR_RHI_VIEWMODE_COUNT
 } Walrus_ViewMode;
+
+typedef enum {
+    WR_RHI_RENDER_TIMEOUT,
+    WR_RHI_RENDER_FRAME,
+    WR_RHI_RENDER_EXITING,
+    WR_RHI_RENDER_NO_CONTEXT
+} Walrus_RenderResult;
+
+typedef struct {
+    Walrus_RhiFlag flags;
+    bool           single_thread;
+} Walrus_RhiCreateInfo;

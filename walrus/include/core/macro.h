@@ -11,9 +11,9 @@
 
 #define walrus_unused(x) (void)(x)
 
-#define walrus_u32_to_ptr(x) (void*)(u64)(x)
+#define walrus_ptr_to_val(x) (u64)(x)
 
-#define walrus_ptr_to_u32(x) (u32)(u64)(x)
+#define walrus_to_ptr(x) (void*)(u64)(x)
 
 #if WR_COMPILER == WR_COMPILER_VC
 #define WR_INLINE __forceinline

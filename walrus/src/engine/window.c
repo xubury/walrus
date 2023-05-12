@@ -20,9 +20,9 @@ void wajs_create_window(char const *title, u32 width, u32 height);
 Walrus_Window *walrus_window_create(char const *title, u32 width, u32 height, u32 flags)
 {
     Walrus_Window *win = walrus_malloc(sizeof(Walrus_Window));
-    win->width  = width;
-    win->height = height;
-    win->flags  = flags;
+    win->width         = width;
+    win->height        = height;
+    win->flags         = flags;
 
 #if WR_PLATFORM == WR_PLATFORM_WASM
     win->handle = NULL;
@@ -75,6 +75,28 @@ void walrus_window_swap_buffers(Walrus_Window *win)
 #if WR_PLATFORM != WR_PLATFORM_WASM
     if (win != NULL) {
         glfwSwapBuffers(win->handle);
+    }
+#else
+    walrus_unused(win);
+#endif
+}
+
+void walrus_window_make_current(Walrus_Window *win)
+{
+#if WR_PLATFORM != WR_PLATFORM_WASM
+    if (win != NULL) {
+        glfwMakeContextCurrent(win->handle);
+    }
+#else
+    walrus_unused(win);
+#endif
+}
+
+void walrus_window_set_vsync(Walrus_Window *win, bool vsync)
+{
+#if WR_PLATFORM != WR_PLATFORM_WASM
+    if (win != NULL) {
+        glfwSwapInterval(vsync ? 1 : 0);
     }
 #else
     walrus_unused(win);

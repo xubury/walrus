@@ -82,33 +82,14 @@ void on_render(Walrus_App *app)
     walrus_batch_render_end();
 }
 
-#include <core/thread.h>
-
-i32 thread_fn(Walrus_Thread *self, void *userdata)
-{
-    walrus_trace("thread: %d userdata: %d", self, userdata);
-    return 0;
-}
-
 int main(void)
 {
-    Walrus_EngineOption opt;
-    opt.window_title  = "ttf demo";
-    opt.window_width  = 1440;
-    opt.window_height = 900;
-    opt.window_flags  = WR_WINDOW_FLAG_VSYNC | WR_WINDOW_FLAG_OPENGL;
-    opt.minfps        = 30.f;
-
     Walrus_App *app = walrus_app_create(malloc(sizeof(AppData)));
     walrus_app_set_init(app, on_init);
     walrus_app_set_render(app, on_render);
 
-    Walrus_Thread *th = walrus_thread_create();
-    walrus_thread_init(th, thread_fn, NULL, 0);
-    walrus_thread_shutdown(th);
-    walrus_thread_destroy(th);
+    walrus_engine_init_run("ttf", 1440, 900, app);
 
-    walrus_engine_init_run(&opt, app);
-
+    walrus_engine_shutdown();
     return 0;
 }

@@ -10,6 +10,7 @@ typedef struct {
     i32         window_height;
     i32         window_flags;
     f32         minfps;
+    bool        single_thread;
 } Walrus_EngineOption;
 
 typedef struct _Walrus_Engine Walrus_Engine;
@@ -27,7 +28,7 @@ typedef enum {
 char const *walrus_engine_error_msg(Walrus_EngineError err);
 
 // Helper function to init engine, runs an app and shutdown engine.
-Walrus_AppError walrus_engine_init_run(Walrus_EngineOption *opt, Walrus_App *app);
+Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height, Walrus_App *app);
 
 // Initialize engine
 Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt);

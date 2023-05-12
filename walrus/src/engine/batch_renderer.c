@@ -181,7 +181,7 @@ void walrus_batch_render_init(void)
     s_renderer = walrus_new(BatchRenderer, 1);
 
     u32 data                  = 0xffffffff;
-    s_renderer->white_texture = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 1, 0, &data, 1);
+    s_renderer->white_texture = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 1, 0, &data);
     s_renderer->u_textures    = walrus_rhi_create_uniform("u_textures", WR_RHI_UNIFORM_SAMPLER, 16);
 
     Walrus_ShaderHandle vs        = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, vs_quad_src);

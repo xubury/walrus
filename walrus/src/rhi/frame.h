@@ -5,6 +5,13 @@
 
 #include "uniform_buffer.h"
 #include "view.h"
+#include "command_buffer.h"
+
+#define FREE_HANDLE(max, name)    \
+    struct {                      \
+        u32           num;        \
+        Walrus_Handle queue[max]; \
+    } queue_##name
 
 typedef struct {
     u32                  depth;
@@ -99,6 +106,9 @@ typedef struct {
 } RenderItem;
 
 typedef struct {
+    CommandBuffer cmd_pre;
+    CommandBuffer cmd_post;
+
     RenderView views[WR_RHI_MAX_VIEWS];
     u16        view_map[WR_RHI_MAX_VIEWS];
 
@@ -123,11 +133,26 @@ typedef struct {
 
     Walrus_TransientBuffer *transient_vb;
     Walrus_TransientBuffer *transient_ib;
+
+    FREE_HANDLE(WR_RHI_MAX_BUFFERS, buffer);
+    FREE_HANDLE(WR_RHI_MAX_VERTEX_LAYOUTS, layout);
+    FREE_HANDLE(WR_RHI_MAX_TEXTURES, texture);
+    FREE_HANDLE(WR_RHI_MAX_SHADERS, shader);
+    FREE_HANDLE(WR_RHI_MAX_PROGRAMS, program);
+    FREE_HANDLE(WR_RHI_MAX_UNIFORMS, uniform);
 } RenderFrame;
 
-void frame_init(RenderFrame *frame, u32 max_transient_vb, u32 max_transient_ib);
+void frame_init(RenderFrame *frame, u32 min_resource_cb, u32 max_transient_vb, u32 max_transient_ib);
 
 void frame_shutdown(RenderFrame *frame);
+
+void frame_reset(RenderFrame *frame);
+
+void frame_reset_all_free_handles(RenderFrame *frame);
+
+bool free_handle_queue_internal(Walrus_Handle *queue, u32 *num, Walrus_Handle x);
+
+#define free_handle_queue(q, handle) free_handle_queue_internal(q.queue, &q.num, handle.id)
 
 void frame_start(RenderFrame *frame);
 

@@ -54,7 +54,7 @@ static void tex_image(GLenum target, uint8_t mip, uint16_t x, uint16_t y, uint16
     glGenerateMipmap(target);
 }
 
-void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo const *info)
+void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo const *info, void const *data)
 {
     GLuint id     = 0;
     GLuint rbo    = 0;
@@ -141,14 +141,14 @@ void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo con
         }
     }
     if (create_texture) {
-        if (info->data) {
+        if (data) {
             if (texture_array) {
                 tex_image(target, 0, 0, 0, 0, info->width, info->height, info->num_layers, gl_format.format,
-                          gl_format.type, info->data);
+                          gl_format.type, data);
             }
             else {
                 tex_image(target, 0, 0, 0, 0, info->width, info->height, info->depth, gl_format.format, gl_format.type,
-                          info->data);
+                          data);
             }
         }
     }
@@ -182,9 +182,8 @@ void gl_texture_resize(Walrus_TextureHandle handle, u32 width, u32 height, u32 d
     info.num_mipmaps = num_mipmaps;
     info.num_layers  = num_layers;
     info.format      = tex->format;
-    info.data        = NULL;
     info.flags       = tex->flags;
 
     gl_texture_destroy(handle);
-    gl_texture_create(handle, &info);
+    gl_texture_create(handle, &info, NULL);
 }

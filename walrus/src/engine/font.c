@@ -64,7 +64,7 @@ void walrus_font_texture_cook(Walrus_Font *font, Walrus_FontTexture *texture, u3
         rgba[stride + 3] = bitmap[i];
     }
 
-    texture->handle = walrus_rhi_create_texture2d(width, height, WR_RHI_FORMAT_RGBA8, num_mipmaps, flags, rgba, bytes);
+    texture->handle = walrus_rhi_create_texture2d(width, height, WR_RHI_FORMAT_RGBA8, num_mipmaps, flags, rgba);
 
     walrus_free(bitmap);
     walrus_free(rgba);

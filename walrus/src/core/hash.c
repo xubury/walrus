@@ -67,7 +67,7 @@ static inline u32 hash_table_hash_to_index(Walrus_HashTable* table, u32 hash_val
 
 static inline void* hash_table_fetch(void* p, u32 id, bool is_big)
 {
-    return is_big ? *((void**)(p) + id) : walrus_u32_to_ptr(*((u32*)(p) + id));
+    return is_big ? *((void**)(p) + id) : walrus_to_ptr(*((u32*)(p) + id));
 }
 
 static inline void hash_table_assign(void* a, u32 index, bool is_big, void* v)
@@ -76,7 +76,7 @@ static inline void hash_table_assign(void* a, u32 index, bool is_big, void* v)
         *(((void**)a) + index) = v;
     }
     else {
-        *(((u32*)a) + index) = walrus_ptr_to_u32(v);
+        *(((u32*)a) + index) = walrus_ptr_to_val(v);
     }
 }
 
@@ -88,8 +88,8 @@ static inline void* hash_table_evict(void* a, u32 index, bool is_big, void* v)
         return r;
     }
     else {
-        void* r            = walrus_u32_to_ptr(*((u32*)a + index));
-        *((u32*)a + index) = walrus_ptr_to_u32(v);
+        void* r            = walrus_to_ptr(*((u32*)a + index));
+        *((u32*)a + index) = walrus_ptr_to_val(v);
         return r;
     }
 }
@@ -211,7 +211,7 @@ static inline bool hash_table_maybe_make_big(void** a_p, void* v, u32 size)
         a_new = walrus_malloc(sizeof(void*) * size);
 
         for (u32 i = 0; i < size; i++) {
-            a_new[i] = walrus_u32_to_ptr(a[i]);
+            a_new[i] = walrus_to_ptr(a[i]);
         }
 
         walrus_free(a);
@@ -704,7 +704,7 @@ bool walrus_direct_equal(void const* p1, void const* p2)
 
 u32 walrus_direct_hash(void const* p)
 {
-    return walrus_ptr_to_u32(p);
+    return walrus_ptr_to_val(p);
 }
 
 u32 walrus_str_hash(void const* p)

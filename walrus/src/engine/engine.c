@@ -9,6 +9,7 @@
 #include <core/math.h>
 #include <core/platform.h>
 #include <core/memory.h>
+#include <core/thread.h>
 #include <core/mutex.h>
 
 #include "app_impl.h"
@@ -20,6 +21,7 @@
 struct _Walrus_Engine {
     Walrus_EngineOption opt;
     Walrus_Mutex       *log_mutex;
+    Walrus_Thread      *render;
     Walrus_Window      *window;
     Walrus_App         *app;
     Walrus_Input       *input;
@@ -50,6 +52,12 @@ static void log_lock_fn(bool lock, void *userdata)
     lock ? walrus_mutex_lock(mutex) : walrus_mutex_unlock(mutex);
 }
 
+static void setup_window(void)
+{
+    walrus_window_make_current(s_engine->window);
+    walrus_window_set_vsync(s_engine->window, s_engine->opt.window_flags & WR_WINDOW_FLAG_VSYNC);
+}
+
 static Walrus_EngineError register_service(void)
 {
     Walrus_EngineOption *opt = &s_engine->opt;
@@ -69,12 +77,17 @@ static Walrus_EngineError register_service(void)
         return WR_ENGINE_INIT_WINDOW_ERROR;
     }
 
-    i32 rhi_flags = 0;
-    if (opt->window_flags & WR_WINDOW_FLAG_OPENGL) {
-        rhi_flags |= WR_RHI_FLAG_OPENGL;
+    if (opt->single_thread) {
+        setup_window();
     }
 
-    if (walrus_rhi_init(rhi_flags) != WR_RHI_SUCCESS) {
+    Walrus_RhiCreateInfo info;
+    if (opt->window_flags & WR_WINDOW_FLAG_OPENGL) {
+        info.flags |= WR_RHI_FLAG_OPENGL;
+    }
+    info.single_thread = opt->single_thread;
+
+    if (walrus_rhi_init(&info) != WR_RHI_SUCCESS) {
         return WR_ENGINE_INIT_RHI_ERROR;
     }
     walrus_rhi_set_resolution(opt->window_width, opt->window_height);
@@ -92,6 +105,7 @@ static void release_service(void)
     walrus_window_destroy(s_engine->window);
     walrus_event_shutdown();
     walrus_mutex_destroy(s_engine->log_mutex);
+    walrus_log_set_lock(NULL, NULL);
 }
 
 static void event_process(void)
@@ -135,8 +149,8 @@ static void event_process(void)
 static void engine_frame(void)
 {
     Walrus_App          *app    = s_engine->app;
-    Walrus_Input        *input  = s_engine->input;
     Walrus_Window       *window = s_engine->window;
+    Walrus_Input        *input  = s_engine->input;
     Walrus_EngineOption *opt    = &s_engine->opt;
     walrus_assert_msg(opt->minfps > 0, "Invalid min fps");
     walrus_assert_msg(app->tick != NULL, "Invalid tick function");
@@ -178,7 +192,9 @@ static void engine_frame(void)
 
     walrus_rhi_frame();
 
-    walrus_window_swap_buffers(window);
+    if (opt->single_thread) {
+        walrus_window_swap_buffers(window);
+    }
 }
 
 char const *walrus_engine_error_msg(Walrus_EngineError err)
@@ -197,9 +213,17 @@ char const *walrus_engine_error_msg(Walrus_EngineError err)
     }
 }
 
-Walrus_AppError walrus_engine_init_run(Walrus_EngineOption *opt, Walrus_App *app)
+Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height, Walrus_App *app)
 {
-    Walrus_EngineError err = walrus_engine_init(opt);
+    Walrus_EngineOption opt;
+    opt.window_title  = title;
+    opt.window_width  = width;
+    opt.window_height = height;
+    opt.window_flags  = WR_WINDOW_FLAG_VSYNC | WR_WINDOW_FLAG_OPENGL;
+    opt.minfps        = 30.f;
+    opt.single_thread = false;
+
+    Walrus_EngineError err = walrus_engine_init(&opt);
 
     if (err == WR_ENGINE_SUCCESS) {
         return walrus_engine_run(app);
@@ -209,6 +233,25 @@ Walrus_AppError walrus_engine_init_run(Walrus_EngineOption *opt, Walrus_App *app
     }
 
     return WR_APP_NO_ENGINE;
+}
+
+static i32 render_thread_fn(Walrus_Thread *thread, void *userdata)
+{
+    walrus_unused(thread);
+    walrus_unused(userdata);
+
+    Walrus_Window *window = NULL;
+    while (window == NULL) {
+        window = s_engine->window;
+    }
+
+    setup_window();
+
+    while (walrus_rhi_render_frame(-1) != WR_RHI_RENDER_EXITING) {
+        walrus_window_swap_buffers(window);
+    }
+
+    return 0;
 }
 
 Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
@@ -223,8 +266,16 @@ Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
     opt->window_width  = walrus_max(opt->window_width, 1);
     opt->window_height = walrus_max(opt->window_height, 1);
 
-    s_engine->app  = NULL;
-    s_engine->quit = true;
+    s_engine->app    = NULL;
+    s_engine->window = NULL;
+    s_engine->input  = NULL;
+    s_engine->render = NULL;
+    s_engine->quit   = true;
+
+    if (!opt->single_thread) {
+        s_engine->render = walrus_thread_create();
+        walrus_thread_init(s_engine->render, render_thread_fn, NULL, 0);
+    }
 
     Walrus_EngineError error = WR_ENGINE_SUCCESS;
 
@@ -243,6 +294,10 @@ void walrus_engine_shutdown(void)
     walrus_engine_exit();
 
     release_service();
+
+    if (s_engine->render != NULL) {
+        walrus_thread_destroy(s_engine->render);
+    }
 
     walrus_free(s_engine);
     s_engine = NULL;

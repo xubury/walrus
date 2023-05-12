@@ -156,7 +156,7 @@ u64 sortkey_remapview(u64 key_val, u16 *view_map)
     return (key_val & ~SortKeyViewMask) | view;
 }
 
-void frame_init(RenderFrame *frame, u32 max_transient_vb, u32 max_transient_ib)
+void frame_init(RenderFrame *frame, u32 min_resource_cb, u32 max_transient_vb, u32 max_transient_ib)
 {
     Sortkey term;
     sortkey_reset(&term);
@@ -172,11 +172,50 @@ void frame_init(RenderFrame *frame, u32 max_transient_vb, u32 max_transient_ib)
     frame->max_transient_ib = max_transient_ib;
 
     glm_mat4_copy((mat4)GLM_MAT4_IDENTITY_INIT, frame->matrix_cache[0]);
+
+    command_buffer_init(&frame->cmd_pre, min_resource_cb);
+    command_buffer_init(&frame->cmd_post, min_resource_cb);
+
+    frame_reset(frame);
+    frame_start(frame);
 }
 
 void frame_shutdown(RenderFrame *frame)
 {
     uniform_buffer_destroy(frame->uniforms);
+}
+
+void frame_reset(RenderFrame *frame)
+{
+    frame_start(frame);
+    frame_finish(frame);
+}
+
+bool free_handle_queue_internal(Walrus_Handle *queue, u32 *num, Walrus_Handle x)
+{
+    for (u32 i = 0; i < *num; ++i) {
+        if (queue[i] == x) {
+            return false;
+        }
+    }
+    queue[*num] = x;
+    ++*num;
+    return true;
+}
+
+static void free_handle_reset(u32 *num)
+{
+    *num = 0;
+}
+
+void frame_reset_all_free_handles(RenderFrame *frame)
+{
+    free_handle_reset(&frame->queue_buffer.num);
+    free_handle_reset(&frame->queue_layout.num);
+    free_handle_reset(&frame->queue_texture.num);
+    free_handle_reset(&frame->queue_shader.num);
+    free_handle_reset(&frame->queue_program.num);
+    free_handle_reset(&frame->queue_uniform.num);
 }
 
 void frame_start(RenderFrame *frame)
@@ -185,11 +224,15 @@ void frame_start(RenderFrame *frame)
     frame->num_matrices     = 1;
     frame->vbo_offset       = 0;
     frame->ibo_offset       = 0;
+    command_buffer_start(&frame->cmd_pre);
+    command_buffer_start(&frame->cmd_post);
     uniform_buffer_start(frame->uniforms, 0);
 }
 
 void frame_finish(RenderFrame *frame)
 {
+    command_buffer_finish(&frame->cmd_pre);
+    command_buffer_finish(&frame->cmd_post);
     uniform_buffer_finish(frame->uniforms);
 }
 

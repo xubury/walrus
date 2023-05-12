@@ -2,6 +2,7 @@
 
 #include <rhi/rhi.h>
 #include <core/hash.h>
+#include <core/semaphore.h>
 
 #include "frame.h"
 #include "uniform_buffer.h"
@@ -25,7 +26,7 @@ typedef void (*RhiCreateBufferFn)(Walrus_BufferHandle handle, void const *data, 
 typedef void (*RhiDestroyBufferFn)(Walrus_BufferHandle handle);
 typedef void (*RhiUpdateBufferFn)(Walrus_BufferHandle handle, u64 offset, u64 size, void const *data);
 
-typedef void (*RhiCreateTextureFn)(Walrus_TextureHandle handle, Walrus_TextureCreateInfo const *info);
+typedef void (*RhiCreateTextureFn)(Walrus_TextureHandle handle, Walrus_TextureCreateInfo const *info, void const *data);
 typedef void (*RhiDestroyTextureFn)(Walrus_TextureHandle handle);
 typedef void (*RhiResizeTextureFn)(Walrus_TextureHandle handle, u32 width, u32 height, u32 depth, u8 num_layers,
                                    u8 num_mipmaps);
@@ -54,7 +55,7 @@ typedef struct {
     RhiCreateTextureFn  texture_create_fn;
     RhiDestroyTextureFn texture_destroy_fn;
     RhiResizeTextureFn  texture_resize_fn;
-} RhiVTable;
+} RhiRenderer;
 
 typedef struct {
     char              *name;
@@ -64,6 +65,7 @@ typedef struct {
 } UniformRef;
 
 typedef struct {
+    u32 hash;
     u32 ref_count;
 } VertexLayoutRef;
 
@@ -82,15 +84,24 @@ typedef struct {
 } TextureRef;
 
 typedef struct {
-    Walrus_RhiFlag flags;
+    bool initialized;
+    bool exit;
+
+    Walrus_RhiCreateInfo info;
+
+    Walrus_Semaphore *api_sem;
+    Walrus_Semaphore *render_sem;
+
+    Resolution resolution;
 
     RenderDraw    draw;
     RenderCompute compute;
     RenderBind    bind;
 
     Sortkey      key;
-    RenderFrame  frames;
+    RenderFrame  frames[2];
     RenderFrame *submit_frame;
+    RenderFrame *render_frame;
 
     RenderView views[WR_RHI_MAX_VIEWS];
     u32        seqs[WR_RHI_MAX_VIEWS];
@@ -143,6 +154,6 @@ u8 get_predefined_type(char const *name);
 
 char const *get_glsl_header(void);
 
-void gl_backend_init(RhiContext *ctx, RhiVTable *vtable);
+void gl_backend_init(RhiContext *ctx, RhiRenderer *vtable);
 
 void gl_backend_shutdown(void);

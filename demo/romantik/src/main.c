@@ -49,20 +49,13 @@ Walrus_AppError on_init(Walrus_App *app)
 
 int main(void)
 {
-    Walrus_EngineOption opt;
-    opt.window_title  = "romantik";
-    opt.window_width  = 1440;
-    opt.window_height = 900;
-    opt.window_flags  = WR_WINDOW_FLAG_VSYNC | WR_WINDOW_FLAG_OPENGL;
-    opt.minfps        = 30.f;
-
     Walrus_App *app = walrus_app_create(walrus_malloc(sizeof(Romantik_GameState)));
     walrus_app_set_init(app, on_init);
     walrus_app_set_tick(app, on_tick);
     walrus_app_set_render(app, on_render);
     walrus_app_set_event(app, on_event);
 
-    walrus_engine_init_run(&opt, app);
+    walrus_engine_init_run("romantik", 1440, 900, app);
 
     return 0;
 }

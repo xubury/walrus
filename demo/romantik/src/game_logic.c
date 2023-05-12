@@ -1,6 +1,7 @@
 #include "game_logic.h"
 #include "hex.h"
 
+#include <core/assert.h>
 #include <core/log.h>
 #include <core/math.h>
 

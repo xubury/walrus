@@ -1,5 +1,6 @@
 add_library(
   walrus_rhi STATIC
+  command_buffer.c
   frame.c
   rhi.c
   gl_context.c

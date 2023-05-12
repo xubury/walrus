@@ -5,7 +5,7 @@
 
 #include <cglm/types.h>
 
-Walrus_RhiError walrus_rhi_init(Walrus_RhiFlag flags);
+Walrus_RhiError walrus_rhi_init(Walrus_RhiCreateInfo* info);
 void            walrus_rhi_shutdown(void);
 
 char const* walrus_rhi_error_msg(void);
@@ -13,6 +13,8 @@ char const* walrus_rhi_error_msg(void);
 void walrus_rhi_set_resolution(u32 width, u32 height);
 
 void walrus_rhi_frame(void);
+
+Walrus_RenderResult walrus_rhi_render_frame(i32 ms);
 
 void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u32 depth, u8 flags);
 
@@ -64,11 +66,11 @@ void walrus_rhi_set_index_buffer(Walrus_BufferHandle handle, u32 offset, u32 num
 void walrus_rhi_set_index32_buffer(Walrus_BufferHandle handle, u32 offset, u32 num_indices);
 void walrus_rhi_set_transient_index_buffer(Walrus_TransientBuffer* buffer, u32 offset, u32 num_indices);
 
-Walrus_TextureHandle walrus_rhi_create_texture(Walrus_TextureCreateInfo const* info);
+Walrus_TextureHandle walrus_rhi_create_texture(Walrus_TextureCreateInfo const* info, void const* data);
 Walrus_TextureHandle walrus_rhi_create_texture2d(u32 width, u32 height, Walrus_PixelFormat format, u8 mipmaps,
-                                                 u64 flags, void const* data, u64 size);
+                                                 u64 flags, void const* data);
 Walrus_TextureHandle walrus_rhi_create_texture2d_ratio(Walrus_BackBufferRatio ratio, Walrus_PixelFormat format,
-                                                       u8 mipmaps, u64 flags, void const* data, u64 size);
+                                                       u8 mipmaps, u64 flags, void const* data);
 void                 walrus_rhi_destroy_texture(Walrus_TextureHandle handle);
 
 void walrus_rhi_set_texture(u8 unit, Walrus_TextureHandle texture);

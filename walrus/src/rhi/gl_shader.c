@@ -212,7 +212,7 @@ void gl_program_create(Walrus_ProgramHandle handle, Walrus_ShaderHandle *shaders
                     prog->buffer = uniform_buffer_create(1024);
                 }
                 Walrus_UniformHandle uni_handle;
-                uni_handle.id = walrus_ptr_to_u32(walrus_hash_table_lookup(g_ctx->uniform_registry, name));
+                uni_handle.id = walrus_ptr_to_val(walrus_hash_table_lookup(g_ctx->uniform_registry, name));
                 uniform_buffer_write_uniform_handle(prog->buffer, type, loc, uni_handle, num);
             }
             else {

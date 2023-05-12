@@ -275,7 +275,7 @@ static void gl_uniform_create(Walrus_UniformHandle handle, const char *name, u32
 {
     g_ctx->uniforms[handle.id]      = walrus_malloc0(size);
     g_ctx->uniform_names[handle.id] = walrus_str_dup(name);
-    walrus_hash_table_insert(g_ctx->uniform_registry, g_ctx->uniform_names[handle.id], walrus_u32_to_ptr(handle.id));
+    walrus_hash_table_insert(g_ctx->uniform_registry, g_ctx->uniform_names[handle.id], walrus_to_ptr(handle.id));
 }
 
 static void gl_uniform_destroy(Walrus_UniformHandle handle)
@@ -710,7 +710,7 @@ static void submit(RenderFrame *frame)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-static void init_api(RhiVTable *vtable)
+static void init_api(RhiRenderer *vtable)
 {
     vtable->submit_fn = submit;
 
@@ -737,7 +737,7 @@ static void init_api(RhiVTable *vtable)
     vtable->texture_resize_fn  = gl_texture_resize;
 }
 
-void gl_backend_init(RhiContext *rhi, RhiVTable *vtable)
+void gl_backend_init(RhiContext *rhi, RhiRenderer *vtable)
 {
     init_ctx(rhi);
     init_api(vtable);
