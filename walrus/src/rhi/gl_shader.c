@@ -99,7 +99,8 @@ void gl_shader_create(Walrus_ShaderType type, Walrus_ShaderHandle handle, char c
         char *log     = (char *)walrus_malloc(log_size);
         log[log_size] = 0;
         glGetShaderInfoLog(shader, log_size, NULL, log);
-        walrus_error("Shader compile error: %s", log);
+        walrus_trace(source);
+        walrus_assert_msg(succ, "Shader compile error: %s", log);
         walrus_free(log);
     }
     g_ctx->shaders[handle.id] = shader;

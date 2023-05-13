@@ -361,10 +361,14 @@ static void render_exec_command(CommandBuffer* buffer)
                 command_buffer_read(buffer, Walrus_ShaderHandle, &handle);
                 Walrus_ShaderType type;
                 command_buffer_read(buffer, Walrus_ShaderType, &type);
-                char const* source;
-                command_buffer_read(buffer, char const*, &source);
+                char* source;
+                command_buffer_read(buffer, char*, &source);
 
                 s_renderer->shader_create_fn(type, handle, source);
+
+                if (source) {
+                    walrus_free(source);
+                }
             } break;
             case COMMAND_DESTROY_SHADER: {
                 Walrus_ShaderHandle handle;
@@ -897,6 +901,7 @@ static void shader_dec_ref(Walrus_ShaderHandle handle)
         walrus_str_free(s_ctx->shader_refs[handle.id].source);
     }
 }
+
 Walrus_ShaderHandle walrus_rhi_create_shader(Walrus_ShaderType type, char const* source)
 {
     Walrus_ShaderHandle handle;
@@ -915,7 +920,8 @@ Walrus_ShaderHandle walrus_rhi_create_shader(Walrus_ShaderType type, char const*
         CommandBuffer* cmdbuf = get_command_buffer(COMMAND_CREATE_SHADER);
         command_buffer_write(cmdbuf, Walrus_ShaderHandle, &handle);
         command_buffer_write(cmdbuf, Walrus_ShaderType, &type);
-        command_buffer_write(cmdbuf, char const*, &source);
+        char* mem = walrus_memdup(source, walrus_str_len(source) + 1);
+        command_buffer_write(cmdbuf, char*, &mem);
 
         ShaderRef* ref = &s_ctx->shader_refs[handle.id];
         ref->ref_count = 1;
