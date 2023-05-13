@@ -79,6 +79,73 @@
      WR_RHI_CLEAR_DISCARD_COLOR_3 | WR_RHI_CLEAR_DISCARD_COLOR_4 | WR_RHI_CLEAR_DISCARD_COLOR_5 |     \
      WR_RHI_CLEAR_DISCARD_COLOR_6 | WR_RHI_CLEAR_DISCARD_COLOR_7)
 
+/**
+ * Set stencil ref value.
+ *
+ */
+#define WR_RHI_STENCIL_FUNC_REF_SHIFT 0
+
+#define WR_RHI_STENCIL_FUNC_REF_MASK UINT32_C(0x000000ff)
+#define WR_RHI_STENCIL_FUNC_REF(v)   (((uint32_t)(v) << WR_RHI_STENCIL_FUNC_REF_SHIFT) & WR_RHI_STENCIL_FUNC_REF_MASK)
+
+/**
+ * Set stencil rmask value.
+ *
+ */
+#define WR_RHI_STENCIL_FUNC_RMASK_SHIFT 8
+
+#define WR_RHI_STENCIL_FUNC_RMASK_MASK UINT32_C(0x0000ff00)
+#define WR_RHI_STENCIL_FUNC_RMASK(v) \
+    (((uint32_t)(v) << WR_RHI_STENCIL_FUNC_RMASK_SHIFT) & WR_RHI_STENCIL_FUNC_RMASK_MASK)
+
+#define WR_RHI_STENCIL_NONE    UINT32_C(0x00000000)
+#define WR_RHI_STENCIL_MASK    UINT32_C(0xffffffff)
+#define WR_RHI_STENCIL_DEFAULT UINT32_C(0x00000000)
+
+#define WR_RHI_STENCIL_TEST_LESS     UINT32_C(0x00010000)  //!< Enable stencil test, less.
+#define WR_RHI_STENCIL_TEST_LEQUAL   UINT32_C(0x00020000)  //!< Enable stencil test, less or equal.
+#define WR_RHI_STENCIL_TEST_EQUAL    UINT32_C(0x00030000)  //!< Enable stencil test, equal.
+#define WR_RHI_STENCIL_TEST_GEQUAL   UINT32_C(0x00040000)  //!< Enable stencil test, greater or equal.
+#define WR_RHI_STENCIL_TEST_GREATER  UINT32_C(0x00050000)  //!< Enable stencil test, greater.
+#define WR_RHI_STENCIL_TEST_NOTEQUAL UINT32_C(0x00060000)  //!< Enable stencil test, not equal.
+#define WR_RHI_STENCIL_TEST_NEVER    UINT32_C(0x00070000)  //!< Enable stencil test, never.
+#define WR_RHI_STENCIL_TEST_ALWAYS   UINT32_C(0x00080000)  //!< Enable stencil test, always.
+#define WR_RHI_STENCIL_TEST_SHIFT    16                    //!< Stencil test bit shift
+#define WR_RHI_STENCIL_TEST_MASK     UINT32_C(0x000f0000)  //!< Stencil test bit mask
+
+#define WR_RHI_STENCIL_OP_FAIL_S_ZERO    UINT32_C(0x00000000)  //!< Zero.
+#define WR_RHI_STENCIL_OP_FAIL_S_KEEP    UINT32_C(0x00100000)  //!< Keep.
+#define WR_RHI_STENCIL_OP_FAIL_S_REPLACE UINT32_C(0x00200000)  //!< Replace.
+#define WR_RHI_STENCIL_OP_FAIL_S_INCR    UINT32_C(0x00300000)  //!< Increment and wrap.
+#define WR_RHI_STENCIL_OP_FAIL_S_INCRSAT UINT32_C(0x00400000)  //!< Increment and clamp.
+#define WR_RHI_STENCIL_OP_FAIL_S_DECR    UINT32_C(0x00500000)  //!< Decrement and wrap.
+#define WR_RHI_STENCIL_OP_FAIL_S_DECRSAT UINT32_C(0x00600000)  //!< Decrement and clamp.
+#define WR_RHI_STENCIL_OP_FAIL_S_INVERT  UINT32_C(0x00700000)  //!< Invert.
+#define WR_RHI_STENCIL_OP_FAIL_S_SHIFT   20                    //!< Stencil operation fail bit shift
+#define WR_RHI_STENCIL_OP_FAIL_S_MASK    UINT32_C(0x00f00000)  //!< Stencil operation fail bit mask
+
+#define WR_RHI_STENCIL_OP_FAIL_Z_ZERO    UINT32_C(0x00000000)  //!< Zero.
+#define WR_RHI_STENCIL_OP_FAIL_Z_KEEP    UINT32_C(0x01000000)  //!< Keep.
+#define WR_RHI_STENCIL_OP_FAIL_Z_REPLACE UINT32_C(0x02000000)  //!< Replace.
+#define WR_RHI_STENCIL_OP_FAIL_Z_INCR    UINT32_C(0x03000000)  //!< Increment and wrap.
+#define WR_RHI_STENCIL_OP_FAIL_Z_INCRSAT UINT32_C(0x04000000)  //!< Increment and clamp.
+#define WR_RHI_STENCIL_OP_FAIL_Z_DECR    UINT32_C(0x05000000)  //!< Decrement and wrap.
+#define WR_RHI_STENCIL_OP_FAIL_Z_DECRSAT UINT32_C(0x06000000)  //!< Decrement and clamp.
+#define WR_RHI_STENCIL_OP_FAIL_Z_INVERT  UINT32_C(0x07000000)  //!< Invert.
+#define WR_RHI_STENCIL_OP_FAIL_Z_SHIFT   24                    //!< Stencil operation depth fail bit shift
+#define WR_RHI_STENCIL_OP_FAIL_Z_MASK    UINT32_C(0x0f000000)  //!< Stencil operation depth fail bit mask
+
+#define WR_RHI_STENCIL_OP_PASS_Z_ZERO    UINT32_C(0x00000000)  //!< Zero.
+#define WR_RHI_STENCIL_OP_PASS_Z_KEEP    UINT32_C(0x10000000)  //!< Keep.
+#define WR_RHI_STENCIL_OP_PASS_Z_REPLACE UINT32_C(0x20000000)  //!< Replace.
+#define WR_RHI_STENCIL_OP_PASS_Z_INCR    UINT32_C(0x30000000)  //!< Increment and wrap.
+#define WR_RHI_STENCIL_OP_PASS_Z_INCRSAT UINT32_C(0x40000000)  //!< Increment and clamp.
+#define WR_RHI_STENCIL_OP_PASS_Z_DECR    UINT32_C(0x50000000)  //!< Decrement and wrap.
+#define WR_RHI_STENCIL_OP_PASS_Z_DECRSAT UINT32_C(0x60000000)  //!< Decrement and clamp.
+#define WR_RHI_STENCIL_OP_PASS_Z_INVERT  UINT32_C(0x70000000)  //!< Invert.
+#define WR_RHI_STENCIL_OP_PASS_Z_SHIFT   28                    //!< Stencil operation depth pass bit shift
+#define WR_RHI_STENCIL_OP_PASS_Z_MASK    UINT32_C(0xf0000000)  //!< Stencil operation depth pass bit mask
+
 #define WR_RHI_STATE_MASK UINT64_C(0xffffffffffffffff)  //!< State bit mask
 /**
  * Color RGB/alpha/depth write. When it's not specified write will be disabled.

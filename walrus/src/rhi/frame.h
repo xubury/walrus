@@ -64,6 +64,7 @@ typedef struct {
     Walrus_BufferHandle instance_buffer;
     Walrus_LayoutHandle instance_layout;
 
+    u64 stencil;
     u64 state_flags;
     u32 blend_factor;
 

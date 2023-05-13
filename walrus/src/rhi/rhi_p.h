@@ -157,3 +157,13 @@ char const *get_glsl_header(void);
 void gl_backend_init(RhiContext *ctx, RhiRenderer *vtable);
 
 void gl_backend_shutdown(void);
+
+WR_INLINE u64 pack_stencil(u64 fstencil, u64 bstencil)
+{
+    return (fstencil << 32) | bstencil;
+}
+
+WR_INLINE u32 unpack_stencil(bool zero, u64 pack)
+{
+    return pack >> (zero ? 0 : 32);
+}

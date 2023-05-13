@@ -108,6 +108,28 @@ static GLenum const s_cmp_func[] = {
     GL_ALWAYS,    // TEST_ALWAYS
 };
 
+static GLenum const s_cmpfunc[] = {
+    0,            // ignored
+    GL_LESS,      // TEST_LESS
+    GL_LEQUAL,    // TEST_LEQUAL
+    GL_EQUAL,     // TEST_EQUAL
+    GL_GEQUAL,    // TEST_GEQUAL
+    GL_GREATER,   // TEST_GREATER
+    GL_NOTEQUAL,  // TEST_NOTEQUAL
+    GL_NEVER,     // TEST_NEVER
+    GL_ALWAYS,    // TEST_ALWAYS
+};
+
+static GLenum const s_stencilface[] = {
+    GL_FRONT_AND_BACK,
+    GL_FRONT,
+    GL_BACK,
+};
+
+static GLenum const s_stencilop[] = {
+    GL_ZERO, GL_KEEP, GL_REPLACE, GL_INCR_WRAP, GL_INCR, GL_DECR_WRAP, GL_DECR, GL_INVERT,
+};
+
 static GLenum const s_primitives[] = {GL_TRIANGLES, GL_TRIANGLE_STRIP, GL_LINES};
 
 static u64 s_vao_current_enabled = 0;
@@ -370,7 +392,9 @@ static void submit(RenderFrame *frame)
 
     RenderDraw current_state;
     draw_clear(&current_state, WR_RHI_DISCARD_ALL);
-    u32 blend_factor = 0;
+    current_state.state_flags = WR_RHI_STATE_NONE;
+    current_state.stencil     = pack_stencil(WR_RHI_STENCIL_NONE, WR_RHI_STENCIL_NONE);
+    u32 blend_factor          = 0;
 
     RenderBind current_bind;
     bind_clear(&current_bind, WR_RHI_DISCARD_ALL);
@@ -419,6 +443,12 @@ static void submit(RenderFrame *frame)
             if (clear_flags != 0) {
                 glClear(clear_flags);
             }
+
+            glDisable(GL_STENCIL_TEST);
+            glDisable(GL_DEPTH_TEST);
+            glDepthFunc(GL_LESS);
+            glDisable(GL_CULL_FACE);
+            glDisable(GL_BLEND);
         }
 
         bool const program_changed = current_prog.id != sortkey.program.id;
@@ -431,10 +461,17 @@ static void submit(RenderFrame *frame)
         current_state.state_flags = new_flags;
         bool const reset_state    = view_changed;
 
+        const uint64_t new_stencil     = draw->stencil;
+        uint64_t       changed_stencil = current_state.stencil ^ draw->stencil;
+        current_state.stencil          = new_stencil;
+
         if (reset_state) {
             draw_clear(&current_state, WR_RHI_DISCARD_ALL);
             changed_flags             = WR_RHI_STATE_MASK;
+            changed_stencil           = pack_stencil(WR_RHI_STENCIL_MASK, WR_RHI_STENCIL_MASK);
             current_state.state_flags = new_flags;
+            current_state.stencil     = new_stencil;
+            bind_clear(&current_bind, WR_RHI_DISCARD_ALL);
         }
         if (!viewrect_equal(&current_state.scissor, &draw->scissor)) {
             current_state.scissor = draw->scissor;
@@ -500,6 +537,41 @@ static void submit(RenderFrame *frame)
                 }
             }
         }
+
+        if (changed_stencil != 0) {
+            if (new_stencil != 0) {
+                glEnable(GL_STENCIL_TEST);
+
+                uint32_t fstencil     = unpack_stencil(0, new_stencil);
+                uint32_t bstencil     = unpack_stencil(1, new_stencil);
+                uint8_t  frontAndBack = bstencil != WR_RHI_STENCIL_NONE && bstencil != fstencil;
+
+                for (uint8_t i = 0; i < frontAndBack + 1; ++i) {
+                    uint32_t stencil = unpack_stencil(i, new_stencil);
+                    uint32_t changed = unpack_stencil(i, changed_stencil);
+                    GLenum   face    = s_stencilface[i];
+                    if ((WR_RHI_STENCIL_TEST_MASK | WR_RHI_STENCIL_FUNC_REF_MASK | WR_RHI_STENCIL_FUNC_RMASK_MASK) &
+                        changed) {
+                        uint32_t ref  = (stencil & WR_RHI_STENCIL_FUNC_REF_MASK) >> WR_RHI_STENCIL_FUNC_REF_SHIFT;
+                        uint32_t mask = (stencil & WR_RHI_STENCIL_FUNC_RMASK_MASK) >> WR_RHI_STENCIL_FUNC_RMASK_SHIFT;
+                        uint32_t func = (stencil & WR_RHI_STENCIL_TEST_MASK) >> WR_RHI_STENCIL_TEST_SHIFT;
+                        glStencilFuncSeparate(face, s_cmpfunc[func], ref, mask);
+                    }
+                    if ((WR_RHI_STENCIL_OP_FAIL_S_MASK | WR_RHI_STENCIL_OP_FAIL_Z_MASK |
+                         WR_RHI_STENCIL_OP_PASS_Z_MASK) &
+                        changed) {
+                        uint32_t sfail = (stencil & WR_RHI_STENCIL_OP_FAIL_S_MASK) >> WR_RHI_STENCIL_OP_FAIL_S_SHIFT;
+                        uint32_t zfail = (stencil & WR_RHI_STENCIL_OP_FAIL_Z_MASK) >> WR_RHI_STENCIL_OP_FAIL_Z_SHIFT;
+                        uint32_t zpass = (stencil & WR_RHI_STENCIL_OP_PASS_Z_MASK) >> WR_RHI_STENCIL_OP_PASS_Z_SHIFT;
+                        glStencilOpSeparate(face, s_stencilop[sfail], s_stencilop[zfail], s_stencilop[zpass]);
+                    }
+                }
+            }
+            else {
+                glDisable(GL_STENCIL_TEST);
+            }
+        }
+
         if (WR_RHI_STATE_DRAW_MASK & changed_flags) {
             primitive = s_primitives[((new_flags & WR_RHI_STATE_DRAW_MASK) >> WR_RHI_STATE_DRAW_SHIFT)];
         }

@@ -782,6 +782,11 @@ void walrus_rhi_set_state(u64 state, u32 rgba)
     s_ctx->draw.blend_factor = rgba;
 }
 
+void walrus_rhi_set_stencil(u32 fstencil, u32 bstencil)
+{
+    s_ctx->draw.stencil = pack_stencil(fstencil, bstencil);
+}
+
 void walrus_rhi_set_view_rect(u16 view_id, i32 x, i32 y, u32 width, u32 height)
 {
     width            = walrus_max(width, 1);
