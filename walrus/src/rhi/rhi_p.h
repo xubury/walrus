@@ -145,8 +145,8 @@ typedef struct {
     u16 loc;
 } PredefinedUniform;
 
-#define WR_RHI_ALLOC_FAIL_STR    "Rhi fail to allocate memory"
-#define WR_RHI_GL_ALLOC_FAIL_STR "Rhi opengl context fail to allocate memory"
+#define WR_RHI_ALLOC_FAIL_STR    "Rhi fail to allocate context"
+#define WR_RHI_GL_ALLOC_FAIL_STR "Rhi fail to alloacte opengl renderer"
 
 void renderer_uniform_updates(UniformBuffer *uniform, u32 begin, u32 end);
 

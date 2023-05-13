@@ -271,6 +271,7 @@ static void render_exec_command(CommandBuffer* buffer)
 
                 renderer_create(&info);
                 s_ctx->initialized = s_renderer != NULL;
+                s_ctx->err         = WR_RHI_SUCCESS;
                 if (!s_ctx->initialized) {
                     command_buffer_read(buffer, Command, &cmd);
                     walrus_assert_msg(cmd == COMMAND_END, "Unexpected command!");
@@ -536,10 +537,6 @@ static void shutdown_resources(void)
 Walrus_RhiError walrus_rhi_init(Walrus_RhiCreateInfo* info)
 {
     s_ctx = walrus_malloc(sizeof(RhiContext));
-
-    if (s_ctx == NULL) {
-        return WR_RHI_ALLOC_ERROR;
-    }
 
     s_ctx->info         = *info;
     s_ctx->exit         = false;

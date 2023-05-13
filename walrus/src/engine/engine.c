@@ -226,13 +226,19 @@ Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height,
     Walrus_EngineError err = walrus_engine_init(&opt);
 
     if (err == WR_ENGINE_SUCCESS) {
-        return walrus_engine_run(app);
+        Walrus_AppError err = walrus_engine_run(app);
+
+        walrus_engine_shutdown();
+
+        return err;
     }
     else {
         walrus_error("%s", walrus_engine_error_msg(err));
-    }
 
-    return WR_APP_NO_ENGINE;
+        walrus_engine_shutdown();
+
+        return WR_APP_NO_ENGINE;
+    }
 }
 
 static i32 render_thread_fn(Walrus_Thread *thread, void *userdata)
@@ -257,8 +263,9 @@ static i32 render_thread_fn(Walrus_Thread *thread, void *userdata)
 Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
 {
     s_engine = walrus_malloc(sizeof(Walrus_Engine));
+
     if (opt != NULL) {
-        memcpy(&s_engine->opt, opt, sizeof(Walrus_EngineOption));
+        s_engine->opt = *opt;
     }
 
     opt                = &s_engine->opt;
@@ -281,16 +288,15 @@ Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
 
     error = register_service();
 
-    if (error != WR_ENGINE_SUCCESS) {
-        walrus_engine_shutdown();
-    }
-
     return error;
 }
 
 void walrus_engine_shutdown(void)
 {
-    walrus_assert_msg(s_engine != NULL, "Engine should be initialized first");
+    if (s_engine == NULL) {
+        return;
+    }
+
     walrus_engine_exit();
 
     release_service();

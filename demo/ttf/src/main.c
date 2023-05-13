@@ -90,6 +90,5 @@ int main(void)
 
     walrus_engine_init_run("ttf", 1440, 900, app);
 
-    walrus_engine_shutdown();
     return 0;
 }
