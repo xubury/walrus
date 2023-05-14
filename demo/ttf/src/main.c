@@ -7,37 +7,12 @@
 #include <engine/font.h>
 
 typedef struct {
-    Walrus_ProgramHandle shader;
-    Walrus_FontTexture   font;
-    Walrus_UniformHandle u_texture;
+    Walrus_FontTexture font;
 } AppData;
-
-char const *vs_src =
-    "out vec2 v_uv;\n"
-    "const vec2 quad_verts[] = vec2[](vec2(-1.0f, 1.0f), vec2(-1.0f, -1.0f), vec2(1.0f, 1.0f), vec2(1.0f, -1.0f));"
-    "const vec2 uvs[] = vec2[](vec2(0.0f, 0.0f), vec2(0.0f, 1.0f), vec2(1.0f, 0.0f), vec2(1.0f, 1.0f));"
-    "void main() { \n"
-    "    gl_Position = vec4(quad_verts[gl_VertexID], 0, 1.0);\n"
-    "    v_uv = uvs[gl_VertexID];\n"
-    "}\n";
-
-char const *fs_src =
-    "out vec4 frag_color;"
-    "in vec2 v_uv;"
-    "uniform sampler2D u_texture;"
-    "void main() { "
-    "    frag_color = texture(u_texture, v_uv);"
-    "}";
 
 Walrus_AppError on_init(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
-
-    data->u_texture = walrus_rhi_create_uniform("u_texture", WR_RHI_UNIFORM_SAMPLER, 1);
-
-    Walrus_ShaderHandle vs = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, vs_src);
-    Walrus_ShaderHandle fs = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
-    data->shader           = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs, fs}, 2, true);
 
     u32 width  = 1440;
     u32 height = 900;
