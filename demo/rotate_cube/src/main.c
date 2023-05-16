@@ -192,14 +192,14 @@ Walrus_AppError on_init(Walrus_App *app)
     // clang-format on
 
     Walrus_VertexLayout layout;
-    walrus_vertex_layout_begin(&layout, 0);
-    walrus_vertex_layout_add(&layout, 3, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_begin(&layout);
+    walrus_vertex_layout_add(&layout, 0, 3, WR_RHI_COMPONENT_FLOAT, false);
     walrus_vertex_layout_end(&layout);
     app_data->layout = walrus_rhi_create_vertex_layout(&layout);
     app_data->layout = walrus_rhi_create_vertex_layout(&layout);
 
-    walrus_vertex_layout_begin(&layout, 1);
-    walrus_vertex_layout_add(&layout, 2, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_begin(&layout);
+    walrus_vertex_layout_add(&layout, 1, 2, WR_RHI_COMPONENT_FLOAT, false);
     walrus_vertex_layout_end(&layout);
     app_data->uv_layout = walrus_rhi_create_vertex_layout(&layout);
 
@@ -224,7 +224,7 @@ Walrus_AppError on_init(Walrus_App *app)
     stbi_set_flip_vertically_on_load(true);
     i32 x, y, c;
     u64 ts  = walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC);
-    u8 *img = stbi_load("imgs/0.png", &x, &y, &c, 4);
+    u8 *img = stbi_load("assets/imgs/0.png", &x, &y, &c, 4);
     walrus_trace("stbi_load time: %llu ms", walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC) - ts);
     if (img != NULL) {
         walrus_trace("load image width: %d height: %d channel: %d", x, y, c);

@@ -8,6 +8,7 @@ typedef u32 (*Walrus_HashFunc)(void const *);
 typedef bool (*Walrus_EqualFunc)(void const *, void const *);
 typedef void (*Walrus_KeyDestroyFunc)(void *);
 typedef void (*Walrus_ValueDestroyFunc)(void *);
+typedef void (*Walrus_ForeachFunc)(void const *, void const *, void *);
 
 Walrus_HashTable *walrus_hash_table_create(Walrus_HashFunc hash, Walrus_EqualFunc equal);
 Walrus_HashTable *walrus_hash_table_create_full(Walrus_HashFunc hash, Walrus_EqualFunc equal,
@@ -27,6 +28,8 @@ bool walrus_hash_table_insert(Walrus_HashTable *table, void *key, void *value);
 // Remove a key value pair from hash table
 bool walrus_hash_table_remove(Walrus_HashTable *table, void *key);
 void walrus_hash_table_remove_all(Walrus_HashTable *table);
+
+void walrus_hash_table_foreach(Walrus_HashTable *table, Walrus_ForeachFunc func, void *userdata);
 
 bool walrus_direct_equal(void const *p1, void const *p2);
 u32  walrus_direct_hash(void const *p);

@@ -19,7 +19,7 @@ void wajs_setup_gl_context(void);
 
 GlContext *g_ctx = NULL;
 
-static GLenum const s_gl_attribute_type[WR_RHI_ATTR_COUNT] = {
+static GLenum const s_gl_attribute_type[WR_RHI_COMPONENT_COUNT] = {
     GL_BYTE,            // Int8
     GL_UNSIGNED_BYTE,   // Uint8
     GL_SHORT,           // Int16
@@ -297,7 +297,7 @@ static void gl_uniform_create(Walrus_UniformHandle handle, const char *name, u32
 {
     g_ctx->uniforms[handle.id]      = walrus_malloc0(size);
     g_ctx->uniform_names[handle.id] = walrus_str_dup(name);
-    walrus_hash_table_insert(g_ctx->uniform_registry, g_ctx->uniform_names[handle.id], walrus_to_ptr(handle.id));
+    walrus_hash_table_insert(g_ctx->uniform_registry, g_ctx->uniform_names[handle.id], walrus_val_to_ptr(handle.id));
 }
 
 static void gl_uniform_destroy(Walrus_UniformHandle handle)
@@ -461,8 +461,8 @@ static void submit(RenderFrame *frame)
         current_state.state_flags = new_flags;
         bool const reset_state    = view_changed;
 
-        const uint64_t new_stencil     = draw->stencil;
-        uint64_t       changed_stencil = current_state.stencil ^ draw->stencil;
+        u64 const new_stencil     = draw->stencil;
+        u64       changed_stencil = current_state.stencil ^ draw->stencil;
         current_state.stencil          = new_stencil;
 
         if (reset_state) {
@@ -542,27 +542,27 @@ static void submit(RenderFrame *frame)
             if (new_stencil != 0) {
                 glEnable(GL_STENCIL_TEST);
 
-                uint32_t fstencil     = unpack_stencil(0, new_stencil);
-                uint32_t bstencil     = unpack_stencil(1, new_stencil);
-                uint8_t  frontAndBack = bstencil != WR_RHI_STENCIL_NONE && bstencil != fstencil;
+                u32 fstencil     = unpack_stencil(0, new_stencil);
+                u32 bstencil     = unpack_stencil(1, new_stencil);
+                u8  frontAndBack = bstencil != WR_RHI_STENCIL_NONE && bstencil != fstencil;
 
-                for (uint8_t i = 0; i < frontAndBack + 1; ++i) {
-                    uint32_t stencil = unpack_stencil(i, new_stencil);
-                    uint32_t changed = unpack_stencil(i, changed_stencil);
+                for (u8 i = 0; i < frontAndBack + 1; ++i) {
+                    u32 stencil = unpack_stencil(i, new_stencil);
+                    u32 changed = unpack_stencil(i, changed_stencil);
                     GLenum   face    = s_stencilface[i];
                     if ((WR_RHI_STENCIL_TEST_MASK | WR_RHI_STENCIL_FUNC_REF_MASK | WR_RHI_STENCIL_FUNC_RMASK_MASK) &
                         changed) {
-                        uint32_t ref  = (stencil & WR_RHI_STENCIL_FUNC_REF_MASK) >> WR_RHI_STENCIL_FUNC_REF_SHIFT;
-                        uint32_t mask = (stencil & WR_RHI_STENCIL_FUNC_RMASK_MASK) >> WR_RHI_STENCIL_FUNC_RMASK_SHIFT;
-                        uint32_t func = (stencil & WR_RHI_STENCIL_TEST_MASK) >> WR_RHI_STENCIL_TEST_SHIFT;
+                        u32 ref  = (stencil & WR_RHI_STENCIL_FUNC_REF_MASK) >> WR_RHI_STENCIL_FUNC_REF_SHIFT;
+                        u32 mask = (stencil & WR_RHI_STENCIL_FUNC_RMASK_MASK) >> WR_RHI_STENCIL_FUNC_RMASK_SHIFT;
+                        u32 func = (stencil & WR_RHI_STENCIL_TEST_MASK) >> WR_RHI_STENCIL_TEST_SHIFT;
                         glStencilFuncSeparate(face, s_cmpfunc[func], ref, mask);
                     }
                     if ((WR_RHI_STENCIL_OP_FAIL_S_MASK | WR_RHI_STENCIL_OP_FAIL_Z_MASK |
                          WR_RHI_STENCIL_OP_PASS_Z_MASK) &
                         changed) {
-                        uint32_t sfail = (stencil & WR_RHI_STENCIL_OP_FAIL_S_MASK) >> WR_RHI_STENCIL_OP_FAIL_S_SHIFT;
-                        uint32_t zfail = (stencil & WR_RHI_STENCIL_OP_FAIL_Z_MASK) >> WR_RHI_STENCIL_OP_FAIL_Z_SHIFT;
-                        uint32_t zpass = (stencil & WR_RHI_STENCIL_OP_PASS_Z_MASK) >> WR_RHI_STENCIL_OP_PASS_Z_SHIFT;
+                        u32 sfail = (stencil & WR_RHI_STENCIL_OP_FAIL_S_MASK) >> WR_RHI_STENCIL_OP_FAIL_S_SHIFT;
+                        u32 zfail = (stencil & WR_RHI_STENCIL_OP_FAIL_Z_MASK) >> WR_RHI_STENCIL_OP_FAIL_Z_SHIFT;
+                        u32 zpass = (stencil & WR_RHI_STENCIL_OP_PASS_Z_MASK) >> WR_RHI_STENCIL_OP_PASS_Z_SHIFT;
                         glStencilOpSeparate(face, s_stencilop[sfail], s_stencilop[zfail], s_stencilop[zpass]);
                     }
                 }
@@ -671,13 +671,13 @@ static void submit(RenderFrame *frame)
                     }
 
                     if (stream->handle.id != WR_INVALID_HANDLE) {
-                        GlBuffer const vb = g_ctx->buffers[stream->handle.id];
+                        GlBuffer const *vb = &g_ctx->buffers[stream->handle.id];
 
                         Walrus_LayoutHandle const layout_handle = stream->layout_handle;
                         if (layout_handle.id != WR_INVALID_HANDLE) {
                             Walrus_VertexLayout const *layout = &g_ctx->vertex_layouts[layout_handle.id];
 
-                            num_vertices = walrus_min(num_vertices, vb.size / layout->stride);
+                            num_vertices = walrus_min(num_vertices, vb->size / layout->stride);
                         }
                     }
                 }
@@ -686,8 +686,8 @@ static void submit(RenderFrame *frame)
                 draw->instance_buffer.id != WR_INVALID_HANDLE && draw->instance_layout.id != WR_INVALID_HANDLE;
             if (instance_valid && num_instances == UINT32_MAX) {
                 Walrus_VertexLayout const *layout          = &g_ctx->vertex_layouts[draw->instance_layout.id];
-                GlBuffer const             instance_buffer = g_ctx->buffers[draw->instance_buffer.id];
-                num_instances = walrus_min(num_instances, instance_buffer.size / layout->stride);
+                GlBuffer const            *instance_buffer = &g_ctx->buffers[draw->instance_buffer.id];
+                num_instances = walrus_min(num_instances, instance_buffer->size / layout->stride);
             }
             if (bind_attributes && draw->stream_mask != UINT16_MAX) {
                 for (u8 i = 0; i < WR_RHI_MAX_VERTEX_ATTRIBUTES; ++i) {
@@ -700,14 +700,14 @@ static void submit(RenderFrame *frame)
                     id += ntz;
                     VertexStream const *stream = &draw->streams[id];
                     if (stream->handle.id != WR_INVALID_HANDLE) {
-                        GlBuffer const vb = g_ctx->buffers[stream->handle.id];
+                        GlBuffer const *vb = &g_ctx->buffers[stream->handle.id];
 
                         Walrus_LayoutHandle const layout_handle = stream->layout_handle;
                         if (layout_handle.id != WR_INVALID_HANDLE) {
-                            glBindBuffer(GL_ARRAY_BUFFER, vb.id);
+                            glBindBuffer(GL_ARRAY_BUFFER, vb->id);
                             Walrus_VertexLayout const *layout = &g_ctx->vertex_layouts[layout_handle.id];
                             for (u8 i = 0; i < layout->num_attributes; ++i) {
-                                Walrus_Attribute type;
+                                Walrus_LayoutComponent type;
                                 u8               attr_id;
                                 u8               num;
                                 bool             normalized;
@@ -729,12 +729,12 @@ static void submit(RenderFrame *frame)
                     }
                 }
                 if (instance_valid) {
-                    GlBuffer const instance_buffer = g_ctx->buffers[draw->instance_buffer.id];
-                    glBindBuffer(GL_ARRAY_BUFFER, instance_buffer.id);
+                    GlBuffer const *instance_buffer = &g_ctx->buffers[draw->instance_buffer.id];
+                    glBindBuffer(GL_ARRAY_BUFFER, instance_buffer->id);
 
                     Walrus_VertexLayout const *layout = &g_ctx->vertex_layouts[draw->instance_layout.id];
                     for (u8 i = 0; i < layout->num_attributes; ++i) {
-                        Walrus_Attribute type;
+                        Walrus_LayoutComponent type;
                         u8               attr_id;
                         u8               num;
                         bool             normalized;

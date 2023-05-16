@@ -67,7 +67,7 @@ static inline u32 hash_table_hash_to_index(Walrus_HashTable* table, u32 hash_val
 
 static inline void* hash_table_fetch(void* p, u32 id, bool is_big)
 {
-    return is_big ? *((void**)(p) + id) : walrus_to_ptr(*((u32*)(p) + id));
+    return is_big ? *((void**)(p) + id) : walrus_val_to_ptr(*((u32*)(p) + id));
 }
 
 static inline void hash_table_assign(void* a, u32 index, bool is_big, void* v)
@@ -88,7 +88,7 @@ static inline void* hash_table_evict(void* a, u32 index, bool is_big, void* v)
         return r;
     }
     else {
-        void* r            = walrus_to_ptr(*((u32*)a + index));
+        void* r            = walrus_val_to_ptr(*((u32*)a + index));
         *((u32*)a + index) = walrus_ptr_to_val(v);
         return r;
     }
@@ -211,7 +211,7 @@ static inline bool hash_table_maybe_make_big(void** a_p, void* v, u32 size)
         a_new = walrus_malloc(sizeof(void*) * size);
 
         for (u32 i = 0; i < size; i++) {
-            a_new[i] = walrus_to_ptr(a[i]);
+            a_new[i] = walrus_val_to_ptr(a[i]);
         }
 
         walrus_free(a);
@@ -695,6 +695,19 @@ void walrus_hash_table_remove_all(Walrus_HashTable* table)
 {
     hash_table_remove_all_nodes(table, true, false);
     hash_table_maybe_resize(table);
+}
+
+void walrus_hash_table_foreach(Walrus_HashTable* table, Walrus_ForeachFunc func, void* userdata)
+{
+    for (u32 i = 0; i < table->size; ++i) {
+        u32   node_hash   = table->hashes[i];
+        void* node_key    = hash_table_fetch(table->keys, i, table->has_big_keys);
+        void* node_values = hash_table_fetch(table->values, i, table->has_big_keys);
+
+        if (HASH_IS_REAL(node_hash)) {
+            func(node_key, node_values, userdata);
+        }
+    }
 }
 
 bool walrus_direct_equal(void const* p1, void const* p2)

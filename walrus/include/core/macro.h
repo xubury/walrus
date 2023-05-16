@@ -13,7 +13,7 @@
 
 #define walrus_ptr_to_val(x) (u64)(x)
 
-#define walrus_to_ptr(x) (void*)(u64)(x)
+#define walrus_val_to_ptr(x) (void*)(u64)(x)
 
 #if WR_COMPILER == WR_COMPILER_VC
 #define WR_INLINE __forceinline

@@ -325,7 +325,7 @@ void draw_clear(RenderDraw *draw, u8 flags)
     }
     if (flags & WR_RHI_DISCARD_TRANSFORM) {
         draw->start_matrix = 0;
-        draw->num_matrices = 0;
+        draw->num_matrices = 1;
     }
     if (flags & WR_RHI_DISCARD_VERTEX_STREAMS) {
         draw->num_vertices                = UINT32_MAX;

@@ -1,6 +1,62 @@
 #include <core/sort.h>
+#include <core/memory.h>
 
 #include <string.h>
+void swap_byte(u8* a, u8* b)
+{
+    u8 tmp = *a;
+    *a     = *b;
+    *b     = tmp;
+}
+
+void swap(void* a, void* b, u64 num_bytes)
+{
+    u8*       lhs = (u8*)a;
+    u8*       rhs = (u8*)b;
+    u8 const* end = rhs + num_bytes;
+    while (rhs != end) {
+        swap_byte(lhs++, rhs++);
+    }
+}
+
+static void quick_sort(void* pivot, void* ptr, u32 num, u32 stride, const ComparisonFn fn)
+{
+    if (2 > num) {
+        return;
+    }
+
+    memcpy(pivot, ptr, stride);
+
+    u8* data = (u8*)ptr;
+
+    u32 ll = 0;
+    u32 gg = 1;
+
+    for (u32 ii = 1; ii < num;) {
+        i32 result = fn(&data[ii * stride], pivot);
+        if (result < 0) {
+            swap(&data[ll * stride], &data[ii * stride], stride);
+            ++ll;
+        }
+        else if (result == 0) {
+            swap(&data[gg * stride], &data[ii * stride], stride);
+            ++gg;
+            ++ii;
+        }
+        else {
+            ++ii;
+        }
+    }
+
+    quick_sort(pivot, &data[0], ll, stride, fn);
+    quick_sort(pivot, &data[gg * stride], num - gg, stride, fn);
+}
+
+void walrus_quick_sort(void* data, u32 num, u32 stride, const ComparisonFn fn)
+{
+    u8* pivot = (u8*)walrus_alloca(stride);
+    quick_sort(pivot, data, num, stride, fn);
+}
 
 #define RADIX_SORT_BITS           (11)
 #define RADIX_SORT_HISTOGRAM_SIZE (1 << RADIX_SORT_BITS)
@@ -21,7 +77,7 @@ void walrus_radix_sort(u32* keys, u32* temp_keys, void* values, void* temp_value
 
         bool sorted = true;
         {
-            u32 key     = _keys[0];
+            u32 key      = _keys[0];
             u32 prev_key = key;
             for (u32 ii = 0; ii < size; ++ii, prev_key = key) {
                 key       = _keys[ii];
@@ -115,12 +171,12 @@ void walrus_radix_sort64(u64* keys, u64* temp_keys, void* values, void* temp_val
         }
 
         u64* swap_keys = _temp_keys;
-        _temp_keys    = _keys;
-        _keys         = swap_keys;
+        _temp_keys     = _keys;
+        _keys          = swap_keys;
 
         void* swap_values = _temp_values;
-        _temp_values     = _values;
-        _values          = swap_values;
+        _temp_values      = _values;
+        _values           = swap_values;
 
         shift += RADIX_SORT_BITS;
     }

@@ -121,16 +121,16 @@ void renderer_init(Romantik_GameState *state)
     state->index_buffer = walrus_rhi_create_buffer(indices, sizeof(indices), WR_RHI_BUFFER_INDEX);
 
     Walrus_VertexLayout layout;
-    walrus_vertex_layout_begin(&layout, 0);
-    walrus_vertex_layout_add(&layout, 3, WR_RHI_ATTR_FLOAT, false);
-    walrus_vertex_layout_add(&layout, 2, WR_RHI_ATTR_FLOAT, false);
+    walrus_vertex_layout_begin(&layout);
+    walrus_vertex_layout_add(&layout, 0, 3, WR_RHI_COMPONENT_FLOAT, false);
+    walrus_vertex_layout_add(&layout, 1, 2, WR_RHI_COMPONENT_FLOAT, false);
     walrus_vertex_layout_end(&layout);
     state->layout = walrus_rhi_create_vertex_layout(&layout);
 
-    walrus_vertex_layout_begin_instance(&layout, 1, 2);
-    walrus_vertex_layout_add(&layout, 3, WR_RHI_ATTR_FLOAT, false);
-    walrus_vertex_layout_add(&layout, 1, WR_RHI_ATTR_FLOAT, false);
-    walrus_vertex_layout_add(&layout, 1, WR_RHI_ATTR_MAT4, false);
+    walrus_vertex_layout_begin_instance(&layout, 1);
+    walrus_vertex_layout_add(&layout, 2, 3, WR_RHI_COMPONENT_FLOAT, false);
+    walrus_vertex_layout_add(&layout, 3, 1, WR_RHI_COMPONENT_FLOAT, false);
+    walrus_vertex_layout_add(&layout, 4, 1, WR_RHI_COMPONENT_MAT4, false);
     walrus_vertex_layout_end(&layout);
     state->ins_layout = walrus_rhi_create_vertex_layout(&layout);
 
@@ -168,7 +168,7 @@ void renderer_init(Romantik_GameState *state)
     for (u8 i = 0; i < num_layers; ++i) {
         i32  x, y, c;
         char path[255];
-        snprintf(path, 255, "imgs/%d.png", i);
+        snprintf(path, 255, "assets/imgs/%d.png", i);
         u8 *img = stbi_load(path, &x, &y, &c, 4);
         if (img == NULL) {
             walrus_error("fail to load image: %s", stbi_failure_reason());
