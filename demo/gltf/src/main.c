@@ -84,9 +84,10 @@ char const *fs_src =
     "out vec4 fragcolor;"
     "in vec3 v_normal;"
     "void main() {"
-    "vec3 light_dir = normalize(vec3(0, 1, -1));"
-    "float diff = max(dot(normalize(v_normal), light_dir), 0.0);"
-    "fragcolor = vec4(diff * vec3(1), 1);}";
+    " vec3 light_dir = normalize(vec3(0, 1, -1));"
+    " float diff = max(dot(normalize(v_normal), light_dir), 0.0);"
+    " fragcolor = vec4(diff * vec3(1), 1);"
+    "}";
 
 static void layout_hash_init(void const *key, void const *value, void *userdata)
 {
@@ -98,8 +99,52 @@ static void layout_hash_init(void const *key, void const *value, void *userdata)
     stream->layout_handle = walrus_rhi_create_vertex_layout(&stream->layout);
 }
 
-static void model_reset(Walrus_Model *model)
+#define resource_new(type, count) count > 0 ? walrus_new(type, count) : NULL;
+
+static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
 {
+    // allocate resource
+    model->num_buffers = gltf->buffers_count;
+    model->buffers     = resource_new(Walrus_BufferHandle, model->num_buffers);
+
+    model->num_meshes = gltf->meshes_count;
+    model->meshes     = resource_new(Walrus_Mesh, model->num_meshes);
+
+    for (u32 i = 0; i < model->num_meshes; ++i) {
+        cgltf_mesh *mesh                = &gltf->meshes[i];
+        model->meshes[i].num_primitives = mesh->primitives_count;
+        model->meshes[i].primitives     = resource_new(Walrus_MeshPrimitive, mesh->primitives_count);
+    }
+
+#if 0 
+    model->num_images   = gltf->images_count;
+    model->images       = resource_new(Walrus_Image, model->num_images);
+    model->num_textures = gltf->textures_count;
+    model->textures     = resource_new(Walrus_TextureHandle, model->num_textures);
+#else
+    model->num_images   = 0;
+    model->images       = NULL;
+    model->num_textures = 0;
+    model->textures     = NULL;
+#endif
+}
+
+static void model_deallocate(Walrus_Model *model)
+{
+    for (u32 i = 0; i < model->num_meshes; ++i) {
+        Walrus_Mesh *mesh = &model->meshes[i];
+
+        walrus_free(mesh->primitives);
+        mesh->num_primitives = 0;
+        mesh->primitives     = NULL;
+    }
+
+    walrus_free(model->buffers);
+    walrus_free(model->meshes);
+
+    walrus_free(model->images);
+    walrus_free(model->textures);
+
     model->buffers     = NULL;
     model->num_buffers = 0;
 
@@ -120,10 +165,6 @@ static void mesh_shutdown(Walrus_Mesh *mesh)
             walrus_rhi_destroy_vertex_layout(mesh->primitives[i].streams[j].layout_handle);
         }
     }
-    walrus_free(mesh->primitives);
-
-    mesh->num_primitives = 0;
-    mesh->primitives     = NULL;
 }
 
 static void model_shutdown(Walrus_Model *model)
@@ -131,27 +172,21 @@ static void model_shutdown(Walrus_Model *model)
     for (u32 i = 0; i < model->num_buffers; ++i) {
         walrus_rhi_destroy_buffer(model->buffers[i]);
     }
-    walrus_free(model->buffers);
 
     for (u32 i = 0; i < model->num_meshes; ++i) {
         mesh_shutdown(&model->meshes[i]);
     }
-    walrus_free(model->meshes);
 
     for (u32 i = 0; i < model->num_images; ++i) {
         stbi_image_free(model->images[i].data);
     }
-    walrus_free(model->images);
 
     for (u32 i = 0; i < model->num_textures; ++i) {
         walrus_rhi_destroy_texture(model->textures[i]);
     }
-    walrus_free(model->textures);
 
-    model_reset(model);
+    model_deallocate(model);
 }
-
-#define resource_new(type, count) count > 0 ? walrus_new(type, count) : NULL;
 
 static void model_init(Walrus_Model *model, char const *filename)
 {
@@ -167,10 +202,10 @@ static void model_init(Walrus_Model *model, char const *filename)
         walrus_error("fail to load buffers");
     }
 
+    model_allocate(model, gltf);
+
     // init buffers
     Walrus_HashTable *buffer_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
-    model->num_buffers           = gltf->buffers_count;
-    model->buffers               = resource_new(Walrus_BufferHandle, model->num_buffers);
     for (u32 i = 0; i < model->num_buffers; ++i) {
         model->buffers[i] = walrus_rhi_create_buffer(gltf->buffers[i].data, gltf->buffers[i].size, 0);
         walrus_hash_table_insert(buffer_map, &gltf->buffers[i], walrus_val_to_ptr(model->buffers[i].id));
@@ -178,8 +213,6 @@ static void model_init(Walrus_Model *model, char const *filename)
 
 #if 0
     Walrus_HashTable *image_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
-    model->num_images           = gltf->images_count;
-    model->images               = resource_new(Walrus_Image, model->num_images);
     for (u32 i = 0; i < model->num_images; ++i) {
         cgltf_image *image = &gltf->images[i];
         char         path[255];
@@ -199,8 +232,6 @@ static void model_init(Walrus_Model *model, char const *filename)
         walrus_hash_table_insert(image_map, image, &model->images[i]);
     }
 
-    model->num_textures = gltf->textures_count;
-    model->textures     = resource_new(Walrus_TextureHandle, model->num_textures);
     for (u32 i = 0; i < model->num_textures; ++i) {
         cgltf_texture *texture = &gltf->textures[i];
         walrus_assert(walrus_hash_table_contains(image_map, texture->image));
@@ -217,16 +248,7 @@ static void model_init(Walrus_Model *model, char const *filename)
     model->num_images = 0;
 
     walrus_hash_table_destroy(image_map);
-#else
-    model->num_images   = 0;
-    model->images       = NULL;
-    model->num_textures = 0;
-    model->textures     = NULL;
 #endif
-
-    // init mesh
-    model->num_meshes = gltf->meshes_count;
-    model->meshes     = resource_new(Walrus_Mesh, model->num_meshes);
 
     Walrus_LayoutComponent components[cgltf_component_type_max_enum] = {
         WR_RHI_COMPONENT_COUNT,  WR_RHI_COMPONENT_INT8,  WR_RHI_COMPONENT_UINT8, WR_RHI_COMPONENT_INT16,
@@ -234,9 +256,7 @@ static void model_init(Walrus_Model *model, char const *filename)
     u32 component_num[cgltf_type_max_enum] = {0, 1, 2, 3, 4, 4, 1, 1};
 
     for (u32 i = 0; i < gltf->meshes_count; ++i) {
-        cgltf_mesh *mesh                = &gltf->meshes[i];
-        model->meshes[i].num_primitives = mesh->primitives_count;
-        model->meshes[i].primitives     = resource_new(Walrus_MeshPrimitive, mesh->primitives_count);
+        cgltf_mesh *mesh = &gltf->meshes[i];
         for (u32 j = 0; j < mesh->primitives_count; ++j) {
             cgltf_primitive *prim = &mesh->primitives[j];
 
@@ -308,8 +328,6 @@ static void model_init(Walrus_Model *model, char const *filename)
 
     walrus_hash_table_destroy(buffer_map);
 
-    walrus_rhi_frame();
-
     cgltf_free(gltf);
 }
 
@@ -334,16 +352,17 @@ Walrus_AppError on_init(Walrus_App *app)
 
     model_init(&data->model, "assets/gltf/shibahu/scene.gltf");
 
+    walrus_rhi_frame();
+
     return WR_APP_SUCCESS;
 }
 
-void on_render(Walrus_App *app)
+static void model_submit(Walrus_Model *model, Walrus_ProgramHandle shader, mat4 world)
 {
-    AppData *data = walrus_app_userdata(app);
+    walrus_rhi_set_transform(world);
 
-    walrus_rhi_set_transform(data->world);
-    for (u32 i = 0; i < data->model.num_meshes; ++i) {
-        Walrus_Mesh *mesh = &data->model.meshes[i];
+    for (u32 i = 0; i < model->num_meshes; ++i) {
+        Walrus_Mesh *mesh = &model->meshes[i];
         for (u32 j = 0; j < mesh->num_primitives; ++j) {
             Walrus_MeshPrimitive *prim = &mesh->primitives[j];
             if (prim->indices.index32) {
@@ -357,9 +376,21 @@ void on_render(Walrus_App *app)
                 walrus_rhi_set_vertex_buffer(k, stream->buffer, stream->layout_handle, stream->offset,
                                              stream->num_vertices);
             }
-            walrus_rhi_submit(0, data->shader, 0, ~WR_RHI_DISCARD_TRANSFORM);
+            if (i == model->num_meshes - 1 && j == mesh->num_primitives - 1) {
+                walrus_rhi_submit(0, shader, 0, WR_RHI_DISCARD_ALL);
+            }
+            else {
+                walrus_rhi_submit(0, shader, 0, ~WR_RHI_DISCARD_TRANSFORM);
+            }
         }
     }
+}
+
+void on_render(Walrus_App *app)
+{
+    AppData *data = walrus_app_userdata(app);
+
+    model_submit(&data->model, data->shader, data->world);
 }
 
 void on_tick(Walrus_App *app, f32 dt)
