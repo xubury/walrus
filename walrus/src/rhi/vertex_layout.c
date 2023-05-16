@@ -69,42 +69,48 @@ static u16 encode(u8 attr_id, u8 num, Walrus_LayoutComponent type, bool normaliz
     return encoded_attr | encoded_norm | encoded_type | encoded_num | encoded_asint;
 }
 
-static void vertex_layout_add(Walrus_VertexLayout* layout, u8 attr, u8 num, Walrus_LayoutComponent type,
-                              bool normalized, bool as_int)
+static void vertex_layout_add_internal(Walrus_VertexLayout* layout, u8 attr, u8 num, Walrus_LayoutComponent type,
+                                       u32 offset, u32 stride, bool normalized, bool as_int)
 {
     layout->attributes[layout->num_attributes] = encode(attr, num, type, normalized, as_int);
-    layout->align                              = walrus_max(layout->align, s_component_align[type]);
-    layout->offsets[layout->num_attributes]    = walrus_align_up(layout->stride, s_component_align[type]);
-    layout->stride                             = layout->stride + s_component_stride[type][num - 1];
+    layout->offsets[layout->num_attributes]    = offset;
+    layout->stride                             = stride;
     ++layout->num_attributes;
     walrus_assert_msg(layout->num_attributes <= walrus_array_len(layout->attributes),
                       "Number of attributes exceeds limit!");
 }
 
-void walrus_vertex_layout_add(Walrus_VertexLayout* layout, u8 attr, u8 num, Walrus_LayoutComponent type,
-                              bool normalized)
+static void vertex_layout_add(Walrus_VertexLayout* layout, u8 attr, u8 num, Walrus_LayoutComponent type,
+                              bool normalized, bool as_int)
 {
+    layout->align = walrus_max(layout->align, s_component_align[type]);
+    u32 offset    = walrus_align_up(layout->stride, s_component_align[type]);
+    u32 stride    = layout->stride + s_component_stride[type][num - 1];
     if (type == WR_RHI_COMPONENT_MAT4) {
         for (u8 i = 0; i < 4; ++i) {
-            vertex_layout_add(layout, attr + i, 4, type, normalized, false);
+            vertex_layout_add_internal(layout, attr + i, 4, type, offset, stride, normalized, as_int);
         }
     }
     else if (type == WR_RHI_COMPONENT_MAT3) {
         for (u8 i = 0; i < 3; ++i) {
-            vertex_layout_add(layout, attr + i, 3, type, normalized, false);
+            vertex_layout_add_internal(layout, attr + i, 3, type, offset, stride, normalized, as_int);
         }
     }
     else {
-        vertex_layout_add(layout, attr, num, type, normalized, false);
+        vertex_layout_add_internal(layout, attr, num, type, offset, stride, normalized, as_int);
     }
+}
+
+void walrus_vertex_layout_add(Walrus_VertexLayout* layout, u8 attr, u8 num, Walrus_LayoutComponent type,
+                              bool normalized)
+{
+    vertex_layout_add(layout, attr, num, type, normalized, false);
 }
 
 void walrus_vertex_layout_add_override(Walrus_VertexLayout* layout, u8 attr, u8 num, Walrus_LayoutComponent type,
                                        bool normalized, u32 offset, u32 stride)
 {
-    walrus_vertex_layout_add(layout, attr, num, type, normalized);
-    layout->offsets[layout->num_attributes - 1] = offset;
-    layout->stride                              = stride;
+    vertex_layout_add_internal(layout, attr, num, type, offset, stride, normalized, false);
 }
 
 void walrus_vertex_layout_add_int(Walrus_VertexLayout* layout, u8 attr, u8 num, Walrus_LayoutComponent type)
