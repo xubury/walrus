@@ -3,7 +3,7 @@
 #include <core/macro.h>
 #include <core/log.h>
 #include <core/hash.h>
-#include <core/sort.h>
+#include <core/math.h>
 #include <core/assert.h>
 #include <rhi/rhi.h>
 
@@ -11,6 +11,9 @@
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 typedef struct {
     Walrus_BufferHandle buffer;
@@ -28,7 +31,7 @@ typedef struct {
 } Walrus_MeshIndices;
 
 typedef struct {
-    Walrus_PrimitiveStream streams[8];
+    Walrus_PrimitiveStream streams[WR_RHI_MAX_VERTEX_STREAM];
     u32                    num_streams;
 
     Walrus_MeshIndices indices;
@@ -40,8 +43,20 @@ typedef struct {
 } Walrus_Mesh;
 
 typedef struct {
+    u32   width;
+    u32   height;
+    void *data;
+} Walrus_Image;
+
+typedef struct {
     Walrus_BufferHandle *buffers;
     u32                  num_buffers;
+
+    Walrus_Image *images;
+    u32           num_images;
+
+    Walrus_TextureHandle *textures;
+    u32                   num_textures;
 
     Walrus_Mesh *meshes;
     u32          num_meshes;
@@ -50,7 +65,6 @@ typedef struct {
 typedef struct {
     Walrus_Model         model;
     Walrus_ProgramHandle shader;
-    cgltf_data          *gltf;
     mat4                 world;
 } AppData;
 
@@ -60,12 +74,19 @@ char const *vs_src =
     "uniform mat4 u_viewproj;"
     "uniform mat4 u_model;"
     "out vec3 v_normal;"
-    "void main() { gl_Position = u_viewproj * u_model * vec4(a_pos, 1); v_normal = a_normal;}";
+    "void main() {"
+    " gl_Position = u_viewproj * u_model * vec4(a_pos, 1);"
+    " mat3 nmat = transpose(inverse(mat3(u_model))); "
+    " v_normal = nmat * a_normal;"
+    "}";
 
 char const *fs_src =
     "out vec4 fragcolor;"
     "in vec3 v_normal;"
-    "void main() { fragcolor = vec4(v_normal, 1);}";
+    "void main() {"
+    "vec3 light_dir = normalize(vec3(0, 1, -1));"
+    "float diff = max(dot(normalize(v_normal), light_dir), 0.0);"
+    "fragcolor = vec4(diff * vec3(1), 1);}";
 
 static void layout_hash_init(void const *key, void const *value, void *userdata)
 {
@@ -75,6 +96,221 @@ static void layout_hash_init(void const *key, void const *value, void *userdata)
     Walrus_PrimitiveStream *stream = (Walrus_PrimitiveStream *)value;
     walrus_vertex_layout_end(&stream->layout);
     stream->layout_handle = walrus_rhi_create_vertex_layout(&stream->layout);
+}
+
+static void model_reset(Walrus_Model *model)
+{
+    model->buffers     = NULL;
+    model->num_buffers = 0;
+
+    model->images     = NULL;
+    model->num_images = 0;
+
+    model->textures     = NULL;
+    model->num_textures = 0;
+
+    model->meshes     = NULL;
+    model->num_meshes = 0;
+}
+
+static void mesh_shutdown(Walrus_Mesh *mesh)
+{
+    for (u32 i = 0; i < mesh->num_primitives; ++i) {
+        for (u32 j = 0; j < mesh->primitives[i].num_streams; ++j) {
+            walrus_rhi_destroy_vertex_layout(mesh->primitives[i].streams[j].layout_handle);
+        }
+    }
+    walrus_free(mesh->primitives);
+
+    mesh->num_primitives = 0;
+    mesh->primitives     = NULL;
+}
+
+static void model_shutdown(Walrus_Model *model)
+{
+    for (u32 i = 0; i < model->num_buffers; ++i) {
+        walrus_rhi_destroy_buffer(model->buffers[i]);
+    }
+    walrus_free(model->buffers);
+
+    for (u32 i = 0; i < model->num_meshes; ++i) {
+        mesh_shutdown(&model->meshes[i]);
+    }
+    walrus_free(model->meshes);
+
+    for (u32 i = 0; i < model->num_images; ++i) {
+        stbi_image_free(model->images[i].data);
+    }
+    walrus_free(model->images);
+
+    for (u32 i = 0; i < model->num_textures; ++i) {
+        walrus_rhi_destroy_texture(model->textures[i]);
+    }
+    walrus_free(model->textures);
+
+    model_reset(model);
+}
+
+#define resource_new(type, count) count > 0 ? walrus_new(type, count) : NULL;
+
+static void model_init(Walrus_Model *model, char const *filename)
+{
+    cgltf_options opt    = {0};
+    cgltf_data   *gltf   = NULL;
+    cgltf_result  result = cgltf_parse_file(&opt, filename, &gltf);
+    if (result != cgltf_result_success) {
+        walrus_error("fail to load gltf");
+    }
+
+    result = cgltf_load_buffers(&opt, gltf, filename);
+    if (result != cgltf_result_success) {
+        walrus_error("fail to load buffers");
+    }
+
+    // init buffers
+    Walrus_HashTable *buffer_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
+    model->num_buffers           = gltf->buffers_count;
+    model->buffers               = resource_new(Walrus_BufferHandle, model->num_buffers);
+    for (u32 i = 0; i < model->num_buffers; ++i) {
+        model->buffers[i] = walrus_rhi_create_buffer(gltf->buffers[i].data, gltf->buffers[i].size, 0);
+        walrus_hash_table_insert(buffer_map, &gltf->buffers[i], walrus_val_to_ptr(model->buffers[i].id));
+    }
+
+#if 0
+    Walrus_HashTable *image_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
+    model->num_images           = gltf->images_count;
+    model->images               = resource_new(Walrus_Image, model->num_images);
+    for (u32 i = 0; i < model->num_images; ++i) {
+        cgltf_image *image = &gltf->images[i];
+        char         path[255];
+        snprintf(path, 255, "%s/%s", "assets/gltf/shibahu", image->uri);
+        walrus_trace("loading image: %s", path);
+
+        i32 width, height;
+        model->images[i].data = stbi_load(path, &width, &height, NULL, 4);
+        if (model->images[i].data) {
+            model->images[i].width  = width;
+            model->images[i].height = height;
+        }
+        else {
+            walrus_error("fail to load image: %s", stbi_failure_reason());
+        }
+
+        walrus_hash_table_insert(image_map, image, &model->images[i]);
+    }
+
+    model->num_textures = gltf->textures_count;
+    model->textures     = resource_new(Walrus_TextureHandle, model->num_textures);
+    for (u32 i = 0; i < model->num_textures; ++i) {
+        cgltf_texture *texture = &gltf->textures[i];
+        walrus_assert(walrus_hash_table_contains(image_map, texture->image));
+        Walrus_Image *image = walrus_hash_table_lookup(image_map, texture->image);
+        model->textures[i]  = walrus_rhi_create_texture2d(image->width, image->height, WR_RHI_FORMAT_RGBA8, 0,
+                                                          WR_RHI_SAMPLER_LINEAR, image->data);
+    }
+
+    for (u32 i = 0; i < model->num_images; ++i) {
+        stbi_image_free(model->images[i].data);
+    }
+    walrus_free(model->images);
+    model->images     = NULL;
+    model->num_images = 0;
+
+    walrus_hash_table_destroy(image_map);
+#else
+    model->num_images   = 0;
+    model->images       = NULL;
+    model->num_textures = 0;
+    model->textures     = NULL;
+#endif
+
+    // init mesh
+    model->num_meshes = gltf->meshes_count;
+    model->meshes     = resource_new(Walrus_Mesh, model->num_meshes);
+
+    Walrus_LayoutComponent components[cgltf_component_type_max_enum] = {
+        WR_RHI_COMPONENT_COUNT,  WR_RHI_COMPONENT_INT8,  WR_RHI_COMPONENT_UINT8, WR_RHI_COMPONENT_INT16,
+        WR_RHI_COMPONENT_UINT16, WR_RHI_COMPONENT_INT32, WR_RHI_COMPONENT_FLOAT};
+    u32 component_num[cgltf_type_max_enum] = {0, 1, 2, 3, 4, 4, 1, 1};
+
+    for (u32 i = 0; i < gltf->meshes_count; ++i) {
+        cgltf_mesh *mesh                = &gltf->meshes[i];
+        model->meshes[i].num_primitives = mesh->primitives_count;
+        model->meshes[i].primitives     = resource_new(Walrus_MeshPrimitive, mesh->primitives_count);
+        for (u32 j = 0; j < mesh->primitives_count; ++j) {
+            cgltf_primitive *prim = &mesh->primitives[j];
+
+            // init indices
+            cgltf_accessor *indices = prim->indices;
+            if (indices) {
+                walrus_assert(walrus_hash_table_contains(buffer_map, indices->buffer_view->buffer));
+                model->meshes[i].primitives[j].indices.buffer.id =
+                    walrus_ptr_to_val(walrus_hash_table_lookup(buffer_map, indices->buffer_view->buffer));
+                model->meshes[i].primitives[j].indices.index32 = indices->component_type == cgltf_component_type_r_32u;
+                model->meshes[i].primitives[j].indices.offset  = indices->offset + indices->buffer_view->offset;
+                model->meshes[i].primitives[j].indices.num_indices = indices->count;
+            }
+            else {
+                model->meshes[i].primitives[j].indices.buffer.id = WR_INVALID_HANDLE;
+            }
+
+            model->meshes[i].primitives[j].num_streams = 0;
+
+            Walrus_HashTable *layout_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
+
+            for (u32 k = 0; k < prim->attributes_count; ++k) {
+                cgltf_attribute     *attribute   = &prim->attributes[k];
+                cgltf_accessor      *accessor    = attribute->data;
+                cgltf_buffer_view   *buffer_view = accessor->buffer_view;
+                Walrus_VertexLayout *layout      = NULL;
+                void                *layout_key  = buffer_view;
+                if (walrus_hash_table_contains(layout_map, layout_key)) {
+                    Walrus_PrimitiveStream *stream =
+                        (Walrus_PrimitiveStream *)walrus_hash_table_lookup(layout_map, layout_key);
+                    walrus_assert_msg(stream->num_vertices == accessor->count, "mismatch number of vertices %d, %d",
+                                      stream->num_vertices, accessor->count);
+                    layout = &stream->layout;
+                }
+                else {
+                    u32                     id     = model->meshes[i].primitives[j].num_streams;
+                    Walrus_PrimitiveStream *stream = &model->meshes[i].primitives[j].streams[id];
+                    layout                         = &stream->layout;
+                    stream->offset                 = buffer_view->offset;
+                    walrus_assert(walrus_hash_table_contains(buffer_map, buffer_view->buffer));
+                    stream->buffer.id    = walrus_ptr_to_val(walrus_hash_table_lookup(buffer_map, buffer_view->buffer));
+                    stream->num_vertices = accessor->count;
+                    model->meshes[i].primitives[j].num_streams =
+                        walrus_min(model->meshes[i].primitives[j].num_streams + 1,
+                                   walrus_array_len(model->meshes[i].primitives[j].streams));
+                    walrus_hash_table_insert(layout_map, layout_key, stream);
+                    walrus_vertex_layout_begin(layout);
+                }
+                if (accessor->type == cgltf_type_mat4) {
+                    walrus_vertex_layout_add_override(layout, attribute->type - 1, 1, WR_RHI_COMPONENT_MAT4,
+                                                      accessor->normalized, accessor->offset, accessor->stride);
+                }
+                else if (accessor->type == cgltf_type_mat3) {
+                    walrus_vertex_layout_add_override(layout, attribute->type - 1, 1, WR_RHI_COMPONENT_MAT3,
+                                                      accessor->normalized, accessor->offset, accessor->stride);
+                }
+                else {
+                    walrus_vertex_layout_add_override(layout, attribute->type - 1, component_num[accessor->type],
+                                                      components[accessor->component_type], accessor->normalized,
+                                                      accessor->offset, accessor->stride);
+                }
+            }
+
+            // call end for each layout
+            walrus_hash_table_foreach(layout_map, layout_hash_init, NULL);
+            walrus_hash_table_destroy(layout_map);
+        }
+    }
+
+    walrus_hash_table_destroy(buffer_map);
+
+    walrus_rhi_frame();
+
+    cgltf_free(gltf);
 }
 
 Walrus_AppError on_init(Walrus_App *app)
@@ -92,109 +328,11 @@ Walrus_AppError on_init(Walrus_App *app)
 
     mat4 view;
     mat4 projection;
-    glm_lookat((vec3){0, 0, 35}, (vec3){0, 0, 0}, (vec3){0, 1, 0}, view);
-    glm_perspective(glm_rad(45), 1440.0 / 900.0, 0.1, 100.0, projection);
+    glm_lookat((vec3){0, 100, 135}, (vec3){0, 100, 0}, (vec3){0, 1, 0}, view);
+    glm_perspective(glm_rad(45), 1440.0 / 900.0, 0.1, 1000.0, projection);
     walrus_rhi_set_view_transform(0, view, projection);
 
-    cgltf_options opt    = {0};
-    cgltf_result  result = cgltf_parse_file(&opt, "assets/gltf/EmissiveStrengthTest.gltf", &data->gltf);
-    if (result != cgltf_result_success) {
-        walrus_error("fail to load gltf");
-    }
-
-    result = cgltf_load_buffers(&opt, data->gltf, "assets/gltf/EmissiveStrengthTest.gltf");
-    if (result != cgltf_result_success) {
-        walrus_error("fail to load buffers");
-    }
-    Walrus_HashTable *layout_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
-    Walrus_HashTable *buffer_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
-
-    Walrus_Model *model = &data->model;
-    cgltf_data   *gltf  = data->gltf;
-    model->num_buffers  = gltf->buffers_count;
-    model->buffers      = walrus_new(Walrus_BufferHandle, model->num_buffers);
-    for (u32 i = 0; i < model->num_buffers; ++i) {
-        model->buffers[i] = walrus_rhi_create_buffer(gltf->buffers[i].data, gltf->buffers[i].size, 0);
-        walrus_hash_table_insert(buffer_map, &gltf->buffers[i], walrus_val_to_ptr(model->buffers[i].id));
-    }
-
-    model->num_meshes = gltf->meshes_count;
-    model->meshes     = walrus_new(Walrus_Mesh, model->num_meshes);
-
-    Walrus_LayoutComponent components[cgltf_component_type_max_enum] = {
-        WR_RHI_COMPONENT_COUNT,  WR_RHI_COMPONENT_INT8,  WR_RHI_COMPONENT_UINT8, WR_RHI_COMPONENT_INT16,
-        WR_RHI_COMPONENT_UINT16, WR_RHI_COMPONENT_INT32, WR_RHI_COMPONENT_FLOAT};
-    u32 component_num[cgltf_type_max_enum] = {0, 1, 2, 3, 4, 4, 1, 1};
-
-    for (u32 i = 0; i < gltf->meshes_count; ++i) {
-        cgltf_mesh *mesh                = &gltf->meshes[i];
-        model->meshes[i].num_primitives = mesh->primitives_count;
-        model->meshes[i].primitives     = walrus_new(Walrus_MeshPrimitive, mesh->primitives_count);
-        for (u32 j = 0; j < mesh->primitives_count; ++j) {
-            cgltf_primitive *prim = &mesh->primitives[j];
-
-            model->meshes[i].primitives[j].num_streams = 0;
-
-            // init indices
-            cgltf_accessor *indices = prim->indices;
-            if (indices) {
-                walrus_assert(walrus_hash_table_contains(buffer_map, indices->buffer_view->buffer));
-                model->meshes[i].primitives[j].indices.index32 = indices->component_type == cgltf_component_type_r_32u;
-                model->meshes[i].primitives[j].indices.buffer.id =
-                    walrus_ptr_to_val(walrus_hash_table_lookup(buffer_map, indices->buffer_view->buffer));
-                model->meshes[i].primitives[j].indices.offset      = indices->offset + indices->buffer_view->offset;
-                model->meshes[i].primitives[j].indices.num_indices = indices->count;
-            }
-            else {
-                model->meshes[i].primitives[j].indices.buffer.id = WR_INVALID_HANDLE;
-            }
-
-            for (u32 k = 0; k < prim->attributes_count; ++k) {
-                cgltf_attribute     *attribute   = &prim->attributes[k];
-                cgltf_accessor      *accessor    = attribute->data;
-                cgltf_buffer_view   *buffer_view = accessor->buffer_view;
-                Walrus_VertexLayout *layout      = NULL;
-                if (walrus_hash_table_contains(layout_map, buffer_view)) {
-                    Walrus_PrimitiveStream *stream =
-                        (Walrus_PrimitiveStream *)walrus_hash_table_lookup(layout_map, buffer_view);
-                    walrus_assert(stream->num_vertices == accessor->count);
-                    layout = &stream->layout;
-                }
-                else {
-                    u32                     id     = model->meshes[i].primitives[j].num_streams;
-                    Walrus_PrimitiveStream *stream = &model->meshes[i].primitives[j].streams[id];
-                    layout                         = &stream->layout;
-                    stream->offset                 = buffer_view->offset;
-                    walrus_assert(walrus_hash_table_contains(buffer_map, buffer_view->buffer));
-                    stream->buffer.id    = walrus_ptr_to_val(walrus_hash_table_lookup(buffer_map, buffer_view->buffer));
-                    stream->num_vertices = accessor->count;
-                    ++model->meshes[i].primitives[j].num_streams;
-                    walrus_hash_table_insert(layout_map, buffer_view, stream);
-                    walrus_vertex_layout_begin(layout);
-                }
-                if (accessor->type == cgltf_type_mat4) {
-                    walrus_vertex_layout_add_override(layout, attribute->type - 1, 1, WR_RHI_COMPONENT_MAT4,
-                                                      accessor->normalized, accessor->offset, accessor->stride);
-                }
-                else if (accessor->type == cgltf_type_mat3) {
-                    walrus_assert_msg(false, "unimplemented");
-                }
-                else {
-                    walrus_vertex_layout_add_override(layout, attribute->type - 1, component_num[accessor->type],
-                                                      components[accessor->component_type], accessor->normalized,
-                                                      accessor->offset, accessor->stride);
-                }
-            }
-        }
-    }
-
-    // call end for each layout
-    walrus_hash_table_foreach(layout_map, layout_hash_init, NULL);
-
-    walrus_hash_table_destroy(buffer_map);
-    walrus_hash_table_destroy(layout_map);
-
-    walrus_rhi_frame();
+    model_init(&data->model, "assets/gltf/shibahu/scene.gltf");
 
     return WR_APP_SUCCESS;
 }
@@ -230,12 +368,19 @@ void on_tick(Walrus_App *app, f32 dt)
     glm_rotate(data->world, glm_rad(20.0) * dt, (vec3){0, 1, 0});
 }
 
+void on_shutdown(Walrus_App *app)
+{
+    AppData *data = walrus_app_userdata(app);
+    model_shutdown(&data->model);
+}
+
 int main(void)
 {
     Walrus_App *app = walrus_app_create(walrus_new(AppData, 1));
     walrus_app_set_init(app, on_init);
     walrus_app_set_render(app, on_render);
     walrus_app_set_tick(app, on_tick);
+    walrus_app_set_shutdown(app, on_shutdown);
 
     walrus_engine_init_run("gltf", 1440, 900, app);
 

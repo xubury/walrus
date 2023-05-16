@@ -13,7 +13,9 @@ static u8 s_component_stride[WR_RHI_COMPONENT_COUNT][4] = {
     {4, 8, 12, 16},    // Int32
     {4, 8, 12, 16},    // UInt32
     {4, 8, 12, 16},    // Float
+    {12, 12, 12, 12},  // Vec3
     {16, 16, 16, 16},  // Vec4
+    {12, 12, 12, 12},  // Mat3
     {16, 16, 16, 16},  // Mat4
 };
 
@@ -25,7 +27,9 @@ static u8 s_component_align[WR_RHI_COMPONENT_COUNT] = {
     4,   // Int32
     4,   // UInt32
     4,   // Float
+    4,   // Vec3
     16,  // Vec4
+    4,   // Mat3
     16,  // Mat4
 };
 
@@ -82,7 +86,12 @@ void walrus_vertex_layout_add(Walrus_VertexLayout* layout, u8 attr, u8 num, Walr
 {
     if (type == WR_RHI_COMPONENT_MAT4) {
         for (u8 i = 0; i < 4; ++i) {
-            vertex_layout_add(layout, attr + i, 4, WR_RHI_COMPONENT_VEC4, normalized, false);
+            vertex_layout_add(layout, attr + i, 4, type, normalized, false);
+        }
+    }
+    else if (type == WR_RHI_COMPONENT_MAT3) {
+        for (u8 i = 0; i < 3; ++i) {
+            vertex_layout_add(layout, attr + i, 3, type, normalized, false);
         }
     }
     else {

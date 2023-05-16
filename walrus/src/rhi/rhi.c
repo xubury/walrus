@@ -886,16 +886,19 @@ static void shader_inc_ref(Walrus_ShaderHandle handle)
 
 static void shader_dec_ref(Walrus_ShaderHandle handle)
 {
-    --s_ctx->shader_refs[handle.id].ref_count;
-    if (s_ctx->shader_refs[handle.id].ref_count == 0) {
-        walrus_assert(free_handle_queue(s_ctx->submit_frame->queue_shader, handle));
+    ShaderRef* ref = &s_ctx->shader_refs[handle.id];
+    if (ref->ref_count > 0) {
+        --s_ctx->shader_refs[handle.id].ref_count;
+        if (s_ctx->shader_refs[handle.id].ref_count == 0) {
+            walrus_assert(free_handle_queue(s_ctx->submit_frame->queue_shader, handle));
 
-        CommandBuffer* cmdbuf = get_command_buffer(COMMAND_DESTROY_SHADER);
-        command_buffer_write(cmdbuf, Walrus_ShaderHandle, &handle);
+            CommandBuffer* cmdbuf = get_command_buffer(COMMAND_DESTROY_SHADER);
+            command_buffer_write(cmdbuf, Walrus_ShaderHandle, &handle);
 
-        walrus_hash_table_remove(s_ctx->shader_map, s_ctx->shader_refs[handle.id].source);
+            walrus_hash_table_remove(s_ctx->shader_map, s_ctx->shader_refs[handle.id].source);
 
-        walrus_str_free(s_ctx->shader_refs[handle.id].source);
+            walrus_str_free(s_ctx->shader_refs[handle.id].source);
+        }
     }
 }
 
@@ -1081,12 +1084,15 @@ static Walrus_LayoutHandle find_or_create_vertex_layout(Walrus_VertexLayout cons
     if (walrus_hash_table_contains(s_ctx->vertex_layout_table, walrus_val_to_ptr(layout->hash))) {
         handle.id =
             walrus_ptr_to_val(walrus_hash_table_lookup(s_ctx->vertex_layout_table, walrus_val_to_ptr(layout->hash)));
+        ++s_ctx->vertex_layout_ref[handle.id].ref_count;
+
         return handle;
     }
 
     handle = (Walrus_LayoutHandle){walrus_handle_alloc(s_ctx->vertex_layouts)};
     if (handle.id == WR_INVALID_HANDLE) {
         s_ctx->err = WR_RHI_ALLOC_HADNLE_ERROR;
+
         return handle;
     }
 
@@ -1095,8 +1101,8 @@ static Walrus_LayoutHandle find_or_create_vertex_layout(Walrus_VertexLayout cons
     command_buffer_write(cmdbuf, Walrus_VertexLayout, layout);
 
     walrus_hash_table_insert(s_ctx->vertex_layout_table, walrus_val_to_ptr(layout->hash), walrus_val_to_ptr(handle.id));
-    s_ctx->vertex_layout_ref[handle.id].hash = layout->hash;
-    ++s_ctx->vertex_layout_ref[handle.id].ref_count;
+    s_ctx->vertex_layout_ref[handle.id].hash      = layout->hash;
+    s_ctx->vertex_layout_ref[handle.id].ref_count = 1;
 
     return handle;
 }
@@ -1106,6 +1112,7 @@ Walrus_LayoutHandle walrus_rhi_create_vertex_layout(Walrus_VertexLayout const* l
     Walrus_LayoutHandle handle = find_or_create_vertex_layout(layout);
     if (handle.id == WR_INVALID_HANDLE) {
         s_ctx->err = WR_RHI_ALLOC_HADNLE_ERROR;
+
         return handle;
     }
 
@@ -1114,9 +1121,19 @@ Walrus_LayoutHandle walrus_rhi_create_vertex_layout(Walrus_VertexLayout const* l
 
 void walrus_rhi_destroy_vertex_layout(Walrus_LayoutHandle handle)
 {
+    if (handle.id == WR_INVALID_HANDLE) {
+        return;
+    }
+
+    if (s_ctx->vertex_layout_ref[handle.id].ref_count == 0) {
+        return;
+    }
+
     --s_ctx->vertex_layout_ref[handle.id].ref_count;
     if (s_ctx->vertex_layout_ref[handle.id].ref_count == 0) {
-        walrus_hash_table_remove(s_ctx->vertex_layout_table, walrus_val_to_ptr(s_ctx->vertex_layout_ref[handle.id].hash));
+        walrus_hash_table_remove(s_ctx->vertex_layout_table,
+                                 walrus_val_to_ptr(s_ctx->vertex_layout_ref[handle.id].hash));
+        walrus_assert(free_handle_queue(s_ctx->submit_frame->queue_layout, handle));
 
         CommandBuffer* cmdbuf = get_command_buffer(COMMAND_DESTROY_VERTEX_LAYOUT);
         command_buffer_write(cmdbuf, Walrus_LayoutHandle, &handle);
