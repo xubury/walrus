@@ -17,7 +17,6 @@
 
 typedef struct {
     Walrus_BufferHandle buffer;
-    Walrus_VertexLayout layout;
     Walrus_LayoutHandle layout_handle;
     u32                 offset;
     u32                 num_vertices;
@@ -89,14 +88,19 @@ char const *fs_src =
     " fragcolor = vec4(diff * vec3(1), 1);"
     "}";
 
+typedef struct {
+    Walrus_VertexLayout     layout;
+    Walrus_PrimitiveStream *stream;
+} LayoutValue;
+
 static void layout_hash_init(void const *key, void const *value, void *userdata)
 {
     walrus_unused(key);
     walrus_unused(userdata);
 
-    Walrus_PrimitiveStream *stream = (Walrus_PrimitiveStream *)value;
-    walrus_vertex_layout_end(&stream->layout);
-    stream->layout_handle = walrus_rhi_create_vertex_layout(&stream->layout);
+    LayoutValue *val = (LayoutValue *)value;
+    walrus_vertex_layout_end(&val->layout);
+    val->stream->layout_handle = walrus_rhi_create_vertex_layout(&val->layout);
 }
 
 #define resource_new(type, count) count > 0 ? walrus_new(type, count) : NULL;
@@ -276,7 +280,13 @@ static void model_init(Walrus_Model *model, char const *filename)
 
             model->meshes[i].primitives[j].num_streams = 0;
 
-            Walrus_HashTable *layout_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
+            typedef struct {
+                Walrus_VertexLayout     layout;
+                Walrus_PrimitiveStream *stream;
+            } LayoutValue;
+
+            Walrus_HashTable *layout_map =
+                walrus_hash_table_create_full(walrus_direct_hash, walrus_direct_equal, NULL, walrus_free);
 
             for (u32 k = 0; k < prim->attributes_count; ++k) {
                 cgltf_attribute     *attribute   = &prim->attributes[k];
@@ -285,24 +295,25 @@ static void model_init(Walrus_Model *model, char const *filename)
                 Walrus_VertexLayout *layout      = NULL;
                 void                *layout_key  = buffer_view;
                 if (walrus_hash_table_contains(layout_map, layout_key)) {
-                    Walrus_PrimitiveStream *stream =
-                        (Walrus_PrimitiveStream *)walrus_hash_table_lookup(layout_map, layout_key);
-                    walrus_assert_msg(stream->num_vertices == accessor->count, "mismatch number of vertices %d, %d",
-                                      stream->num_vertices, accessor->count);
-                    layout = &stream->layout;
+                    LayoutValue *val = (LayoutValue *)walrus_hash_table_lookup(layout_map, layout_key);
+                    walrus_assert_msg(val->stream->num_vertices == accessor->count,
+                                      "mismatch number of vertices %d, %d", val->stream->num_vertices, accessor->count);
+                    layout = &val->layout;
                 }
                 else {
-                    u32                     id     = model->meshes[i].primitives[j].num_streams;
-                    Walrus_PrimitiveStream *stream = &model->meshes[i].primitives[j].streams[id];
-                    layout                         = &stream->layout;
-                    stream->offset                 = buffer_view->offset;
+                    u32 const               stream_id = model->meshes[i].primitives[j].num_streams;
+                    Walrus_PrimitiveStream *stream    = &model->meshes[i].primitives[j].streams[stream_id];
+                    LayoutValue            *val       = walrus_new(LayoutValue, 1);
+                    layout                            = &val->layout;
+                    val->stream                       = stream;
+                    stream->offset                    = buffer_view->offset;
                     walrus_assert(walrus_hash_table_contains(buffer_map, buffer_view->buffer));
                     stream->buffer.id    = walrus_ptr_to_val(walrus_hash_table_lookup(buffer_map, buffer_view->buffer));
                     stream->num_vertices = accessor->count;
                     model->meshes[i].primitives[j].num_streams =
                         walrus_min(model->meshes[i].primitives[j].num_streams + 1,
                                    walrus_array_len(model->meshes[i].primitives[j].streams));
-                    walrus_hash_table_insert(layout_map, layout_key, stream);
+                    walrus_hash_table_insert(layout_map, layout_key, val);
                     walrus_vertex_layout_begin(layout);
                 }
                 if (accessor->type == cgltf_type_mat4) {
