@@ -5,6 +5,7 @@
 #include <core/hash.h>
 #include <core/math.h>
 #include <core/assert.h>
+#include <core/string.h>
 #include <rhi/rhi.h>
 
 #include <cglm/cglm.h>
@@ -51,9 +52,6 @@ typedef struct {
     Walrus_BufferHandle *buffers;
     u32                  num_buffers;
 
-    Walrus_Image *images;
-    u32           num_images;
-
     Walrus_TextureHandle *textures;
     u32                   num_textures;
 
@@ -87,22 +85,6 @@ char const *fs_src =
     " float diff = max(dot(normalize(v_normal), light_dir), 0.0);"
     " fragcolor = vec4(diff * vec3(1), 1);"
     "}";
-
-typedef struct {
-    Walrus_VertexLayout     layout;
-    Walrus_PrimitiveStream *stream;
-} LayoutValue;
-
-static void layout_hash_init(void const *key, void const *value, void *userdata)
-{
-    walrus_unused(key);
-    walrus_unused(userdata);
-
-    LayoutValue *val = (LayoutValue *)value;
-    walrus_vertex_layout_end(&val->layout);
-    val->stream->layout_handle = walrus_rhi_create_vertex_layout(&val->layout);
-}
-
 #define resource_new(type, count) count > 0 ? walrus_new(type, count) : NULL;
 
 static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
@@ -121,13 +103,9 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
     }
 
 #if 0 
-    model->num_images   = gltf->images_count;
-    model->images       = resource_new(Walrus_Image, model->num_images);
     model->num_textures = gltf->textures_count;
     model->textures     = resource_new(Walrus_TextureHandle, model->num_textures);
 #else
-    model->num_images   = 0;
-    model->images       = NULL;
     model->num_textures = 0;
     model->textures     = NULL;
 #endif
@@ -146,14 +124,10 @@ static void model_deallocate(Walrus_Model *model)
     walrus_free(model->buffers);
     walrus_free(model->meshes);
 
-    walrus_free(model->images);
     walrus_free(model->textures);
 
     model->buffers     = NULL;
     model->num_buffers = 0;
-
-    model->images     = NULL;
-    model->num_images = 0;
 
     model->textures     = NULL;
     model->num_textures = 0;
@@ -162,98 +136,23 @@ static void model_deallocate(Walrus_Model *model)
     model->num_meshes = 0;
 }
 
-static void mesh_shutdown(Walrus_Mesh *mesh)
+typedef struct {
+    Walrus_VertexLayout     layout;
+    Walrus_PrimitiveStream *stream;
+} LayoutValue;
+
+static void layout_hash_init(void const *key, void const *value, void *userdata)
 {
-    for (u32 i = 0; i < mesh->num_primitives; ++i) {
-        for (u32 j = 0; j < mesh->primitives[i].num_streams; ++j) {
-            walrus_rhi_destroy_vertex_layout(mesh->primitives[i].streams[j].layout_handle);
-        }
-    }
+    walrus_unused(key);
+    walrus_unused(userdata);
+
+    LayoutValue *val = (LayoutValue *)value;
+    walrus_vertex_layout_end(&val->layout);
+    val->stream->layout_handle = walrus_rhi_create_vertex_layout(&val->layout);
 }
 
-static void model_shutdown(Walrus_Model *model)
+static void mesh_init(Walrus_Model *model, cgltf_data *gltf, Walrus_HashTable *buffer_map)
 {
-    for (u32 i = 0; i < model->num_buffers; ++i) {
-        walrus_rhi_destroy_buffer(model->buffers[i]);
-    }
-
-    for (u32 i = 0; i < model->num_meshes; ++i) {
-        mesh_shutdown(&model->meshes[i]);
-    }
-
-    for (u32 i = 0; i < model->num_images; ++i) {
-        stbi_image_free(model->images[i].data);
-    }
-
-    for (u32 i = 0; i < model->num_textures; ++i) {
-        walrus_rhi_destroy_texture(model->textures[i]);
-    }
-
-    model_deallocate(model);
-}
-
-static void model_init(Walrus_Model *model, char const *filename)
-{
-    cgltf_options opt    = {0};
-    cgltf_data   *gltf   = NULL;
-    cgltf_result  result = cgltf_parse_file(&opt, filename, &gltf);
-    if (result != cgltf_result_success) {
-        walrus_error("fail to load gltf");
-    }
-
-    result = cgltf_load_buffers(&opt, gltf, filename);
-    if (result != cgltf_result_success) {
-        walrus_error("fail to load buffers");
-    }
-
-    model_allocate(model, gltf);
-
-    // init buffers
-    Walrus_HashTable *buffer_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
-    for (u32 i = 0; i < model->num_buffers; ++i) {
-        model->buffers[i] = walrus_rhi_create_buffer(gltf->buffers[i].data, gltf->buffers[i].size, 0);
-        walrus_hash_table_insert(buffer_map, &gltf->buffers[i], walrus_val_to_ptr(model->buffers[i].id));
-    }
-
-#if 0
-    Walrus_HashTable *image_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
-    for (u32 i = 0; i < model->num_images; ++i) {
-        cgltf_image *image = &gltf->images[i];
-        char         path[255];
-        snprintf(path, 255, "%s/%s", "assets/gltf/shibahu", image->uri);
-        walrus_trace("loading image: %s", path);
-
-        i32 width, height;
-        model->images[i].data = stbi_load(path, &width, &height, NULL, 4);
-        if (model->images[i].data) {
-            model->images[i].width  = width;
-            model->images[i].height = height;
-        }
-        else {
-            walrus_error("fail to load image: %s", stbi_failure_reason());
-        }
-
-        walrus_hash_table_insert(image_map, image, &model->images[i]);
-    }
-
-    for (u32 i = 0; i < model->num_textures; ++i) {
-        cgltf_texture *texture = &gltf->textures[i];
-        walrus_assert(walrus_hash_table_contains(image_map, texture->image));
-        Walrus_Image *image = walrus_hash_table_lookup(image_map, texture->image);
-        model->textures[i]  = walrus_rhi_create_texture2d(image->width, image->height, WR_RHI_FORMAT_RGBA8, 0,
-                                                          WR_RHI_SAMPLER_LINEAR, image->data);
-    }
-
-    for (u32 i = 0; i < model->num_images; ++i) {
-        stbi_image_free(model->images[i].data);
-    }
-    walrus_free(model->images);
-    model->images     = NULL;
-    model->num_images = 0;
-
-    walrus_hash_table_destroy(image_map);
-#endif
-
     Walrus_LayoutComponent components[cgltf_component_type_max_enum] = {
         WR_RHI_COMPONENT_COUNT,  WR_RHI_COMPONENT_INT8,  WR_RHI_COMPONENT_UINT8, WR_RHI_COMPONENT_INT16,
         WR_RHI_COMPONENT_UINT16, WR_RHI_COMPONENT_INT32, WR_RHI_COMPONENT_FLOAT};
@@ -279,11 +178,6 @@ static void model_init(Walrus_Model *model, char const *filename)
             }
 
             model->meshes[i].primitives[j].num_streams = 0;
-
-            typedef struct {
-                Walrus_VertexLayout     layout;
-                Walrus_PrimitiveStream *stream;
-            } LayoutValue;
 
             Walrus_HashTable *layout_map =
                 walrus_hash_table_create_full(walrus_direct_hash, walrus_direct_equal, NULL, walrus_free);
@@ -336,8 +230,116 @@ static void model_init(Walrus_Model *model, char const *filename)
             walrus_hash_table_destroy(layout_map);
         }
     }
+}
+
+static void mesh_shutdown(Walrus_Model *model)
+{
+    for (u32 i = 0; i < model->num_meshes; ++i) {
+        Walrus_Mesh *mesh = &model->meshes[i];
+        for (u32 j = 0; j < mesh->num_primitives; ++j) {
+            for (u32 k = 0; k < mesh->primitives[j].num_streams; ++k) {
+                walrus_rhi_destroy_vertex_layout(mesh->primitives[j].streams[k].layout_handle);
+            }
+        }
+    }
+}
+
+static void textures_init(Walrus_Model *model, cgltf_data *gltf, char const *filename)
+{
+    Walrus_HashTable *image_map  = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
+    u32 const         num_images = gltf->images_count;
+    Walrus_Image     *images     = walrus_alloca(sizeof(Walrus_Image) * num_images);
+
+    char *parent_path = walrus_str_substr(filename, 0, strrchr(filename, '/') - filename);
+
+    for (u32 i = 0; i < num_images; ++i) {
+        cgltf_image *image = &gltf->images[i];
+        char         path[255];
+        snprintf(path, 255, "%s/%s", parent_path, image->uri);
+        walrus_trace("loading image: %s", path);
+
+        i32 width, height;
+        images[i].data = stbi_load(path, &width, &height, NULL, 4);
+        if (images[i].data) {
+            images[i].width  = width;
+            images[i].height = height;
+        }
+        else {
+            images[i].width  = 0;
+            images[i].height = 0;
+            walrus_error("fail to load image: %s", stbi_failure_reason());
+        }
+
+        walrus_hash_table_insert(image_map, image, &images[i]);
+    }
+
+    walrus_str_free(parent_path);
+
+    for (u32 i = 0; i < model->num_textures; ++i) {
+        cgltf_texture *texture = &gltf->textures[i];
+        walrus_assert(walrus_hash_table_contains(image_map, texture->image));
+        Walrus_Image *image = walrus_hash_table_lookup(image_map, texture->image);
+        model->textures[i]  = walrus_rhi_create_texture2d(image->width, image->height, WR_RHI_FORMAT_RGBA8, 0,
+                                                          WR_RHI_SAMPLER_LINEAR, image->data);
+    }
+
+    for (u32 i = 0; i < num_images; ++i) {
+        stbi_image_free(images[i].data);
+    }
+
+    walrus_hash_table_destroy(image_map);
+}
+
+static void model_init(Walrus_Model *model, cgltf_data *gltf, char const *filename)
+{
+    model_allocate(model, gltf);
+
+    // init buffers
+    Walrus_HashTable *buffer_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
+    for (u32 i = 0; i < model->num_buffers; ++i) {
+        model->buffers[i] = walrus_rhi_create_buffer(gltf->buffers[i].data, gltf->buffers[i].size, 0);
+        walrus_hash_table_insert(buffer_map, &gltf->buffers[i], walrus_val_to_ptr(model->buffers[i].id));
+    }
+
+#if 0
+    textures_init(model, gltf, filename);
+#endif
+
+    mesh_init(model, gltf, buffer_map);
 
     walrus_hash_table_destroy(buffer_map);
+}
+
+static void model_shutdown(Walrus_Model *model)
+{
+    for (u32 i = 0; i < model->num_buffers; ++i) {
+        walrus_rhi_destroy_buffer(model->buffers[i]);
+    }
+
+    for (u32 i = 0; i < model->num_textures; ++i) {
+        walrus_rhi_destroy_texture(model->textures[i]);
+    }
+
+    mesh_shutdown(model);
+
+    model_deallocate(model);
+}
+
+static void walrus_model_load_from_file(Walrus_Model *model, char const *filename)
+{
+    cgltf_options opt    = {0};
+    cgltf_data   *gltf   = NULL;
+    cgltf_result  result = cgltf_parse_file(&opt, filename, &gltf);
+    if (result != cgltf_result_success) {
+        walrus_error("fail to load gltf");
+    }
+
+    result = cgltf_load_buffers(&opt, gltf, filename);
+    if (result != cgltf_result_success) {
+        walrus_error("fail to load buffers");
+    }
+
+    model_init(model, gltf, filename);
 
     cgltf_free(gltf);
 }
@@ -361,7 +363,7 @@ Walrus_AppError on_init(Walrus_App *app)
     glm_perspective(glm_rad(45), 1440.0 / 900.0, 0.1, 1000.0, projection);
     walrus_rhi_set_view_transform(0, view, projection);
 
-    model_init(&data->model, "assets/gltf/shibahu/scene.gltf");
+    walrus_model_load_from_file(&data->model, "assets/gltf/shibahu/scene.gltf");
 
     walrus_rhi_frame();
 
