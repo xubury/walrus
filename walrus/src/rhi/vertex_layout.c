@@ -89,11 +89,15 @@ static void vertex_layout_add(Walrus_VertexLayout* layout, u8 attr, u8 num, Walr
     if (type == WR_RHI_COMPONENT_MAT4) {
         for (u8 i = 0; i < 4; ++i) {
             vertex_layout_add_internal(layout, attr + i, 4, type, offset, stride, normalized, as_int);
+            offset = walrus_align_up(layout->stride, s_component_align[type]);
+            stride += s_component_stride[type][num - 1];
         }
     }
     else if (type == WR_RHI_COMPONENT_MAT3) {
         for (u8 i = 0; i < 3; ++i) {
             vertex_layout_add_internal(layout, attr + i, 3, type, offset, stride, normalized, as_int);
+            offset = walrus_align_up(layout->stride, s_component_align[type]);
+            stride += s_component_stride[type][num - 1];
         }
     }
     else {

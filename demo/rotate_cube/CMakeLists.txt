@@ -4,7 +4,7 @@ add_executable(rotate_cube src/main.c)
 
 target_compile_options(rotate_cube PUBLIC -Wall -Wextra -Wundef -pedantic)
 
-target_link_libraries(rotate_cube PUBLIC walrus_engine stb::stb)
+target_link_libraries(rotate_cube PUBLIC walrus_engine)
 
 if(WASM)
   target_link_options(rotate_cube PUBLIC -Wl,--no-entry -Wl,-allow-undefined

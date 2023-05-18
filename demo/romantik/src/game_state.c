@@ -6,9 +6,9 @@
 #include <core/ray.h>
 #include <core/macro.h>
 #include <engine/engine.h>
+#include <core/image.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include <string.h>
 
 char const *hex_src =
     "layout (location = 0) in vec3 a_pos;\n"
@@ -113,7 +113,7 @@ void renderer_init(Romantik_GameState *state)
         vertices[i].pos[1] = 0;
         vertices[i].pos[2] = sin(rad);
         vertices[i].uv[0]  = (cos(rad) + 1) * 0.5;
-        vertices[i].uv[1]  = (sin(rad) + 1) * 0.5;
+        vertices[i].uv[1]  = -(sin(rad) + 1) * 0.5;
         rad += glm_rad(60);
     }
     u16 indices[]       = {0, 1, 2, 2, 3, 4, 4, 5, 0, 0, 2, 4};
@@ -161,21 +161,17 @@ void renderer_init(Romantik_GameState *state)
     state->map_shader            = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_ins, fs_layer}, 2, true);
     state->grid_shader           = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_ins, fs_grid}, 2, true);
 
-    stbi_set_flip_vertically_on_load(true);
     u8 const  num_layers = 14;
     u32 const img_size   = 512 * 512 * 4;
     u8       *img_array  = walrus_malloc(num_layers * img_size);
     for (u8 i = 0; i < num_layers; ++i) {
-        i32  x, y, c;
         char path[255];
         snprintf(path, 255, "assets/imgs/%d.png", i);
-        u8 *img = stbi_load(path, &x, &y, &c, 4);
-        if (img == NULL) {
-            walrus_error("fail to load image: %s", stbi_failure_reason());
-        }
-        else {
-            memcpy(img_array + img_size * i, img, img_size);
-            stbi_image_free(img);
+        Walrus_Image       img;
+        Walrus_ImageResult res = walrus_image_load_from_file_full(&img, path, 4);
+        if (res == WR_IMAGE_SUCCESS) {
+            memcpy(img_array + img_size * i, img.data, img_size);
+            walrus_image_shutdown(&img);
         }
     }
     Walrus_TextureCreateInfo info;
