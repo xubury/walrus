@@ -5,6 +5,7 @@
 typedef struct {
     u32   width;
     u32   height;
+    u32   channel;
     void *data;
 } Walrus_Image;
 
@@ -15,6 +16,7 @@ typedef enum {
     WR_IMAGE_UNKNOWN_ERORR = -1
 } Walrus_ImageResult;
 
+Walrus_ImageResult walrus_image_load_from_file_full(Walrus_Image *img, char const *filename, u32 channels);
 Walrus_ImageResult walrus_image_load_from_file(Walrus_Image *img, char const *filename);
 
 void walrus_image_shutdown(Walrus_Image *img);

@@ -192,7 +192,7 @@ static Walrus_ModelResult textures_init(Walrus_Model *model, cgltf_data *gltf, c
         snprintf(path, 255, "%s/%s", parent_path, image->uri);
         walrus_trace("loading image: %s", path);
 
-        if (walrus_image_load_from_file(&images[i], path) == WR_IMAGE_SUCCESS) {
+        if (walrus_image_load_from_file_full(&images[i], path, 4) == WR_IMAGE_SUCCESS) {
             walrus_hash_table_insert(image_map, image, &images[i]);
         }
         else {
