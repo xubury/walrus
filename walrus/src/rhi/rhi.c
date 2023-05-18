@@ -1417,7 +1417,6 @@ Walrus_TextureHandle walrus_rhi_create_texture2d_ratio(Walrus_BackBufferRatio ra
 void walrus_rhi_destroy_texture(Walrus_TextureHandle handle)
 {
     if (handle.id == WR_INVALID_HANDLE) {
-        s_ctx->err = WR_RHI_HANDLE_INVALID_ERROR;
         return;
     }
     walrus_assert(free_handle_queue(s_ctx->submit_frame->queue_texture, handle));

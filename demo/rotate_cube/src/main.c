@@ -5,16 +5,14 @@
 #include <core/handle_alloc.h>
 #include <core/memory.h>
 #include <core/string.h>
+#include <core/hash.h>
+#include <core/image.h>
 
 #include <engine/engine.h>
 #include <rhi/rhi.h>
 
 #include <math.h>
 #include <string.h>
-#include "core/hash.h"
-
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 
 #include <cglm/cglm.h>
 
@@ -220,25 +218,23 @@ Walrus_AppError on_init(Walrus_App *app)
     glm_mat4_identity(app_data->model);
     glm_translate(app_data->model, (vec3){0, 0, -2});
 
-    /* stbi img test */
-    stbi_set_flip_vertically_on_load(true);
-    i32 x, y, c;
-    u64 ts  = walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC);
-    u8 *img = stbi_load("assets/imgs/0.png", &x, &y, &c, 4);
+    u64          ts = walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC);
+    Walrus_Image image;
+    walrus_image_load_from_file(&image, "assets/imgs/0.png");
     walrus_trace("stbi_load time: %llu ms", walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC) - ts);
-    if (img != NULL) {
-        walrus_trace("load image width: %d height: %d channel: %d", x, y, c);
+    if (image.data != NULL) {
+        walrus_trace("load image width: %d height: %d", image.width, image.height);
 
         app_data->font = walrus_rhi_create_texture2d(
-            x, y, WR_RHI_FORMAT_RGBA8, 0, WR_RHI_SAMPLER_MIN_LINEAR | WR_RHI_SAMPLER_MIP_LINEAR | WR_RHI_TEXTURE_SRGB,
-            img);
+            image.width, image.height, WR_RHI_FORMAT_RGBA8, 0,
+            WR_RHI_SAMPLER_MIN_LINEAR | WR_RHI_SAMPLER_MIP_LINEAR | WR_RHI_TEXTURE_SRGB, image.data);
 
-        stbi_image_free(img);
+        walrus_image_shutdown(&image);
     }
     else {
         err = WR_APP_INIT_FAIL;
 
-        walrus_error("fail to load image: %s", stbi_failure_reason());
+        walrus_error("fail to load image");
     }
 
     return err;

@@ -1,9 +1,11 @@
 find_package(cglm REQUIRED)
+find_package(stb REQUIRED)
 
 add_library(
   walrus_core STATIC
   handle_alloc.c
   hash.c
+  image.c
   list.c
   log.c
   math.c
@@ -21,7 +23,7 @@ target_include_directories(walrus_core PUBLIC ${walrus_root_dir}/include)
 
 target_compile_options(walrus_core PRIVATE -Wall -Wextra -Wundef -pedantic)
 
-target_link_libraries(walrus_core PUBLIC cglm::cglm)
+target_link_libraries(walrus_core PUBLIC cglm::cglm PRIVATE stb::stb)
 
 if(BUILD_TEST)
   add_executable(list_test test/list_test.c)

@@ -1,4 +1,5 @@
 find_package(stb REQUIRED)
+find_package(cgltf REQUIRED)
 
 add_library(
   walrus_engine STATIC
@@ -7,9 +8,10 @@ add_library(
   batch_renderer.c
   event.c
   font.c
-  window.c
   input_device.c
-  input.c)
+  input.c
+  model.c
+  window.c)
 
 target_compile_options(walrus_engine PRIVATE -Wall -Wextra -Wundef -pedantic)
 
@@ -18,7 +20,7 @@ target_include_directories(walrus_engine PUBLIC ${walrus_root_dir}/include)
 target_link_libraries(
   walrus_engine
   PUBLIC walrus_core walrus_rhi
-  PRIVATE stb::stb)
+  PRIVATE stb::stb cgltf::cgltf)
 
 if(WASM)
   target_link_options(walrus_engine PUBLIC -Wl,-export=__engine_should_close)
