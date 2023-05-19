@@ -203,7 +203,7 @@ bool free_handle_queue_internal(Walrus_Handle *queue, u32 *num, Walrus_Handle x)
     return true;
 }
 
-static void free_handle_reset(u32 *num)
+WR_INLINE void free_handle_reset(u32 *num)
 {
     *num = 0;
 }

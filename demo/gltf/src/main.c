@@ -1,4 +1,3 @@
-#define CGLM_DEFINE_PRINTS
 #include <engine/engine.h>
 #include <core/memory.h>
 #include <core/macro.h>
@@ -52,11 +51,11 @@ Walrus_AppError on_init(Walrus_App *app)
 
     mat4 view;
     mat4 projection;
-    glm_lookat((vec3){0, 0, 10}, (vec3){0, 0, 0}, (vec3){0, 1, 0}, view);
+    glm_lookat((vec3){0, 0, 5}, (vec3){0, 0, 0}, (vec3){0, 1, 0}, view);
     glm_perspective(glm_rad(45), 1440.0 / 900.0, 0.1, 1000.0, projection);
     walrus_rhi_set_view_transform(0, view, projection);
 
-    char const *filename = "assets/gltf/EmissiveStrengthTest.gltf";
+    char const *filename = "assets/gltf/shibahu/scene.gltf";
     if (walrus_model_load_from_file(&data->model, filename) != WR_MODEL_SUCCESS) {
         walrus_error("error loading model from: %s !", filename);
     }
@@ -66,49 +65,18 @@ Walrus_AppError on_init(Walrus_App *app)
     return WR_APP_SUCCESS;
 }
 
-static void model_submit(Walrus_ModelNode *node, Walrus_ProgramHandle shader, mat4 parent_world)
+static void node_setup(Walrus_ModelNode *node, void *userdata)
 {
     mat4 world;
     walrus_transform_compose(&node->world_transform, world);
-    glm_mat4_mul(parent_world, world, world);
+    glm_mat4_mul(userdata, world, world);
     walrus_rhi_set_transform(world);
-
-    Walrus_Mesh *mesh = node->mesh;
-    if (mesh) {
-        for (u32 i = 0; i < mesh->num_primitives; ++i) {
-            Walrus_MeshPrimitive *prim = &mesh->primitives[i];
-            if (prim->indices.index32) {
-                walrus_rhi_set_index32_buffer(prim->indices.buffer, prim->indices.offset, prim->indices.num_indices);
-            }
-            else {
-                walrus_rhi_set_index_buffer(prim->indices.buffer, prim->indices.offset, prim->indices.num_indices);
-            }
-            for (u32 k = 0; k < prim->num_streams; ++k) {
-                Walrus_PrimitiveStream *stream = &prim->streams[k];
-                walrus_rhi_set_vertex_buffer(k, stream->buffer, stream->layout_handle, stream->offset,
-                                             stream->num_vertices);
-            }
-            if (i == mesh->num_primitives - 1) {
-                walrus_rhi_submit(0, shader, 0, WR_RHI_DISCARD_ALL);
-            }
-            else {
-                walrus_rhi_submit(0, shader, 0, ~WR_RHI_DISCARD_TRANSFORM);
-            }
-        }
-    }
-
-    for (u32 i = 0; i < node->num_children; ++i) {
-        model_submit(node->children[i], shader, parent_world);
-    }
 }
 
 void on_render(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
-
-    for (u32 i = 0; i < data->model.num_roots; ++i) {
-        model_submit(data->model.roots[i], data->shader, data->world);
-    }
+    walrus_model_submit(0, &data->model, data->shader, 0, node_setup, data->world);
 }
 
 void on_tick(Walrus_App *app, f32 dt)

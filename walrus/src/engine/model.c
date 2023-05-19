@@ -18,6 +18,24 @@
 
 #define resource_new(type, count) count > 0 ? walrus_new(type, count) : NULL;
 
+static void model_reset(Walrus_Model *model)
+{
+    model->num_nodes = 0;
+    model->nodes     = NULL;
+
+    model->num_roots = 0;
+    model->roots     = NULL;
+
+    model->buffers     = NULL;
+    model->num_buffers = 0;
+
+    model->textures     = NULL;
+    model->num_textures = 0;
+
+    model->meshes     = NULL;
+    model->num_meshes = 0;
+}
+
 static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
 {
     // allocate resource
@@ -66,42 +84,25 @@ static void model_deallocate(Walrus_Model *model)
         Walrus_Mesh *mesh = &model->meshes[i];
 
         walrus_free(mesh->primitives);
-        mesh->num_primitives = 0;
-        mesh->primitives     = NULL;
     }
 
     for (u32 i = 0; i < model->num_nodes; ++i) {
         Walrus_ModelNode *node = &model->nodes[i];
 
-        node->parent = NULL;
-        node->mesh   = NULL;
-
         walrus_free(node->children);
-        node->num_children = 0;
-        node->children     = NULL;
     }
 
     walrus_free(model->nodes);
-    model->num_nodes = 0;
-    model->nodes     = NULL;
 
     walrus_free(model->roots);
-    model->num_roots = 0;
-    model->roots     = NULL;
 
     walrus_free(model->buffers);
+
     walrus_free(model->meshes);
 
     walrus_free(model->textures);
 
-    model->buffers     = NULL;
-    model->num_buffers = 0;
-
-    model->textures     = NULL;
-    model->num_textures = 0;
-
-    model->meshes     = NULL;
-    model->num_meshes = 0;
+    model_reset(model);
 }
 
 typedef struct {
@@ -119,7 +120,7 @@ static void layout_hash_init(void const *key, void const *value, void *userdata)
     val->stream->layout_handle = walrus_rhi_create_vertex_layout(&val->layout);
 }
 
-static void mesh_init(Walrus_Model *model, cgltf_data *gltf, Walrus_HashTable *buffer_map)
+static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
 {
     static Walrus_LayoutComponent components[cgltf_component_type_max_enum] = {
         WR_RHI_COMPONENT_COUNT,  WR_RHI_COMPONENT_INT8,  WR_RHI_COMPONENT_UINT8, WR_RHI_COMPONENT_INT16,
@@ -134,9 +135,8 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf, Walrus_HashTable *b
             // init indices
             cgltf_accessor *indices = prim->indices;
             if (indices) {
-                walrus_assert(walrus_hash_table_contains(buffer_map, indices->buffer_view->buffer));
-                model->meshes[i].primitives[j].indices.buffer.id =
-                    walrus_ptr_to_val(walrus_hash_table_lookup(buffer_map, indices->buffer_view->buffer));
+                model->meshes[i].primitives[j].indices.buffer =
+                    model->buffers[indices->buffer_view->buffer - &gltf->buffers[0]];
                 model->meshes[i].primitives[j].indices.index32 = indices->component_type == cgltf_component_type_r_32u;
                 model->meshes[i].primitives[j].indices.offset  = indices->offset + indices->buffer_view->offset;
                 model->meshes[i].primitives[j].indices.num_indices = indices->count;
@@ -161,14 +161,12 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf, Walrus_HashTable *b
                     layout = &val->layout;
                 }
                 else {
-                    u32 const    stream_id = model->meshes[i].primitives[j].num_streams;
-                    LayoutValue *val       = walrus_new(LayoutValue, 1);
-                    layout                 = &val->layout;
-                    val->stream            = &model->meshes[i].primitives[j].streams[stream_id];
-                    val->stream->offset    = buffer_view->offset;
-                    walrus_assert(walrus_hash_table_contains(buffer_map, buffer_view->buffer));
-                    val->stream->buffer.id =
-                        walrus_ptr_to_val(walrus_hash_table_lookup(buffer_map, buffer_view->buffer));
+                    u32 const    stream_id    = model->meshes[i].primitives[j].num_streams;
+                    LayoutValue *val          = walrus_new(LayoutValue, 1);
+                    layout                    = &val->layout;
+                    val->stream               = &model->meshes[i].primitives[j].streams[stream_id];
+                    val->stream->offset       = buffer_view->offset;
+                    val->stream->buffer       = model->buffers[buffer_view->buffer - &gltf->buffers[0]];
                     val->stream->num_vertices = accessor->count;
                     model->meshes[i].primitives[j].num_streams =
                         walrus_min(model->meshes[i].primitives[j].num_streams + 1,
@@ -221,17 +219,6 @@ static void node_traverse(Walrus_ModelNode *root)
 
 static void node_init(Walrus_Model *model, cgltf_data *gltf)
 {
-    Walrus_HashTable *node_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
-    Walrus_HashTable *mesh_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
-    for (u32 i = 0; i < model->num_nodes; ++i) {
-        cgltf_node *node = &gltf->nodes[i];
-        walrus_hash_table_insert(node_map, node, &model->nodes[i]);
-    }
-    for (u32 i = 0; i < model->num_meshes; ++i) {
-        cgltf_mesh *mesh = &gltf->meshes[i];
-        walrus_hash_table_insert(mesh_map, mesh, &model->meshes[i]);
-    }
-
     for (u32 i = 0; i < model->num_nodes; ++i) {
         cgltf_node       *node  = &gltf->nodes[i];
         Walrus_Transform *local = &model->nodes[i].local_transform;
@@ -255,18 +242,14 @@ static void node_init(Walrus_Model *model, cgltf_data *gltf)
         *world = *local;
 
         if (node->parent) {
-            walrus_assert(walrus_hash_table_contains(node_map, node->parent));
-            model->nodes[i].parent = walrus_hash_table_lookup(node_map, node->parent);
+            model->nodes[i].parent = &model->nodes[node->parent - &gltf->nodes[0]];
         }
         for (u32 j = 0; j < node->children_count; ++j) {
-            walrus_assert(walrus_hash_table_contains(node_map, node->children[j]));
-            model->nodes[i].children[j] = walrus_hash_table_lookup(node_map, node->children[j]);
+            model->nodes[i].children[j] = &model->nodes[node->children[j] - &gltf->nodes[0]];
         }
 
         if (node->mesh) {
-            walrus_assert(walrus_hash_table_contains(mesh_map, node->mesh));
-            model->nodes[i].mesh = walrus_hash_table_lookup(mesh_map, node->mesh);
-            walrus_assert(model->nodes[i].mesh);
+            model->nodes[i].mesh = &model->meshes[node->mesh - &gltf->meshes[0]];
         }
     }
 
@@ -277,24 +260,16 @@ static void node_init(Walrus_Model *model, cgltf_data *gltf)
         }
     }
 
-    walrus_assert(gltf->scene->nodes_count > 0);
     for (u32 i = 0; i < gltf->scene->nodes_count; ++i) {
-        model->roots[i] = walrus_hash_table_lookup(node_map, gltf->scene->nodes[i]);
+        model->roots[i] = &model->nodes[gltf->scene->nodes[i] - &gltf->nodes[0]];
     }
-
-    walrus_hash_table_destroy(mesh_map);
-    walrus_hash_table_destroy(node_map);
 }
 
-static Walrus_ModelResult textures_init(Walrus_Model *model, cgltf_data *gltf, char const *filename)
+static Walrus_ModelResult images_load_from_file(Walrus_Image *images, cgltf_data *gltf, char const *filename)
 {
-    Walrus_ModelResult res = WR_MODEL_SUCCESS;
-
-    Walrus_HashTable *image_map  = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
-    u32 const         num_images = gltf->images_count;
-    Walrus_Image     *images     = walrus_alloca(sizeof(Walrus_Image) * num_images);
-
-    char *parent_path = walrus_str_substr(filename, 0, strrchr(filename, '/') - filename);
+    Walrus_ModelResult res         = WR_MODEL_SUCCESS;
+    u32 const          num_images  = gltf->images_count;
+    char              *parent_path = walrus_str_substr(filename, 0, strrchr(filename, '/') - filename);
 
     for (u32 i = 0; i < num_images; ++i) {
         cgltf_image *image = &gltf->images[i];
@@ -302,78 +277,73 @@ static Walrus_ModelResult textures_init(Walrus_Model *model, cgltf_data *gltf, c
         snprintf(path, 255, "%s/%s", parent_path, image->uri);
         walrus_trace("loading image: %s", path);
 
-        if (walrus_image_load_from_file_full(&images[i], path, 4) == WR_IMAGE_SUCCESS) {
-            walrus_hash_table_insert(image_map, image, &images[i]);
-        }
-        else {
+        if (walrus_image_load_from_file_full(&images[i], path, 4) != WR_IMAGE_SUCCESS) {
             res = WR_MODEL_IMAGE_ERROR;
         }
     }
 
     walrus_str_free(parent_path);
 
-    for (u32 i = 0; i < model->num_textures; ++i) {
-        cgltf_texture *texture = &gltf->textures[i];
-        if (walrus_hash_table_contains(image_map, texture->image)) {
-            Walrus_Image *image = walrus_hash_table_lookup(image_map, texture->image);
-            model->textures[i]  = walrus_rhi_create_texture2d(image->width, image->height, WR_RHI_FORMAT_RGBA8, 0,
-                                                              WR_RHI_SAMPLER_LINEAR, image->data);
-        }
-    }
+    return res;
+}
 
+static void images_shutdown(Walrus_Image *images, u32 num_images)
+{
     for (u32 i = 0; i < num_images; ++i) {
         walrus_image_shutdown(&images[i]);
     }
-
-    walrus_hash_table_destroy(image_map);
-
-    return res;
 }
 
-static Walrus_ModelResult model_init(Walrus_Model *model, cgltf_data *gltf, char const *filename)
+static void textures_init(Walrus_Model *model, Walrus_Image *images, cgltf_data *gltf)
 {
-    Walrus_ModelResult res = WR_MODEL_SUCCESS;
+    for (u32 i = 0; i < model->num_textures; ++i) {
+        cgltf_texture *texture   = &gltf->textures[i];
+        u32            img_index = texture->image - gltf->textures[0].image;
+        Walrus_Image  *img       = &images[img_index];
+        model->textures[i]       = walrus_rhi_create_texture2d(img->width, img->height, WR_RHI_FORMAT_RGBA8, 0,
+                                                               WR_RHI_SAMPLER_LINEAR, img->data);
+    }
+}
 
-    model_allocate(model, gltf);
+static void textures_shutdown(Walrus_Model *model)
+{
+    for (u32 i = 0; i < model->num_textures; ++i) {
+        walrus_rhi_destroy_texture(model->textures[i]);
+    }
+}
 
-    // init buffers
-    Walrus_HashTable *buffer_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
+static void buffers_init(Walrus_Model *model, cgltf_data *gltf)
+{
     for (u32 i = 0; i < model->num_buffers; ++i) {
         model->buffers[i] = walrus_rhi_create_buffer(gltf->buffers[i].data, gltf->buffers[i].size, 0);
-        walrus_hash_table_insert(buffer_map, &gltf->buffers[i], walrus_val_to_ptr(model->buffers[i].id));
     }
-
-#if 0
-    if (res == WR_MODEL_SUCCESS) {
-        res = textures_init(model, gltf, filename);
-    }
-    if (res != WR_MODEL_SUCCESS) {
-        walrus_model_shutdown(model);
-    }
-#else
-    walrus_unused(filename);
-#endif
-
-    if (res == WR_MODEL_SUCCESS) {
-        mesh_init(model, gltf, buffer_map);
-    }
-
-    node_init(model, gltf);
-
-    walrus_hash_table_destroy(buffer_map);
-
-    return res;
 }
 
-void walrus_model_shutdown(Walrus_Model *model)
+static void buffers_shutdown(Walrus_Model *model)
 {
     for (u32 i = 0; i < model->num_buffers; ++i) {
         walrus_rhi_destroy_buffer(model->buffers[i]);
     }
+}
 
-    for (u32 i = 0; i < model->num_textures; ++i) {
-        walrus_rhi_destroy_texture(model->textures[i]);
-    }
+static void model_init(Walrus_Model *model, Walrus_Image *images, cgltf_data *gltf)
+{
+    model_allocate(model, gltf);
+
+    buffers_init(model, gltf);
+
+    textures_init(model, images, gltf);
+
+    mesh_init(model, gltf);
+
+    node_init(model, gltf);
+}
+
+void walrus_model_shutdown(Walrus_Model *model)
+{
+    buffers_shutdown(model);
+
+    textures_shutdown(model);
 
     mesh_shutdown(model);
 
@@ -382,6 +352,8 @@ void walrus_model_shutdown(Walrus_Model *model)
 
 Walrus_ModelResult walrus_model_load_from_file(Walrus_Model *model, char const *filename)
 {
+    model_reset(model);
+
     cgltf_options opt    = {0};
     cgltf_data   *gltf   = NULL;
     cgltf_result  result = cgltf_parse_file(&opt, filename, &gltf);
@@ -394,9 +366,55 @@ Walrus_ModelResult walrus_model_load_from_file(Walrus_Model *model, char const *
         return WR_MODEL_BUFFER_ERROR;
     }
 
-    Walrus_ModelResult res = model_init(model, gltf, filename);
+    u32 const     num_images = gltf->images_count;
+    Walrus_Image *images     = walrus_alloca(sizeof(Walrus_Image) * num_images);
+    if (images_load_from_file(images, gltf, filename) != WR_MODEL_SUCCESS) {
+        return WR_MODEL_IMAGE_ERROR;
+    }
+
+    model_init(model, images, gltf);
+
+    images_shutdown(images, num_images);
 
     cgltf_free(gltf);
 
-    return res;
+    return WR_MODEL_SUCCESS;
+}
+
+static void model_node_submit(u16 view_id, Walrus_ModelNode *node, Walrus_ProgramHandle shader, u32 depth,
+                              ModelSubmitCallback cb, void *userdata)
+{
+    Walrus_Mesh *mesh = node->mesh;
+    if (mesh) {
+        for (u32 i = 0; i < mesh->num_primitives; ++i) {
+            if (cb) {
+                cb(node, userdata);
+            }
+            Walrus_MeshPrimitive *prim = &mesh->primitives[i];
+            if (prim->indices.index32) {
+                walrus_rhi_set_index32_buffer(prim->indices.buffer, prim->indices.offset, prim->indices.num_indices);
+            }
+            else {
+                walrus_rhi_set_index_buffer(prim->indices.buffer, prim->indices.offset, prim->indices.num_indices);
+            }
+            for (u32 k = 0; k < prim->num_streams; ++k) {
+                Walrus_PrimitiveStream *stream = &prim->streams[k];
+                walrus_rhi_set_vertex_buffer(k, stream->buffer, stream->layout_handle, stream->offset,
+                                             stream->num_vertices);
+            }
+            walrus_rhi_submit(view_id, shader, depth, WR_RHI_DISCARD_ALL);
+        }
+    }
+
+    for (u32 i = 0; i < node->num_children; ++i) {
+        model_node_submit(view_id, node->children[i], shader, depth, cb, userdata);
+    }
+}
+
+void walrus_model_submit(u16 view_id, Walrus_Model *model, Walrus_ProgramHandle shader, u32 depth,
+                         ModelSubmitCallback cb, void *userdata)
+{
+    for (u32 i = 0; i < model->num_roots; ++i) {
+        model_node_submit(view_id, model->roots[i], shader, depth, cb, userdata);
+    }
 }
