@@ -9,6 +9,8 @@
 #include <core/math.h>
 #include <rhi/rhi.h>
 
+#include <cglm/cglm.h>
+
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
@@ -38,6 +40,19 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
         }
     }
 
+    model->num_nodes = gltf->nodes_count;
+    model->nodes     = resource_new(Walrus_ModelNode, model->num_nodes);
+    for (u32 i = 0; i < model->num_nodes; ++i) {
+        cgltf_node *node             = &gltf->nodes[i];
+        model->nodes[i].num_children = node->children_count;
+        model->nodes[i].children     = resource_new(Walrus_ModelNode *, node->children_count);
+        model->nodes[i].parent       = NULL;
+        model->nodes[i].mesh         = NULL;
+    }
+
+    model->num_roots = gltf->scene->nodes_count;
+    model->roots     = resource_new(Walrus_ModelNode *, gltf->scene->nodes_count);
+
     model->num_textures = gltf->textures_count;
     model->textures     = resource_new(Walrus_TextureHandle, model->num_textures);
     for (u32 i = 0; i < model->num_textures; ++i) {
@@ -54,6 +69,25 @@ static void model_deallocate(Walrus_Model *model)
         mesh->num_primitives = 0;
         mesh->primitives     = NULL;
     }
+
+    for (u32 i = 0; i < model->num_nodes; ++i) {
+        Walrus_ModelNode *node = &model->nodes[i];
+
+        node->parent = NULL;
+        node->mesh   = NULL;
+
+        walrus_free(node->children);
+        node->num_children = 0;
+        node->children     = NULL;
+    }
+
+    walrus_free(model->nodes);
+    model->num_nodes = 0;
+    model->nodes     = NULL;
+
+    walrus_free(model->roots);
+    model->num_roots = 0;
+    model->roots     = NULL;
 
     walrus_free(model->buffers);
     walrus_free(model->meshes);
@@ -176,6 +210,82 @@ static void mesh_shutdown(Walrus_Model *model)
     }
 }
 
+static void node_traverse(Walrus_ModelNode *root)
+{
+    for (u32 i = 0; i < root->num_children; ++i) {
+        Walrus_ModelNode *child = root->children[i];
+        walrus_transform_mul(&root->world_transform, &child->local_transform, &child->world_transform);
+        node_traverse(root->children[i]);
+    }
+}
+
+static void node_init(Walrus_Model *model, cgltf_data *gltf)
+{
+    Walrus_HashTable *node_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
+    Walrus_HashTable *mesh_map = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
+    for (u32 i = 0; i < model->num_nodes; ++i) {
+        cgltf_node *node = &gltf->nodes[i];
+        walrus_hash_table_insert(node_map, node, &model->nodes[i]);
+    }
+    for (u32 i = 0; i < model->num_meshes; ++i) {
+        cgltf_mesh *mesh = &gltf->meshes[i];
+        walrus_hash_table_insert(mesh_map, mesh, &model->meshes[i]);
+    }
+
+    for (u32 i = 0; i < model->num_nodes; ++i) {
+        cgltf_node       *node  = &gltf->nodes[i];
+        Walrus_Transform *local = &model->nodes[i].local_transform;
+        Walrus_Transform *world = &model->nodes[i].world_transform;
+
+        if (node->has_matrix) {
+            mat4 m;
+            for (u8 c = 0; c < 4; ++c) {
+                for (u8 r = 0; r < 4; ++r) {
+                    m[c][r] = node->matrix[c * 4 + r];
+                }
+            }
+            walrus_transform_decompose(local, m);
+        }
+        else {
+            glm_vec3_copy(node->translation, local->trans);
+            glm_vec3_copy(node->scale, local->scale);
+            glm_quat_init(local->rot, node->rotation[0], node->rotation[1], node->rotation[2], node->rotation[3]);
+        }
+
+        *world = *local;
+
+        if (node->parent) {
+            walrus_assert(walrus_hash_table_contains(node_map, node->parent));
+            model->nodes[i].parent = walrus_hash_table_lookup(node_map, node->parent);
+        }
+        for (u32 j = 0; j < node->children_count; ++j) {
+            walrus_assert(walrus_hash_table_contains(node_map, node->children[j]));
+            model->nodes[i].children[j] = walrus_hash_table_lookup(node_map, node->children[j]);
+        }
+
+        if (node->mesh) {
+            walrus_assert(walrus_hash_table_contains(mesh_map, node->mesh));
+            model->nodes[i].mesh = walrus_hash_table_lookup(mesh_map, node->mesh);
+            walrus_assert(model->nodes[i].mesh);
+        }
+    }
+
+    for (u32 i = 0; i < model->num_nodes; ++i) {
+        Walrus_ModelNode *node = &model->nodes[i];
+        if (node->parent == NULL) {
+            node_traverse(node);
+        }
+    }
+
+    walrus_assert(gltf->scene->nodes_count > 0);
+    for (u32 i = 0; i < gltf->scene->nodes_count; ++i) {
+        model->roots[i] = walrus_hash_table_lookup(node_map, gltf->scene->nodes[i]);
+    }
+
+    walrus_hash_table_destroy(mesh_map);
+    walrus_hash_table_destroy(node_map);
+}
+
 static Walrus_ModelResult textures_init(Walrus_Model *model, cgltf_data *gltf, char const *filename)
 {
     Walrus_ModelResult res = WR_MODEL_SUCCESS;
@@ -247,6 +357,8 @@ static Walrus_ModelResult model_init(Walrus_Model *model, cgltf_data *gltf, char
     if (res == WR_MODEL_SUCCESS) {
         mesh_init(model, gltf, buffer_map);
     }
+
+    node_init(model, gltf);
 
     walrus_hash_table_destroy(buffer_map);
 

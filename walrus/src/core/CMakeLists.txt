@@ -17,7 +17,8 @@ add_library(
   sort.c
   string.c
   sys.c
-  thread.c)
+  thread.c
+  transform.c)
 
 target_include_directories(walrus_core PUBLIC ${walrus_root_dir}/include)
 

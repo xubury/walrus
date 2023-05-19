@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rhi/type.h>
+#include <core/transform.h>
 
 typedef struct {
     Walrus_BufferHandle buffer;
@@ -28,6 +29,17 @@ typedef struct {
     u32                   num_primitives;
 } Walrus_Mesh;
 
+typedef struct Walrus_ModelNode Walrus_ModelNode;
+
+struct Walrus_ModelNode {
+    Walrus_Mesh       *mesh;
+    Walrus_ModelNode  *parent;
+    Walrus_ModelNode **children;
+    u32                num_children;
+    Walrus_Transform   world_transform;
+    Walrus_Transform   local_transform;
+};
+
 typedef struct {
     Walrus_BufferHandle *buffers;
     u32                  num_buffers;
@@ -37,6 +49,12 @@ typedef struct {
 
     Walrus_Mesh *meshes;
     u32          num_meshes;
+
+    Walrus_ModelNode *nodes;
+    u32               num_nodes;
+
+    Walrus_ModelNode **roots;
+    u32                num_roots;
 } Walrus_Model;
 
 typedef enum {
