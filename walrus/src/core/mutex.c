@@ -6,7 +6,7 @@
 #include <windows.h>
 #endif
 
-struct _Walrus_Mutex {
+struct Walrus_Mutex {
 #if WR_PLATFORM == WR_PLATFORM_WINDOWS
     CRITICAL_SECTION section;
 #endif

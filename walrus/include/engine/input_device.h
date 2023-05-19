@@ -3,7 +3,7 @@
 #include <core/type.h>
 #include <cglm/cglm.h>
 
-typedef struct _Walrus_InputDevice Walrus_InputDevice;
+typedef struct Walrus_InputDevice Walrus_InputDevice;
 
 Walrus_InputDevice* walrus_input_create(u16 num_btns, u8 num_axes);
 

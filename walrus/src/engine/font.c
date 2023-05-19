@@ -7,7 +7,7 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
 
-struct _Walrus_Font {
+struct Walrus_Font {
     u8 *ttf_buffer;
 };
 

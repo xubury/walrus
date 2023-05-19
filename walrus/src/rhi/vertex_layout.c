@@ -33,7 +33,7 @@ static u8 s_component_align[WR_RHI_COMPONENT_COUNT] = {
     16,  // Mat4
 };
 
-struct _Walrus_VertexLayout {
+struct Walrus_VertexLayout {
     u8  instance_strde;
     u16 stride;
     u16 attributes[16];

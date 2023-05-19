@@ -2,7 +2,7 @@
 
 #include <core/type.h>
 
-typedef struct _Walrus_Window Walrus_Window;
+typedef struct Walrus_Window Walrus_Window;
 
 typedef enum {
     WR_WINDOW_FLAG_NONE = 0,

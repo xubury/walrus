@@ -7,7 +7,7 @@
 #include <windows.h>
 #endif
 
-struct _Walrus_Thread {
+struct Walrus_Thread {
     Walrus_ThreadFn   fn;
     Walrus_Semaphore* sem;
     bool              running;

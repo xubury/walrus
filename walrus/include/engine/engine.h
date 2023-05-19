@@ -13,7 +13,7 @@ typedef struct {
     bool        single_thread;
 } Walrus_EngineOption;
 
-typedef struct _Walrus_Engine Walrus_Engine;
+typedef struct Walrus_Engine Walrus_Engine;
 
 typedef enum {
     WR_ENGINE_SUCCESS = 0,

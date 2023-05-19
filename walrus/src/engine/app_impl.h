@@ -2,7 +2,7 @@
 
 #include <engine/app.h>
 
-struct _Walrus_App {
+struct Walrus_App {
     Walrus_AppInitCallback     init;
     Walrus_AppShutdownCallback shutdown;
     Walrus_AppTickCallback     tick;

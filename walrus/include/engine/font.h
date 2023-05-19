@@ -3,7 +3,7 @@
 #include <core/type.h>
 #include <rhi/rhi.h>
 
-typedef struct _Walrus_Font Walrus_Font;
+typedef struct Walrus_Font Walrus_Font;
 
 typedef struct {
     Walrus_TextureHandle handle;

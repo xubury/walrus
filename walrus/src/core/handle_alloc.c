@@ -1,7 +1,7 @@
 #include <core/handle_alloc.h>
 #include <core/memory.h>
 
-struct _Walrus_HandleAlloc {
+struct Walrus_HandleAlloc {
     Walrus_Handle num_handles;
     Walrus_Handle max_handles;
 };

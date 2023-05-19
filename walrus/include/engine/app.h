@@ -10,7 +10,7 @@ typedef enum {
     WR_APP_NO_ENGINE = 2,  // engine is not init
 } Walrus_AppError;
 
-typedef struct _Walrus_App Walrus_App;
+typedef struct Walrus_App Walrus_App;
 
 typedef Walrus_AppError (*Walrus_AppInitCallback)(Walrus_App *);
 

@@ -7,7 +7,7 @@
 #include <windows.h>
 #endif
 
-struct _Walrus_Semaphore {
+struct Walrus_Semaphore {
 #if WR_PLATFORM == WR_PLATFORM_WINDOWS
     HANDLE handle;
 #endif

@@ -1,6 +1,6 @@
 #pragma once
 
-typedef struct _Walrus_Mutex Walrus_Mutex;
+typedef struct Walrus_Mutex Walrus_Mutex;
 
 Walrus_Mutex *walrus_mutex_create(void);
 void          walrus_mutex_destroy(Walrus_Mutex *mutex);

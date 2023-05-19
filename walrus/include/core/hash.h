@@ -2,7 +2,7 @@
 
 #include "type.h"
 
-typedef struct _Walrus_HashTable Walrus_HashTable;
+typedef struct Walrus_HashTable Walrus_HashTable;
 
 typedef u32 (*Walrus_HashFunc)(void const *);
 typedef bool (*Walrus_EqualFunc)(void const *, void const *);

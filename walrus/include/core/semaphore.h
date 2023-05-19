@@ -2,7 +2,7 @@
 
 #include "type.h"
 
-typedef struct _Walrus_Semaphore Walrus_Semaphore;
+typedef struct Walrus_Semaphore Walrus_Semaphore;
 
 Walrus_Semaphore *walrus_semaphore_create(void);
 

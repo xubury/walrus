@@ -3,7 +3,7 @@
 #include <core/platform.h>
 #include <core/memory.h>
 
-struct _Walrus_Window {
+struct Walrus_Window {
     u32   width;
     u32   height;
     u32   flags;

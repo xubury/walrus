@@ -2,9 +2,9 @@
 
 #include <core/type.h>
 
-typedef struct _Walrus_List Walrus_List;
+typedef struct Walrus_List Walrus_List;
 
-struct _Walrus_List {
+struct Walrus_List {
     void        *data;
     Walrus_List *next;
     Walrus_List *prev;

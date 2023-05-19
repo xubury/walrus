@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <math.h>
 
-struct _Walrus_Engine {
+struct Walrus_Engine {
     Walrus_EngineOption opt;
     Walrus_Mutex       *log_mutex;
     Walrus_Thread      *render;

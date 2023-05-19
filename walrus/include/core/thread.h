@@ -2,7 +2,7 @@
 
 #include "type.h"
 
-typedef struct _Walrus_Thread Walrus_Thread;
+typedef struct Walrus_Thread Walrus_Thread;
 
 typedef i32 (*Walrus_ThreadFn)(Walrus_Thread* self, void* userdata);
 
