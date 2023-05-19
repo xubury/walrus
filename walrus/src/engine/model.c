@@ -54,7 +54,15 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
         model->meshes[i].primitives     = resource_new(Walrus_MeshPrimitive, mesh->primitives_count);
 
         for (u32 j = 0; j < mesh->primitives_count; ++j) {
-            model->meshes[i].primitives[j].num_streams = 0;
+            model->meshes[i].primitives[j].num_streams         = 0;
+            model->meshes[i].primitives[j].indices.buffer.id   = WR_INVALID_HANDLE;
+            model->meshes[i].primitives[j].indices.offset      = 0;
+            model->meshes[i].primitives[j].indices.num_indices = 0;
+            model->meshes[i].primitives[j].indices.index32     = false;
+
+            model->meshes[i].primitives[j].material.albedo.id    = WR_INVALID_HANDLE;
+            model->meshes[i].primitives[j].material.normal.id    = WR_INVALID_HANDLE;
+            model->meshes[i].primitives[j].material.double_sided = true;
         }
     }
 
@@ -387,10 +395,12 @@ static void model_node_submit(u16 view_id, Walrus_ModelNode *node, Walrus_Progra
     Walrus_Mesh *mesh = node->mesh;
     if (mesh) {
         for (u32 i = 0; i < mesh->num_primitives; ++i) {
-            if (cb) {
-                cb(node, userdata);
-            }
             Walrus_MeshPrimitive *prim = &mesh->primitives[i];
+
+            if (cb) {
+                cb(node, prim, userdata);
+            }
+
             if (prim->indices.index32) {
                 walrus_rhi_set_index32_buffer(prim->indices.buffer, prim->indices.offset, prim->indices.num_indices);
             }

@@ -18,10 +18,18 @@ typedef struct {
 } Walrus_MeshIndices;
 
 typedef struct {
+    Walrus_TextureHandle albedo;
+    Walrus_TextureHandle normal;
+    bool                 double_sided;
+} Walrus_MeshMaterial;
+
+typedef struct {
     Walrus_PrimitiveStream streams[WR_RHI_MAX_VERTEX_STREAM];
     u32                    num_streams;
 
     Walrus_MeshIndices indices;
+
+    Walrus_MeshMaterial material;
 } Walrus_MeshPrimitive;
 
 typedef struct {
@@ -66,7 +74,7 @@ typedef enum {
     WR_MODEL_UNKNOWN_ERROR = -1
 } Walrus_ModelResult;
 
-typedef void (*ModelSubmitCallback)(Walrus_ModelNode *node, void *userdata);
+typedef void (*ModelSubmitCallback)(Walrus_ModelNode *node, Walrus_MeshPrimitive *primitive, void *userdata);
 
 Walrus_ModelResult walrus_model_load_from_file(Walrus_Model *model, char const *filename);
 

@@ -465,7 +465,7 @@ static void submit(RenderFrame *frame)
 
         u64 const new_stencil     = draw->stencil;
         u64       changed_stencil = current_state.stencil ^ draw->stencil;
-        current_state.stencil          = new_stencil;
+        current_state.stencil     = new_stencil;
 
         if (reset_state) {
             draw_clear(&current_state, WR_RHI_DISCARD_ALL);
@@ -540,6 +540,20 @@ static void submit(RenderFrame *frame)
             }
         }
 
+        if (WR_RHI_STATE_CULL_MASK & changed_flags) {
+            if (WR_RHI_STATE_CULL_CCW & new_flags) {
+                glEnable(GL_CULL_FACE);
+                glCullFace(GL_FRONT);
+            }
+            else if (WR_RHI_STATE_CULL_CW & new_flags) {
+                glEnable(GL_CULL_FACE);
+                glCullFace(GL_BACK);
+            }
+            else {
+                glDisable(GL_CULL_FACE);
+            }
+        }
+
         if (changed_stencil != 0) {
             if (new_stencil != 0) {
                 glEnable(GL_STENCIL_TEST);
@@ -549,9 +563,9 @@ static void submit(RenderFrame *frame)
                 u8  frontAndBack = bstencil != WR_RHI_STENCIL_NONE && bstencil != fstencil;
 
                 for (u8 i = 0; i < frontAndBack + 1; ++i) {
-                    u32 stencil = unpack_stencil(i, new_stencil);
-                    u32 changed = unpack_stencil(i, changed_stencil);
-                    GLenum   face    = s_stencilface[i];
+                    u32    stencil = unpack_stencil(i, new_stencil);
+                    u32    changed = unpack_stencil(i, changed_stencil);
+                    GLenum face    = s_stencilface[i];
                     if ((WR_RHI_STENCIL_TEST_MASK | WR_RHI_STENCIL_FUNC_REF_MASK | WR_RHI_STENCIL_FUNC_RMASK_MASK) &
                         changed) {
                         u32 ref  = (stencil & WR_RHI_STENCIL_FUNC_REF_MASK) >> WR_RHI_STENCIL_FUNC_REF_SHIFT;
@@ -710,10 +724,10 @@ static void submit(RenderFrame *frame)
                             Walrus_VertexLayout const *layout = &g_ctx->vertex_layouts[layout_handle.id];
                             for (u8 i = 0; i < layout->num_attributes; ++i) {
                                 Walrus_LayoutComponent type;
-                                u8               attr_id;
-                                u8               num;
-                                bool             normalized;
-                                bool             as_int;
+                                u8                     attr_id;
+                                u8                     num;
+                                bool                   normalized;
+                                bool                   as_int;
                                 walrus_vertex_layout_decode(layout, i, &attr_id, &num, &type, &normalized, &as_int);
                                 lazy_enable_vertex_attribute(attr_id);
                                 if (as_int) {
@@ -737,10 +751,10 @@ static void submit(RenderFrame *frame)
                     Walrus_VertexLayout const *layout = &g_ctx->vertex_layouts[draw->instance_layout.id];
                     for (u8 i = 0; i < layout->num_attributes; ++i) {
                         Walrus_LayoutComponent type;
-                        u8               attr_id;
-                        u8               num;
-                        bool             normalized;
-                        bool             as_int;
+                        u8                     attr_id;
+                        u8                     num;
+                        bool                   normalized;
+                        bool                   as_int;
                         walrus_vertex_layout_decode(layout, i, &attr_id, &num, &type, &normalized, &as_int);
                         lazy_enable_vertex_attribute(attr_id);
                         glVertexAttribDivisor(attr_id, layout->instance_strde);
