@@ -888,16 +888,16 @@ static void shader_dec_ref(Walrus_ShaderHandle handle)
 {
     ShaderRef* ref = &s_ctx->shader_refs[handle.id];
     if (ref->ref_count > 0) {
-        --s_ctx->shader_refs[handle.id].ref_count;
-        if (s_ctx->shader_refs[handle.id].ref_count == 0) {
+        --ref->ref_count;
+        if (ref->ref_count == 0) {
             walrus_assert(free_handle_queue(s_ctx->submit_frame->queue_shader, handle));
 
             CommandBuffer* cmdbuf = get_command_buffer(COMMAND_DESTROY_SHADER);
             command_buffer_write(cmdbuf, Walrus_ShaderHandle, &handle);
 
-            walrus_hash_table_remove(s_ctx->shader_map, s_ctx->shader_refs[handle.id].source);
+            walrus_hash_table_remove(s_ctx->shader_map, ref->source);
 
-            walrus_str_free(s_ctx->shader_refs[handle.id].source);
+            walrus_str_free(ref->source);
         }
     }
 }
@@ -1125,18 +1125,16 @@ void walrus_rhi_destroy_vertex_layout(Walrus_LayoutHandle handle)
         return;
     }
 
-    if (s_ctx->vertex_layout_ref[handle.id].ref_count == 0) {
-        return;
-    }
+    VertexLayoutRef* ref = &s_ctx->vertex_layout_ref[handle.id];
+    if (ref->ref_count > 0) {
+        --ref->ref_count;
+        if (ref->ref_count == 0) {
+            walrus_hash_table_remove(s_ctx->vertex_layout_table, walrus_val_to_ptr(ref->hash));
+            walrus_assert(free_handle_queue(s_ctx->submit_frame->queue_layout, handle));
 
-    --s_ctx->vertex_layout_ref[handle.id].ref_count;
-    if (s_ctx->vertex_layout_ref[handle.id].ref_count == 0) {
-        walrus_hash_table_remove(s_ctx->vertex_layout_table,
-                                 walrus_val_to_ptr(s_ctx->vertex_layout_ref[handle.id].hash));
-        walrus_assert(free_handle_queue(s_ctx->submit_frame->queue_layout, handle));
-
-        CommandBuffer* cmdbuf = get_command_buffer(COMMAND_DESTROY_VERTEX_LAYOUT);
-        command_buffer_write(cmdbuf, Walrus_LayoutHandle, &handle);
+            CommandBuffer* cmdbuf = get_command_buffer(COMMAND_DESTROY_VERTEX_LAYOUT);
+            command_buffer_write(cmdbuf, Walrus_LayoutHandle, &handle);
+        }
     }
 }
 

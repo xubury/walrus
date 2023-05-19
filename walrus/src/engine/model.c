@@ -87,10 +87,10 @@ static void layout_hash_init(void const *key, void const *value, void *userdata)
 
 static void mesh_init(Walrus_Model *model, cgltf_data *gltf, Walrus_HashTable *buffer_map)
 {
-    Walrus_LayoutComponent components[cgltf_component_type_max_enum] = {
+    static Walrus_LayoutComponent components[cgltf_component_type_max_enum] = {
         WR_RHI_COMPONENT_COUNT,  WR_RHI_COMPONENT_INT8,  WR_RHI_COMPONENT_UINT8, WR_RHI_COMPONENT_INT16,
         WR_RHI_COMPONENT_UINT16, WR_RHI_COMPONENT_INT32, WR_RHI_COMPONENT_FLOAT};
-    u32 component_num[cgltf_type_max_enum] = {0, 1, 2, 3, 4, 4, 1, 1};
+    static u32 component_num[cgltf_type_max_enum] = {0, 1, 2, 3, 4, 4, 1, 1};
 
     for (u32 i = 0; i < gltf->meshes_count; ++i) {
         cgltf_mesh *mesh = &gltf->meshes[i];
