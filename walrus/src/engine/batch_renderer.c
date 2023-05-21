@@ -230,8 +230,11 @@ void walrus_batch_render_init(void)
 
     u32 textures[MAX_TEXTURES];
     for (u32 i = 0; i < MAX_TEXTURES; ++i) {
-        textures[i] = i;
+        textures[i]                = i;
+        s_renderer->textures[i].id = WR_INVALID_HANDLE;
     }
+    s_renderer->textures[0] = s_renderer->white_texture;
+
     walrus_rhi_set_uniform(s_renderer->u_textures, 0, sizeof(textures), textures);
 }
 
@@ -281,9 +284,13 @@ static void flush_quads(void)
         walrus_error("Fail to allocated transient buffers");
         return;
     }
+    u32 *textures = walrus_alloca(s_renderer->num_textures * sizeof(u32));
     for (u32 i = 0; i < s_renderer->num_textures; ++i) {
+        textures[i] = i;
         walrus_rhi_set_texture(i, s_renderer->textures[i]);
     }
+    walrus_rhi_set_uniform(s_renderer->u_textures, 0, sizeof(u32) * s_renderer->num_textures, textures);
+
     memcpy(vertex_buffer.data, quad_vertices, 4 * vertex_size);
     memcpy(index_buffer.data, quad_indices, 6 * index_size);
     memcpy(instance_buffer.data, s_renderer->quads, num_instances * ins_size);

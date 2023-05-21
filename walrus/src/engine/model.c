@@ -145,7 +145,7 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
         material->normal             = NULL;
         material->normal_scale       = 1.0;
         material->emissive           = NULL;
-        glm_vec3_one(material->emissive_factor);
+        glm_vec3_zero(material->emissive_factor);
         material->double_sided = true;
     }
 
@@ -377,6 +377,7 @@ static Walrus_ModelResult images_load_from_file(Walrus_Image *images, cgltf_data
 
         if (walrus_image_load_from_file_full(&images[i], path, 4) != WR_IMAGE_SUCCESS) {
             res = WR_MODEL_IMAGE_ERROR;
+            walrus_assert(false);
         }
     }
 
@@ -401,6 +402,12 @@ static void materials_init(Walrus_Model *model, cgltf_data *gltf)
             model->materials[i].normal_scale = material->normal_texture.scale;
             model->materials[i].normal->srgb = false;
         }
+
+        if (material->emissive_texture.texture) {
+            model->materials[i].emissive = &model->textures[material->emissive_texture.texture - &gltf->textures[0]];
+            model->materials[i].emissive->srgb = true;
+        }
+        glm_vec3_copy(material->emissive_factor, model->materials[i].emissive_factor);
 
         if (material->has_pbr_metallic_roughness) {
             cgltf_pbr_metallic_roughness *metallic_roughness = &material->pbr_metallic_roughness;
@@ -429,10 +436,9 @@ static void materials_init(Walrus_Model *model, cgltf_data *gltf)
 static void textures_init(Walrus_Model *model, Walrus_Image *images, cgltf_data *gltf)
 {
     for (u32 i = 0; i < model->num_textures; ++i) {
-        cgltf_texture *texture   = &gltf->textures[i];
-        u32            img_index = texture->image - gltf->textures[0].image;
-        Walrus_Image  *img       = &images[img_index];
-        u64            flags     = WR_RHI_SAMPLER_LINEAR;
+        cgltf_texture *texture = &gltf->textures[i];
+        Walrus_Image  *img     = &images[texture->image - &gltf->images[0]];
+        u64            flags   = WR_RHI_SAMPLER_LINEAR;
         if (texture->sampler) {
             flags = convert_min_filter(texture->sampler->min_filter) |
                     convert_mag_filter(texture->sampler->mag_filter) | convert_wrap_s(texture->sampler->wrap_s) |
