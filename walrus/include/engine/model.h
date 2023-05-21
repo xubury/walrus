@@ -18,9 +18,19 @@ typedef struct {
 } Walrus_MeshIndices;
 
 typedef struct {
-    Walrus_TextureHandle albedo;
-    Walrus_TextureHandle normal;
-    bool                 double_sided;
+    Walrus_TextureHandle handle;
+    bool                 srgb;
+} Walrus_Texture;
+
+typedef struct {
+    Walrus_Texture *albedo;
+    vec4            albedo_factor;
+    Walrus_Texture *normal;
+    f32             normal_scale;
+    Walrus_Texture *metallic_roughness;
+    Walrus_Texture *emissive;
+    vec3            emissive_factor;
+    bool            double_sided;
 } Walrus_MeshMaterial;
 
 typedef struct {
@@ -29,7 +39,7 @@ typedef struct {
 
     Walrus_MeshIndices indices;
 
-    Walrus_MeshMaterial material;
+    Walrus_MeshMaterial *material;
 } Walrus_MeshPrimitive;
 
 typedef struct {
@@ -52,11 +62,14 @@ typedef struct {
     Walrus_BufferHandle *buffers;
     u32                  num_buffers;
 
-    Walrus_TextureHandle *textures;
-    u32                   num_textures;
+    Walrus_Texture *textures;
+    u32             num_textures;
 
     Walrus_Mesh *meshes;
     u32          num_meshes;
+
+    Walrus_MeshMaterial *materials;
+    u32                  num_materials;
 
     Walrus_ModelNode *nodes;
     u32               num_nodes;

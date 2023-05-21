@@ -18,6 +18,74 @@
 
 #define resource_new(type, count) count > 0 ? walrus_new(type, count) : NULL;
 
+#define GLTF_WRAP_REPEAT            10497
+#define GLTF_WRAP_MIRROR            33648
+#define GLTF_WRAP_CLAMP             33071
+#define GLTF_FILTER_NONE            0
+#define GLTF_FILTER_NEAREST         9728
+#define GLTF_FILTER_LINEAR          9729
+#define GLTF_FILTER_NEAREST_NEAREST 9984
+#define GLTF_FILTER_LINEAR_NEAREST  9985
+#define GLTF_FILTER_NEAREST_LINEAR  9986
+#define GLTF_FILTER_LINEAR_LINEAR   9987
+
+static u64 convert_wrap_s(cgltf_int wrap)
+{
+    switch (wrap) {
+        case GLTF_WRAP_REPEAT:
+            return 0;
+        case GLTF_WRAP_MIRROR:
+            return WR_RHI_SAMPLER_U_MIRROR;
+        case GLTF_WRAP_CLAMP:
+            return WR_RHI_SAMPLER_U_CLAMP;
+    }
+    return 0;
+}
+
+static uint64_t convert_warp_t(cgltf_int wrap)
+{
+    switch (wrap) {
+        case GLTF_WRAP_REPEAT:
+            return 0;
+        case GLTF_WRAP_MIRROR:
+            return WR_RHI_SAMPLER_V_MIRROR;
+        case GLTF_WRAP_CLAMP:
+            return WR_RHI_SAMPLER_V_CLAMP;
+    }
+    return 0;
+}
+
+static uint64_t convert_min_filter(cgltf_int min)
+{
+    switch (min) {
+        case GLTF_FILTER_NEAREST:
+            return WR_RHI_SAMPLER_MIN_NEAREST;
+        case GLTF_FILTER_LINEAR:
+            return WR_RHI_SAMPLER_MIN_LINEAR;
+        case GLTF_FILTER_NEAREST_NEAREST:
+            return WR_RHI_SAMPLER_MIN_NEAREST | WR_RHI_SAMPLER_MIP_NEAREST;
+        case GLTF_FILTER_LINEAR_NEAREST:
+            return WR_RHI_SAMPLER_MIN_LINEAR | WR_RHI_SAMPLER_MIP_NEAREST;
+        case GLTF_FILTER_NEAREST_LINEAR:
+            return WR_RHI_SAMPLER_MIN_NEAREST | WR_RHI_SAMPLER_MIP_LINEAR;
+        case GLTF_FILTER_LINEAR_LINEAR:
+            return WR_RHI_SAMPLER_MIN_LINEAR | WR_RHI_SAMPLER_MIP_LINEAR;
+        default:
+            return WR_RHI_SAMPLER_MIN_LINEAR | WR_RHI_SAMPLER_MIP_LINEAR;
+    }
+}
+static uint64_t convert_mag_filter(cgltf_int mag)
+{
+    switch (mag) {
+        case GLTF_FILTER_NEAREST:
+            return WR_RHI_SAMPLER_MAG_NEAREST;
+        case GLTF_FILTER_LINEAR:
+            return WR_RHI_SAMPLER_MAG_LINEAR;
+        default:
+            return WR_RHI_SAMPLER_MAG_LINEAR;
+    }
+}
+
 static void model_reset(Walrus_Model *model)
 {
     model->num_nodes = 0;
@@ -28,6 +96,9 @@ static void model_reset(Walrus_Model *model)
 
     model->buffers     = NULL;
     model->num_buffers = 0;
+
+    model->materials     = NULL;
+    model->num_materials = 0;
 
     model->textures     = NULL;
     model->num_textures = 0;
@@ -60,10 +131,22 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
             model->meshes[i].primitives[j].indices.num_indices = 0;
             model->meshes[i].primitives[j].indices.index32     = false;
 
-            model->meshes[i].primitives[j].material.albedo.id    = WR_INVALID_HANDLE;
-            model->meshes[i].primitives[j].material.normal.id    = WR_INVALID_HANDLE;
-            model->meshes[i].primitives[j].material.double_sided = true;
+            model->meshes[i].primitives[j].material = NULL;
         }
+    }
+
+    model->num_materials = gltf->materials_count;
+    model->materials     = resource_new(Walrus_MeshMaterial, model->num_materials);
+    for (u32 i = 0; i < model->num_materials; ++i) {
+        Walrus_MeshMaterial *material = &model->materials[i];
+        material->albedo              = NULL;
+        glm_vec4_one(material->albedo_factor);
+        material->metallic_roughness = NULL;
+        material->normal             = NULL;
+        material->normal_scale       = 1.0;
+        material->emissive           = NULL;
+        glm_vec3_one(material->emissive_factor);
+        material->double_sided = true;
     }
 
     model->num_nodes = gltf->nodes_count;
@@ -80,9 +163,10 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
     model->roots     = resource_new(Walrus_ModelNode *, gltf->scene->nodes_count);
 
     model->num_textures = gltf->textures_count;
-    model->textures     = resource_new(Walrus_TextureHandle, model->num_textures);
+    model->textures     = resource_new(Walrus_Texture, model->num_textures);
     for (u32 i = 0; i < model->num_textures; ++i) {
-        model->textures[i].id = WR_INVALID_HANDLE;
+        model->textures[i].handle.id = WR_INVALID_HANDLE;
+        model->textures[i].srgb      = true;
     }
 }
 
@@ -107,6 +191,8 @@ static void model_deallocate(Walrus_Model *model)
     walrus_free(model->buffers);
 
     walrus_free(model->meshes);
+
+    walrus_free(model->materials);
 
     walrus_free(model->textures);
 
@@ -151,6 +237,10 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
             }
             else {
                 model->meshes[i].primitives[j].indices.buffer.id = WR_INVALID_HANDLE;
+            }
+
+            if (prim->material) {
+                model->meshes[i].primitives[j].material = &model->materials[prim->material - &gltf->materials[0]];
             }
 
             Walrus_HashTable *layout_map =
@@ -302,21 +392,62 @@ static void images_shutdown(Walrus_Image *images, u32 num_images)
     }
 }
 
+static void materials_init(Walrus_Model *model, cgltf_data *gltf)
+{
+    for (u32 i = 0; i < model->num_materials; ++i) {
+        cgltf_material *material = &gltf->materials[i];
+        if (material->normal_texture.texture) {
+            model->materials[i].normal       = &model->textures[material->normal_texture.texture - &gltf->textures[0]];
+            model->materials[i].normal_scale = material->normal_texture.scale;
+            model->materials[i].normal->srgb = false;
+        }
+
+        if (material->has_pbr_metallic_roughness) {
+            cgltf_pbr_metallic_roughness *metallic_roughness = &material->pbr_metallic_roughness;
+            if (metallic_roughness->base_color_texture.texture) {
+                model->materials[i].albedo =
+                    &model->textures[metallic_roughness->base_color_texture.texture - &gltf->textures[0]];
+                model->materials[i].albedo->srgb = true;
+            }
+            if (metallic_roughness->metallic_roughness_texture.texture) {
+                model->materials[i].metallic_roughness =
+                    &model->textures[metallic_roughness->metallic_roughness_texture.texture - &gltf->textures[0]];
+                model->materials[i].metallic_roughness->srgb = false;
+            }
+        }
+        if (material->has_pbr_specular_glossiness) {
+            cgltf_pbr_specular_glossiness *specular_glossiness = &material->pbr_specular_glossiness;
+            if (specular_glossiness->diffuse_texture.texture) {
+                model->materials[i].albedo =
+                    &model->textures[specular_glossiness->diffuse_texture.texture - &gltf->textures[0]];
+                model->materials[i].albedo->srgb = true;
+            }
+        }
+    }
+}
+
 static void textures_init(Walrus_Model *model, Walrus_Image *images, cgltf_data *gltf)
 {
     for (u32 i = 0; i < model->num_textures; ++i) {
         cgltf_texture *texture   = &gltf->textures[i];
         u32            img_index = texture->image - gltf->textures[0].image;
         Walrus_Image  *img       = &images[img_index];
-        model->textures[i]       = walrus_rhi_create_texture2d(img->width, img->height, WR_RHI_FORMAT_RGBA8, 0,
-                                                               WR_RHI_SAMPLER_LINEAR, img->data);
+        u64            flags     = WR_RHI_SAMPLER_LINEAR;
+        if (texture->sampler) {
+            flags = convert_min_filter(texture->sampler->min_filter) |
+                    convert_mag_filter(texture->sampler->mag_filter) | convert_wrap_s(texture->sampler->wrap_s) |
+                    convert_warp_t(texture->sampler->wrap_t);
+        }
+        if (model->textures[i].srgb) flags |= WR_RHI_TEXTURE_SRGB;
+        model->textures[i].handle =
+            walrus_rhi_create_texture2d(img->width, img->height, WR_RHI_FORMAT_RGBA8, 0, flags, img->data);
     }
 }
 
 static void textures_shutdown(Walrus_Model *model)
 {
     for (u32 i = 0; i < model->num_textures; ++i) {
-        walrus_rhi_destroy_texture(model->textures[i]);
+        walrus_rhi_destroy_texture(model->textures[i].handle);
     }
 }
 
@@ -339,6 +470,8 @@ static void model_init(Walrus_Model *model, Walrus_Image *images, cgltf_data *gl
     model_allocate(model, gltf);
 
     buffers_init(model, gltf);
+
+    materials_init(model, gltf);
 
     textures_init(model, images, gltf);
 

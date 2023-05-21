@@ -13,33 +13,41 @@ typedef struct {
     Walrus_Model         model;
     Walrus_ProgramHandle shader;
     mat4                 world;
+    Walrus_UniformHandle u_albedo;
 } AppData;
 
 char const *vs_src =
     "layout(location = 0) in vec3 a_pos;"
     "layout(location = 1) in vec3 a_normal;"
+    "layout(location = 3) in vec2 a_uv;"
     "uniform mat4 u_viewproj;"
     "uniform mat4 u_model;"
     "out vec3 v_normal;"
+    "out vec2 v_uv;"
     "void main() {"
     " gl_Position = u_viewproj * u_model * vec4(a_pos, 1);"
     " mat3 nmat = transpose(inverse(mat3(u_model))); "
     " v_normal = nmat * a_normal;"
+    " v_uv = a_uv;"
     "}";
 
 char const *fs_src =
     "out vec4 fragcolor;"
     "in vec3 v_normal;"
+    "in vec2 v_uv;"
+    "uniform sampler2D u_albedo;"
     "void main() {"
-    " vec3 light_dir = normalize(vec3(0, 1, -1));"
+    " vec3 light_dir = normalize(vec3(0, 0, -1));"
     " float diff = max(dot(normalize(v_normal), light_dir), 0.0);"
-    " fragcolor = vec4(diff * vec3(1), 1);"
+    " fragcolor = vec4(diff * texture(u_albedo, v_uv).rgb, 1);"
     "}";
 
 Walrus_AppError on_init(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
     glm_mat4_identity(data->world);
+    data->u_albedo = walrus_rhi_create_uniform("u_albedo", WR_RHI_UNIFORM_SAMPLER, 1);
+
     Walrus_ShaderHandle vs = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, vs_src);
     Walrus_ShaderHandle fs = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
     data->shader           = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs, fs}, 2, true);
@@ -67,19 +75,27 @@ Walrus_AppError on_init(Walrus_App *app)
 
 static void submit_callback(Walrus_ModelNode *node, Walrus_MeshPrimitive *prim, void *userdata)
 {
-    mat4 world;
+    mat4     world;
+    AppData *data = userdata;
     walrus_transform_compose(&node->world_transform, world);
-    glm_mat4_mul(userdata, world, world);
+    glm_mat4_mul(data->world, world, world);
     walrus_rhi_set_transform(world);
-    if (!prim->material.double_sided) {
-        walrus_rhi_set_state(WR_RHI_STATE_DEFAULT | WR_RHI_STATE_CULL_CW, 0);
+    if (prim->material) {
+        if (!prim->material->double_sided) {
+            walrus_rhi_set_state(WR_RHI_STATE_DEFAULT | WR_RHI_STATE_CULL_CW, 0);
+        }
+        if (prim->material->albedo) {
+            u32 unit = 0;
+            walrus_rhi_set_texture(unit, prim->material->albedo->handle);
+            walrus_rhi_set_uniform(data->u_albedo, 0, sizeof(u32), &unit);
+        }
     }
 }
 
 void on_render(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
-    walrus_model_submit(0, &data->model, data->shader, 0, submit_callback, data->world);
+    walrus_model_submit(0, &data->model, data->shader, 0, submit_callback, data);
 }
 
 void on_tick(Walrus_App *app, f32 dt)
