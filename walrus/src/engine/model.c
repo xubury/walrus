@@ -7,6 +7,7 @@
 #include <core/image.h>
 #include <core/string.h>
 #include <core/math.h>
+#include <core/sort.h>
 #include <rhi/rhi.h>
 
 #include <cglm/cglm.h>
@@ -199,21 +200,6 @@ static void model_deallocate(Walrus_Model *model)
     model_reset(model);
 }
 
-typedef struct {
-    Walrus_VertexLayout     layout;
-    Walrus_PrimitiveStream *stream;
-} LayoutValue;
-
-static void layout_hash_init(void const *key, void const *value, void *userdata)
-{
-    walrus_unused(key);
-    walrus_unused(userdata);
-
-    LayoutValue *val = (LayoutValue *)value;
-    walrus_vertex_layout_end(&val->layout);
-    val->stream->layout_handle = walrus_rhi_create_vertex_layout(&val->layout);
-}
-
 static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
 {
     static Walrus_LayoutComponent components[cgltf_component_type_max_enum] = {
@@ -226,7 +212,6 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
         for (u32 j = 0; j < mesh->primitives_count; ++j) {
             cgltf_primitive *prim = &mesh->primitives[j];
 
-            // init indices
             cgltf_accessor *indices = prim->indices;
             if (indices) {
                 model->meshes[i].primitives[j].indices.buffer =
@@ -235,61 +220,40 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
                 model->meshes[i].primitives[j].indices.offset  = indices->offset + indices->buffer_view->offset;
                 model->meshes[i].primitives[j].indices.num_indices = indices->count;
             }
-            else {
-                model->meshes[i].primitives[j].indices.buffer.id = WR_INVALID_HANDLE;
-            }
 
             if (prim->material) {
                 model->meshes[i].primitives[j].material = &model->materials[prim->material - &gltf->materials[0]];
             }
 
-            Walrus_HashTable *layout_map =
-                walrus_hash_table_create_full(walrus_direct_hash, walrus_direct_equal, NULL, walrus_free);
-
             for (u32 k = 0; k < prim->attributes_count; ++k) {
-                cgltf_attribute     *attribute   = &prim->attributes[k];
-                cgltf_accessor      *accessor    = attribute->data;
-                cgltf_buffer_view   *buffer_view = accessor->buffer_view;
-                Walrus_VertexLayout *layout      = NULL;
-                void                *layout_key  = buffer_view;
-                if (walrus_hash_table_contains(layout_map, layout_key)) {
-                    LayoutValue *val = (LayoutValue *)walrus_hash_table_lookup(layout_map, layout_key);
-                    walrus_assert_msg(val->stream->num_vertices == accessor->count,
-                                      "mismatch number of vertices %d, %d", val->stream->num_vertices, accessor->count);
-                    layout = &val->layout;
-                }
-                else {
-                    u32 const    stream_id    = model->meshes[i].primitives[j].num_streams;
-                    LayoutValue *val          = walrus_new(LayoutValue, 1);
-                    layout                    = &val->layout;
-                    val->stream               = &model->meshes[i].primitives[j].streams[stream_id];
-                    val->stream->offset       = buffer_view->offset;
-                    val->stream->buffer       = model->buffers[buffer_view->buffer - &gltf->buffers[0]];
-                    val->stream->num_vertices = accessor->count;
-                    model->meshes[i].primitives[j].num_streams =
-                        walrus_min(model->meshes[i].primitives[j].num_streams + 1,
-                                   walrus_array_len(model->meshes[i].primitives[j].streams));
-                    walrus_hash_table_insert(layout_map, layout_key, val);
-                    walrus_vertex_layout_begin(layout);
-                }
+                cgltf_attribute        *attribute   = &prim->attributes[k];
+                cgltf_accessor         *accessor    = attribute->data;
+                cgltf_buffer_view      *buffer_view = accessor->buffer_view;
+                Walrus_VertexLayout     layout;
+                u32 const               loc       = attribute->type - 1;
+                u32 const               stream_id = model->meshes[i].primitives[j].num_streams;
+                Walrus_PrimitiveStream *stream    = &model->meshes[i].primitives[j].streams[stream_id];
+                stream->offset                    = buffer_view->offset + accessor->offset;
+                stream->buffer                    = model->buffers[buffer_view->buffer - &gltf->buffers[0]];
+                stream->num_vertices              = accessor->count;
+                ++model->meshes[i].primitives[j].num_streams;
+                walrus_vertex_layout_begin(&layout);
                 if (accessor->type == cgltf_type_mat4) {
-                    walrus_vertex_layout_add_override(layout, attribute->type - 1, 1, WR_RHI_COMPONENT_MAT4,
-                                                      accessor->normalized, accessor->offset, accessor->stride);
+                    walrus_vertex_layout_add_override(&layout, loc, 1, WR_RHI_COMPONENT_MAT4, accessor->normalized, 0,
+                                                      buffer_view->stride);
                 }
                 else if (accessor->type == cgltf_type_mat3) {
-                    walrus_vertex_layout_add_override(layout, attribute->type - 1, 1, WR_RHI_COMPONENT_MAT3,
-                                                      accessor->normalized, accessor->offset, accessor->stride);
+                    walrus_vertex_layout_add_override(&layout, loc, 1, WR_RHI_COMPONENT_MAT3, accessor->normalized, 0,
+                                                      buffer_view->stride);
                 }
                 else {
-                    walrus_vertex_layout_add_override(layout, attribute->type - 1, component_num[accessor->type],
-                                                      components[accessor->component_type], accessor->normalized,
-                                                      accessor->offset, accessor->stride);
+                    walrus_vertex_layout_add_override(&layout, loc, component_num[accessor->type],
+                                                      components[accessor->component_type], accessor->normalized, 0,
+                                                      buffer_view->stride);
                 }
+                walrus_vertex_layout_end(&layout);
+                stream->layout_handle = walrus_rhi_create_vertex_layout(&layout);
             }
-
-            // call end for each layout
-            walrus_hash_table_foreach(layout_map, layout_hash_init, NULL);
-            walrus_hash_table_destroy(layout_map);
         }
     }
 }
@@ -377,7 +341,6 @@ static Walrus_ModelResult images_load_from_file(Walrus_Image *images, cgltf_data
 
         if (walrus_image_load_from_file_full(&images[i], path, 4) != WR_IMAGE_SUCCESS) {
             res = WR_MODEL_IMAGE_ERROR;
-            walrus_assert(false);
         }
     }
 
@@ -540,11 +503,14 @@ static void model_node_submit(u16 view_id, Walrus_ModelNode *node, Walrus_Progra
                 cb(node, prim, userdata);
             }
 
-            if (prim->indices.index32) {
-                walrus_rhi_set_index32_buffer(prim->indices.buffer, prim->indices.offset, prim->indices.num_indices);
-            }
-            else {
-                walrus_rhi_set_index_buffer(prim->indices.buffer, prim->indices.offset, prim->indices.num_indices);
+            if (prim->indices.buffer.id != WR_INVALID_HANDLE) {
+                if (prim->indices.index32) {
+                    walrus_rhi_set_index32_buffer(prim->indices.buffer, prim->indices.offset,
+                                                  prim->indices.num_indices);
+                }
+                else {
+                    walrus_rhi_set_index_buffer(prim->indices.buffer, prim->indices.offset, prim->indices.num_indices);
+                }
             }
             for (u32 k = 0; k < prim->num_streams; ++k) {
                 Walrus_PrimitiveStream *stream = &prim->streams[k];

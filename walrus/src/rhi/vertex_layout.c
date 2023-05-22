@@ -33,15 +33,6 @@ static u8 s_component_align[WR_RHI_COMPONENT_COUNT] = {
     16,  // Mat4
 };
 
-struct Walrus_VertexLayout {
-    u8  instance_strde;
-    u16 stride;
-    u16 attributes[16];
-    u16 offsets[16];
-    u8  num_attributes;
-    u32 hash;
-};
-
 void walrus_vertex_layout_begin(Walrus_VertexLayout* layout)
 {
     walrus_vertex_layout_begin_instance(layout, 0);
@@ -73,7 +64,7 @@ static void vertex_layout_add_internal(Walrus_VertexLayout* layout, u8 attr, u8 
                                        u32 offset, u32 stride, bool normalized, bool as_int)
 {
     layout->attributes[layout->num_attributes] = encode(attr, num, type, normalized, as_int);
-    layout->offsets[layout->num_attributes]    = offset;
+    layout->offsets[attr]                      = offset;
     layout->stride                             = stride;
     ++layout->num_attributes;
     walrus_assert_msg(layout->num_attributes <= walrus_array_len(layout->attributes),
@@ -132,10 +123,10 @@ void walrus_vertex_layout_end(Walrus_VertexLayout* layout)
 void walrus_vertex_layout_decode(Walrus_VertexLayout const* layout, u32 index, u8* attr_id, u8* num,
                                  Walrus_LayoutComponent* type, bool* normalized, bool* as_int)
 {
-    uint16_t val = layout->attributes[index];
-    *attr_id     = (val & 15);
-    *num         = ((val >> 4) & 3) + 1;
-    *type        = (Walrus_LayoutComponent)((val >> 6) & 15);
-    *normalized  = !!(val & (1 << 10));
-    *as_int      = !!(val & (1 << 11));
+    u16 val     = layout->attributes[index];
+    *attr_id    = (val & 15);
+    *num        = ((val >> 4) & 3) + 1;
+    *type       = (Walrus_LayoutComponent)((val >> 6) & 15);
+    *normalized = !!(val & (1 << 10));
+    *as_int     = !!(val & (1 << 11));
 }

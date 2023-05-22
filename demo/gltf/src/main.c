@@ -15,6 +15,7 @@ typedef struct {
     Walrus_ProgramHandle shader;
     mat4                 world;
     Walrus_UniformHandle u_albedo;
+    Walrus_UniformHandle u_albedo_factor;
     Walrus_UniformHandle u_emissive;
     Walrus_UniformHandle u_emissive_factor;
     Walrus_TextureHandle black_texture;
@@ -44,13 +45,15 @@ char const *fs_src =
     "in vec3 v_normal;"
     "in vec2 v_uv;"
     "uniform sampler2D u_albedo;"
+    "uniform vec4 u_albedo_factor;"
     "uniform sampler2D u_emissive;"
     "uniform vec3 u_emissive_factor;"
     "void main() {"
-    " vec3 light_dir = normalize(vec3(0, 0, -1));"
+    " vec3 light_dir = normalize(vec3(0, 0, 1));"
     " float diff = max(dot(normalize(v_normal), light_dir), 0.0);"
-    " vec4 emissive = texture(u_emissive, v_uv) * vec4(u_emissive_factor,1.0);"
-    " fragcolor = texture(u_albedo, v_uv) + emissive;"
+    " vec3 emissive = texture(u_emissive, v_uv).rgb * u_emissive_factor;"
+    " vec4 albedo = texture(u_albedo, v_uv) * u_albedo_factor;"
+    " fragcolor = vec4(diff * albedo.rgb + emissive, albedo.a);"
     "}";
 
 Walrus_AppError on_init(Walrus_App *app)
@@ -58,6 +61,7 @@ Walrus_AppError on_init(Walrus_App *app)
     AppData *data = walrus_app_userdata(app);
     glm_mat4_identity(data->world);
     data->u_albedo          = walrus_rhi_create_uniform("u_albedo", WR_RHI_UNIFORM_SAMPLER, 1);
+    data->u_albedo_factor   = walrus_rhi_create_uniform("u_albedo_factor", WR_RHI_UNIFORM_VEC4, 1);
     data->u_emissive        = walrus_rhi_create_uniform("u_emissive", WR_RHI_UNIFORM_SAMPLER, 1);
     data->u_emissive_factor = walrus_rhi_create_uniform("u_emissive_factor", WR_RHI_UNIFORM_VEC3, 1);
 
@@ -80,7 +84,7 @@ Walrus_AppError on_init(Walrus_App *app)
 
     mat4 view;
     mat4 projection;
-    glm_lookat((vec3){0, 0, 5}, (vec3){0, 0, 0}, (vec3){0, 1, 0}, view);
+    glm_lookat((vec3){0, 2, 5}, (vec3){0, 0, 0}, (vec3){0, 1, 0}, view);
     glm_perspective(glm_rad(45), 1440.0 / 900.0, 0.1, 1000.0, projection);
     walrus_rhi_set_view_transform(0, view, projection);
 
@@ -99,15 +103,18 @@ Walrus_AppError on_init(Walrus_App *app)
 
 static void submit_callback(Walrus_ModelNode *node, Walrus_MeshPrimitive *prim, void *userdata)
 {
-    mat4     world;
     AppData *data = userdata;
+    mat4     world;
     walrus_transform_compose(&node->world_transform, world);
     glm_mat4_mul(data->world, world, world);
     walrus_rhi_set_transform(world);
+    u64 flags = WR_RHI_STATE_DEFAULT | WR_RHI_STATE_BLEND_ALPHA;
     if (prim->material) {
         if (!prim->material->double_sided) {
-            walrus_rhi_set_state(WR_RHI_STATE_DEFAULT | WR_RHI_STATE_CULL_CW, 0);
+            flags |= WR_RHI_STATE_CULL_CW;
         }
+        walrus_rhi_set_state(flags, 0);
+
         if (prim->material->albedo) {
             u32 unit = 0;
             walrus_rhi_set_texture(unit, prim->material->albedo->handle);
@@ -119,8 +126,9 @@ static void submit_callback(Walrus_ModelNode *node, Walrus_MeshPrimitive *prim, 
         else {
             u32 unit = 0;
             walrus_rhi_set_texture(unit, data->black_texture);
-            walrus_rhi_set_uniform(data->u_emissive, 0, sizeof(u32), &unit);
+            walrus_rhi_set_uniform(data->u_albedo, 0, sizeof(u32), &unit);
         }
+        walrus_rhi_set_uniform(data->u_albedo_factor, 0, sizeof(vec4), prim->material->albedo_factor);
 
         if (prim->material->emissive) {
             u32 unit = 1;
@@ -142,7 +150,7 @@ static void submit_callback(Walrus_ModelNode *node, Walrus_MeshPrimitive *prim, 
 
 void on_render(Walrus_App *app)
 {
-    walrus_batch_render_begin(1, WR_RHI_STATE_WRITE_RGB | WR_RHI_STATE_WRITE_A);
+    walrus_batch_render_begin(1, WR_RHI_STATE_WRITE_RGB | WR_RHI_STATE_WRITE_A | WR_RHI_STATE_BLEND_ALPHA);
     AppData *data       = walrus_app_userdata(app);
     data->debug_xoffset = 50;
     data->debug_yoffset = 600;

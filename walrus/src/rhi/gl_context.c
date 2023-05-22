@@ -363,6 +363,28 @@ static void gl_buffer_update(Walrus_BufferHandle handle, u64 offset, u64 size, v
     glBindBuffer(target, 0);
 }
 
+static void bind_vertex_attributes(Walrus_VertexLayout const *layout, u64 offset)
+{
+    for (u8 i = 0; i < layout->num_attributes; ++i) {
+        Walrus_LayoutComponent type;
+        u8                     loc;
+        u8                     num;
+        bool                   normalized;
+        bool                   as_int;
+        walrus_vertex_layout_decode(layout, i, &loc, &num, &type, &normalized, &as_int);
+        lazy_enable_vertex_attribute(loc);
+        glVertexAttribDivisor(loc, layout->instance_strde);
+        if (as_int) {
+            glVertexAttribIPointer(loc, num, s_gl_attribute_type[type], layout->stride,
+                                   (void const *)(offset + layout->offsets[loc]));
+        }
+        else {
+            glVertexAttribPointer(loc, num, s_gl_attribute_type[type], normalized ? GL_TRUE : GL_FALSE, layout->stride,
+                                  (void const *)(offset + layout->offsets[loc]));
+        }
+    }
+}
+
 static void submit(RenderFrame *frame)
 {
     if (frame->vbo_offset > 0) {
@@ -722,24 +744,7 @@ static void submit(RenderFrame *frame)
                         if (layout_handle.id != WR_INVALID_HANDLE) {
                             glBindBuffer(GL_ARRAY_BUFFER, vb->id);
                             Walrus_VertexLayout const *layout = &g_ctx->vertex_layouts[layout_handle.id];
-                            for (u8 i = 0; i < layout->num_attributes; ++i) {
-                                Walrus_LayoutComponent type;
-                                u8                     attr_id;
-                                u8                     num;
-                                bool                   normalized;
-                                bool                   as_int;
-                                walrus_vertex_layout_decode(layout, i, &attr_id, &num, &type, &normalized, &as_int);
-                                lazy_enable_vertex_attribute(attr_id);
-                                if (as_int) {
-                                    glVertexAttribIPointer(attr_id, num, s_gl_attribute_type[type], layout->stride,
-                                                           (void const *)(layout->offsets[i] + stream->offset));
-                                }
-                                else {
-                                    glVertexAttribPointer(attr_id, num, s_gl_attribute_type[type],
-                                                          normalized ? GL_TRUE : GL_FALSE, layout->stride,
-                                                          (void const *)(layout->offsets[i] + stream->offset));
-                                }
-                            }
+                            bind_vertex_attributes(layout, stream->offset);
                             glBindBuffer(GL_ARRAY_BUFFER, 0);
                         }
                     }
@@ -749,25 +754,7 @@ static void submit(RenderFrame *frame)
                     glBindBuffer(GL_ARRAY_BUFFER, instance_buffer->id);
 
                     Walrus_VertexLayout const *layout = &g_ctx->vertex_layouts[draw->instance_layout.id];
-                    for (u8 i = 0; i < layout->num_attributes; ++i) {
-                        Walrus_LayoutComponent type;
-                        u8                     attr_id;
-                        u8                     num;
-                        bool                   normalized;
-                        bool                   as_int;
-                        walrus_vertex_layout_decode(layout, i, &attr_id, &num, &type, &normalized, &as_int);
-                        lazy_enable_vertex_attribute(attr_id);
-                        glVertexAttribDivisor(attr_id, layout->instance_strde);
-                        if (as_int) {
-                            glVertexAttribIPointer(attr_id, num, s_gl_attribute_type[type], layout->stride,
-                                                   (void const *)(layout->offsets[i] + draw->instance_offset));
-                        }
-                        else {
-                            glVertexAttribPointer(attr_id, num, s_gl_attribute_type[type],
-                                                  normalized ? GL_TRUE : GL_FALSE, layout->stride,
-                                                  (void const *)(layout->offsets[i] + draw->instance_offset));
-                        }
-                    }
+                    bind_vertex_attributes(layout, draw->instance_offset);
                     glBindBuffer(GL_ARRAY_BUFFER, 0);
                 }
                 apply_lazy_enabled_vertex_attribute();
