@@ -28,7 +28,7 @@ typedef struct {
 char const *vs_src =
     "layout(location = 0) in vec3 a_pos;"
     "layout(location = 1) in vec3 a_normal;"
-    "layout(location = 3) in vec2 a_uv;"
+    "layout(location = 2) in vec2 a_uv;"
     "uniform mat4 u_viewproj;"
     "uniform mat4 u_model;"
     "out vec3 v_normal;"
@@ -54,6 +54,7 @@ char const *fs_src =
     " vec3 emissive = texture(u_emissive, v_uv).rgb * u_emissive_factor;"
     " vec4 albedo = texture(u_albedo, v_uv) * u_albedo_factor;"
     " fragcolor = vec4(diff * albedo.rgb + emissive, albedo.a);"
+    " fragcolor = vec4(v_normal, albedo.a);"
     "}";
 
 Walrus_AppError on_init(Walrus_App *app)

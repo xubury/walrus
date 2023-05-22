@@ -593,7 +593,7 @@ static void submit(RenderFrame *frame)
                         u32 ref  = (stencil & WR_RHI_STENCIL_FUNC_REF_MASK) >> WR_RHI_STENCIL_FUNC_REF_SHIFT;
                         u32 mask = (stencil & WR_RHI_STENCIL_FUNC_RMASK_MASK) >> WR_RHI_STENCIL_FUNC_RMASK_SHIFT;
                         u32 func = (stencil & WR_RHI_STENCIL_TEST_MASK) >> WR_RHI_STENCIL_TEST_SHIFT;
-                        glStencilFuncSeparate(face, s_cmpfunc[func], ref, mask);
+                        /* glStencilFuncSeparate(face, s_cmpfunc[func], ref, mask); */
                     }
                     if ((WR_RHI_STENCIL_OP_FAIL_S_MASK | WR_RHI_STENCIL_OP_FAIL_Z_MASK |
                          WR_RHI_STENCIL_OP_PASS_Z_MASK) &
@@ -601,7 +601,7 @@ static void submit(RenderFrame *frame)
                         u32 sfail = (stencil & WR_RHI_STENCIL_OP_FAIL_S_MASK) >> WR_RHI_STENCIL_OP_FAIL_S_SHIFT;
                         u32 zfail = (stencil & WR_RHI_STENCIL_OP_FAIL_Z_MASK) >> WR_RHI_STENCIL_OP_FAIL_Z_SHIFT;
                         u32 zpass = (stencil & WR_RHI_STENCIL_OP_PASS_Z_MASK) >> WR_RHI_STENCIL_OP_PASS_Z_SHIFT;
-                        glStencilOpSeparate(face, s_stencilop[sfail], s_stencilop[zfail], s_stencilop[zpass]);
+                        /* glStencilOpSeparate(face, s_stencilop[sfail], s_stencilop[zfail], s_stencilop[zpass]); */
                     }
                 }
             }

@@ -34,7 +34,7 @@ typedef struct {
 } Walrus_MeshMaterial;
 
 typedef struct {
-    Walrus_PrimitiveStream streams[WR_RHI_MAX_VERTEX_STREAM];
+    Walrus_PrimitiveStream streams[16];
     u32                    num_streams;
 
     Walrus_MeshIndices indices;
