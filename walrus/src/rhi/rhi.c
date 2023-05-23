@@ -679,10 +679,18 @@ Walrus_RenderResult walrus_rhi_render_frame(i32 ms)
 
 void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u32 depth, u8 flags)
 {
+    if (s_ctx->draw.num_indices == 0 || s_ctx->draw.num_vertices == 0) {
+        discard(flags);
+        return;
+    }
     RenderFrame* frame = s_ctx->submit_frame;
 
     u32 const render_item_id = frame->num_render_items;
     frame->num_render_items  = walrus_min(WR_RHI_MAX_DRAW_CALLS, walrus_u32satadd(frame->num_render_items, 1));
+    if (frame->num_render_items >= WR_RHI_MAX_DRAW_CALLS) {
+        discard(flags);
+        return;
+    }
 
     s_ctx->uniform_end        = frame->uniforms->pos;
     s_ctx->draw.uniform_begin = s_ctx->uniform_begin;
@@ -1251,6 +1259,8 @@ void walrus_rhi_set_transient_instance_buffer(Walrus_TransientBuffer* buffer, Wa
 
 void walrus_rhi_set_index_buffer(Walrus_BufferHandle handle, u32 offset, u32 num_indices)
 {
+    walrus_assert(handle.id != WR_INVALID_HANDLE);
+
     s_ctx->draw.index_buffer = handle;
     s_ctx->draw.index_size   = sizeof(u16);
     s_ctx->draw.index_offset = offset;
@@ -1259,6 +1269,8 @@ void walrus_rhi_set_index_buffer(Walrus_BufferHandle handle, u32 offset, u32 num
 
 void walrus_rhi_set_index32_buffer(Walrus_BufferHandle handle, u32 offset, u32 num_indices)
 {
+    walrus_assert(handle.id != WR_INVALID_HANDLE);
+
     s_ctx->draw.index_buffer = handle;
     s_ctx->draw.index_size   = sizeof(u32);
     s_ctx->draw.index_offset = offset;
@@ -1267,6 +1279,9 @@ void walrus_rhi_set_index32_buffer(Walrus_BufferHandle handle, u32 offset, u32 n
 
 void walrus_rhi_set_transient_index_buffer(Walrus_TransientBuffer* buffer, u32 offset, u32 num_indices)
 {
+    walrus_assert(buffer);
+    walrus_assert(buffer->handle.id != WR_INVALID_HANDLE);
+
     s_ctx->draw.index_buffer = buffer->handle;
     s_ctx->draw.index_size   = buffer->stride;
     s_ctx->draw.index_offset = offset + buffer->offset;

@@ -8,6 +8,7 @@
 #include <core/memory.h>
 #include <core/string.h>
 #include <core/math.h>
+#include <core/assert.h>
 
 #include <string.h>
 #include <cglm/cglm.h>
@@ -19,7 +20,7 @@ void wajs_setup_gl_context(void);
 
 GlContext *g_ctx = NULL;
 
-static GLenum const s_gl_attribute_type[WR_RHI_COMPONENT_COUNT] = {
+static GLenum const s_attribute_type[WR_RHI_COMPONENT_COUNT] = {
     GL_BYTE,            // Int8
     GL_UNSIGNED_BYTE,   // Uint8
     GL_SHORT,           // Int16
@@ -366,20 +367,20 @@ static void gl_buffer_update(Walrus_BufferHandle handle, u64 offset, u64 size, v
 static void bind_vertex_attributes(Walrus_VertexLayout const *layout, u64 offset)
 {
     for (u8 i = 0; i < layout->num_attributes; ++i) {
-        Walrus_LayoutComponent type;
         u8                     loc;
         u8                     num;
+        Walrus_LayoutComponent type;
         bool                   normalized;
         bool                   as_int;
         walrus_vertex_layout_decode(layout, i, &loc, &num, &type, &normalized, &as_int);
         lazy_enable_vertex_attribute(loc);
         glVertexAttribDivisor(loc, layout->instance_strde);
         if (as_int) {
-            glVertexAttribIPointer(loc, num, s_gl_attribute_type[type], layout->stride,
+            glVertexAttribIPointer(loc, num, s_attribute_type[type], layout->stride,
                                    (void const *)(offset + layout->offsets[loc]));
         }
         else {
-            glVertexAttribPointer(loc, num, s_gl_attribute_type[type], normalized ? GL_TRUE : GL_FALSE, layout->stride,
+            glVertexAttribPointer(loc, num, s_attribute_type[type], normalized ? GL_TRUE : GL_FALSE, layout->stride,
                                   (void const *)(offset + layout->offsets[loc]));
         }
     }
@@ -661,6 +662,9 @@ static void submit(RenderFrame *frame)
                     if (current_state.streams[id].handle.id != stream->handle.id) {
                         bind_attributes = true;
                     }
+                    if (current_state.streams[id].layout_handle.id != stream->layout_handle.id) {
+                        bind_attributes = true;
+                    }
                     if (current_state.streams[id].offset != stream->offset) {
                         bind_attributes = true;
                     }
@@ -681,7 +685,7 @@ static void submit(RenderFrame *frame)
             }
 
             if (current_state.index_buffer.id != draw->index_buffer.id) {
-                current_state.index_buffer.id = draw->index_buffer.id;
+                current_state.index_buffer = draw->index_buffer;
 
                 if (draw->index_buffer.id != WR_INVALID_HANDLE) {
                     GlBuffer const *ib = &g_ctx->buffers[draw->index_buffer.id];
@@ -701,12 +705,6 @@ static void submit(RenderFrame *frame)
                     id += ntz;
 
                     VertexStream const *stream = &draw->streams[id];
-                    if (current_state.streams[id].handle.id != stream->handle.id) {
-                        bind_attributes = true;
-                    }
-                    if (current_state.streams[id].offset != stream->offset) {
-                        bind_attributes = true;
-                    }
 
                     if (stream->handle.id != WR_INVALID_HANDLE) {
                         GlBuffer const *vb = &g_ctx->buffers[stream->handle.id];
@@ -761,8 +759,8 @@ static void submit(RenderFrame *frame)
             }
 
             if (draw->index_buffer.id != WR_INVALID_HANDLE) {
-                static GLenum const gl_index_type[5] = {GL_ZERO, GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT, GL_ZERO,
-                                                        GL_UNSIGNED_INT};
+                static GLenum const index_type[5] = {GL_ZERO, GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT, GL_ZERO,
+                                                     GL_UNSIGNED_INT};
 
                 GlBuffer const *ib = &g_ctx->buffers[draw->index_buffer.id];
 
@@ -770,7 +768,7 @@ static void submit(RenderFrame *frame)
                 if (num_indices == UINT32_MAX) {
                     num_indices = ib->size / draw->index_size;
                 }
-                glDrawElementsInstanced(primitive, num_indices, gl_index_type[draw->index_size],
+                glDrawElementsInstanced(primitive, num_indices, index_type[draw->index_size],
                                         (void *)draw->index_offset, num_instances);
             }
             else if (num_vertices != UINT32_MAX) {
