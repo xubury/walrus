@@ -43,7 +43,7 @@ static u64 convert_wrap_s(cgltf_int wrap)
     return 0;
 }
 
-static uint64_t convert_warp_t(cgltf_int wrap)
+static uint64_t convert_wrap_t(cgltf_int wrap)
 {
     switch (wrap) {
         case GLTF_WRAP_REPEAT:
@@ -419,7 +419,7 @@ static void textures_init(Walrus_Model *model, Walrus_Image *images, cgltf_data 
         if (texture->sampler) {
             flags = convert_min_filter(texture->sampler->min_filter) |
                     convert_mag_filter(texture->sampler->mag_filter) | convert_wrap_s(texture->sampler->wrap_s) |
-                    convert_warp_t(texture->sampler->wrap_t);
+                    convert_wrap_t(texture->sampler->wrap_t);
         }
         if (model->textures[i].srgb) flags |= WR_RHI_TEXTURE_SRGB;
         model->textures[i].handle =

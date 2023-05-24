@@ -1,6 +1,7 @@
 #include "gl_texture.h"
 
 #include <core/math.h>
+#include "core/log.h"
 
 static const GlFormat s_format_info[WR_RHI_FORMAT_COUNT] = {
     {GL_ALPHA, GL_ZERO, GL_ALPHA, GL_UNSIGNED_BYTE},  // Alpha8
@@ -54,6 +55,63 @@ static void tex_image(GLenum target, uint8_t mip, uint16_t x, uint16_t y, uint16
     glGenerateMipmap(target);
 }
 
+static void set_wrap(GLenum target, uint64_t flags)
+{
+    static const GLenum wrap_mode[] = {
+        GL_REPEAT,
+        GL_MIRRORED_REPEAT,
+        GL_CLAMP_TO_EDGE,
+        GL_CLAMP_TO_BORDER,
+    };
+    const GLenum u_wrap = wrap_mode[(flags & WR_RHI_SAMPLER_U_MASK) >> WR_RHI_SAMPLER_U_SHIFT];
+    const GLenum v_wrap = wrap_mode[(flags & WR_RHI_SAMPLER_V_MASK) >> WR_RHI_SAMPLER_V_SHIFT];
+    glTexParameteri(target, GL_TEXTURE_WRAP_S, u_wrap);
+    glTexParameteri(target, GL_TEXTURE_WRAP_T, v_wrap);
+    if (target == GL_TEXTURE_3D) {
+        const GLenum w_wrap = wrap_mode[(flags & WR_RHI_SAMPLER_W_MASK) >> WR_RHI_SAMPLER_W_SHIFT];
+        glTexParameteri(target, GL_TEXTURE_WRAP_R, w_wrap);
+        if (u_wrap == GL_CLAMP_TO_BORDER || v_wrap == GL_CLAMP_TO_BORDER || w_wrap == GL_CLAMP_TO_BORDER) {
+            const uint32_t rgba = (flags & WR_RHI_SAMPLER_BORDER_COLOR_MASK) >> WR_RHI_SAMPLER_BORDER_COLOR_SHIFT;
+            u8             color[4];
+            walrus_rhi_decompose_rgba(rgba, color, color + 1, color + 2, color + 3);
+            f32 fcolor[4] = {color[0] / 255.f, color[1] / 255.f, color[2] / 255.f, color[3] / 255.f};
+            glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, fcolor);
+        }
+    }
+    else {
+        if (u_wrap == GL_CLAMP_TO_BORDER || v_wrap == GL_CLAMP_TO_BORDER) {
+            const uint32_t rgba = (flags & WR_RHI_SAMPLER_BORDER_COLOR_MASK) >> WR_RHI_SAMPLER_BORDER_COLOR_SHIFT;
+            u8             color[4];
+            walrus_rhi_decompose_rgba(rgba, color, color + 1, color + 2, color + 3);
+            f32 fcolor[4] = {color[0] / 255.f, color[1] / 255.f, color[2] / 255.f, color[3] / 255.f};
+            glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, fcolor);
+        }
+    }
+}
+
+static void set_filter(GLenum target, bool has_mipmaps, uint64_t flags)
+{
+    static GLenum const s_tex_filter_mag[] = {
+        GL_LINEAR,
+        GL_NEAREST,
+        GL_LINEAR,
+    };
+    static GLenum const s_tex_filter_min[][3] = {
+        {GL_NEAREST, GL_NEAREST_MIPMAP_NEAREST, GL_NEAREST_MIPMAP_LINEAR},
+        {GL_NEAREST, GL_NEAREST_MIPMAP_NEAREST, GL_NEAREST_MIPMAP_LINEAR},
+        {GL_LINEAR, GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR_MIPMAP_LINEAR},
+    };
+
+    u32 const    mag        = (flags & WR_RHI_SAMPLER_MAG_MASK) >> WR_RHI_SAMPLER_MAG_SHIFT;
+    u32 const    min        = (flags & WR_RHI_SAMPLER_MIN_MASK) >> WR_RHI_SAMPLER_MIN_SHIFT;
+    u32 const    mip        = (flags & WR_RHI_SAMPLER_MIP_MASK) >> WR_RHI_SAMPLER_MIP_SHIFT;
+    GLenum const mag_filter = s_tex_filter_mag[mag];
+    GLenum const min_filter = s_tex_filter_min[min][has_mipmaps ? mip : 0];
+
+    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, min_filter);
+    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, mag_filter);
+}
+
 void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo const *info, void const *data)
 {
     GLuint id     = 0;
@@ -94,6 +152,8 @@ void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo con
 
     glGenTextures(1, &id);
     glBindTexture(target, id);
+    set_wrap(target, info->flags);
+    set_filter(target, info->num_mipmaps > 1, info->flags);
 
     GlFormat     gl_format     = s_format_info[info->format];
     const GLenum internal_fmt  = srgb ? gl_format.internal_srgb_format : gl_format.internal_format;
