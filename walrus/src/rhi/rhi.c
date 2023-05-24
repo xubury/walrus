@@ -744,6 +744,7 @@ void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u32 depth, u8 
     frame->render_items[render_item_id].draw = s_ctx->draw;
     frame->render_binds[render_item_id]      = s_ctx->bind;
 
+
     draw_clear(&s_ctx->draw, flags);
     bind_clear(&s_ctx->bind, flags);
 

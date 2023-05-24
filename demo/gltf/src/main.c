@@ -51,10 +51,9 @@ char const *fs_src =
     "void main() {"
     " vec3 light_dir = normalize(vec3(0, 0, 1));"
     " float diff = max(dot(normalize(v_normal), light_dir), 0.0);"
-    " vec3 emissive = texture(u_emissive, v_uv).rgb;"
+    " vec3 emissive = texture(u_emissive, v_uv).rgb * u_emissive_factor;"
     " vec4 albedo = texture(u_albedo, v_uv) * u_albedo_factor;"
     " fragcolor = vec4(diff * albedo.rgb + emissive, albedo.a);"
-    " fragcolor = vec4(emissive, albedo.a);"
     "}";
 
 Walrus_AppError on_init(Walrus_App *app)
@@ -109,10 +108,13 @@ static void submit_callback(Walrus_ModelNode *node, Walrus_MeshPrimitive *prim, 
     walrus_transform_compose(&node->world_transform, world);
     glm_mat4_mul(data->world, world, world);
     walrus_rhi_set_transform(world);
-    u64 flags = WR_RHI_STATE_DEFAULT | WR_RHI_STATE_BLEND_ALPHA;
+    u64 flags = WR_RHI_STATE_DEFAULT;
     if (prim->material) {
         if (!prim->material->double_sided) {
             flags |= WR_RHI_STATE_CULL_CW;
+        }
+        if (prim->material->alpha_mode == WR_ALPHA_MODE_BLEND) {
+            flags |= WR_RHI_STATE_BLEND_ALPHA;
         }
         walrus_rhi_set_state(flags, 0);
 
@@ -120,9 +122,6 @@ static void submit_callback(Walrus_ModelNode *node, Walrus_MeshPrimitive *prim, 
             u32 unit = 0;
             walrus_rhi_set_texture(unit, prim->material->albedo->handle);
             walrus_rhi_set_uniform(data->u_albedo, 0, sizeof(u32), &unit);
-            /* walrus_batch_render_texture(prim->material->albedo->handle, */
-            /*                             (vec3){data->debug_xoffset, data->debug_yoffset, 0}, (versor){0, 0, 0, 1}, */
-            /*                             (vec3){100, 100, 0}, 0xffffffff, 0, 0, 0); */
         }
         else {
             u32 unit = 0;
@@ -135,9 +134,6 @@ static void submit_callback(Walrus_ModelNode *node, Walrus_MeshPrimitive *prim, 
             u32 unit = 1;
             walrus_rhi_set_texture(unit, prim->material->emissive->handle);
             walrus_rhi_set_uniform(data->u_emissive, 0, sizeof(u32), &unit);
-            /* walrus_batch_render_texture(data->model.materials[id].emissive->handle, */
-            /*                             (vec3){data->debug_xoffset, data->debug_yoffset + 100, 0}, (versor){0, 0, 0, 1}, */
-            /*                             (vec3){100, 100, 0}, 0xffffffff, 0, 0, 0); */
             data->debug_xoffset += 100;
         }
         else {
@@ -151,12 +147,10 @@ static void submit_callback(Walrus_ModelNode *node, Walrus_MeshPrimitive *prim, 
 
 void on_render(Walrus_App *app)
 {
-    /* walrus_batch_render_begin(1, WR_RHI_STATE_WRITE_RGB | WR_RHI_STATE_WRITE_A | WR_RHI_STATE_BLEND_ALPHA); */
     AppData *data       = walrus_app_userdata(app);
     data->debug_xoffset = 50;
     data->debug_yoffset = 600;
     walrus_model_submit(0, &data->model, data->shader, 0, submit_callback, data);
-    /* walrus_batch_render_end(); */
 }
 
 void on_tick(Walrus_App *app, f32 dt)

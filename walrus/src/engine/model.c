@@ -148,6 +148,7 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
         material->emissive           = NULL;
         glm_vec3_zero(material->emissive_factor);
         material->double_sided = true;
+        material->alpha_mode   = WR_ALPHA_MODE_OPAQUE;
     }
 
     model->num_nodes = gltf->nodes_count;
@@ -367,8 +368,12 @@ static void images_shutdown(Walrus_Image *images, u32 num_images)
 
 static void materials_init(Walrus_Model *model, cgltf_data *gltf)
 {
+    static Walrus_AlphaMode mode[cgltf_alpha_mode_max_enum] = {WR_ALPHA_MODE_OPAQUE, WR_ALPHA_MODE_MASK,
+                                                               WR_ALPHA_MODE_BLEND};
     for (u32 i = 0; i < model->num_materials; ++i) {
-        cgltf_material *material = &gltf->materials[i];
+        cgltf_material *material         = &gltf->materials[i];
+        model->materials[i].double_sided = material->double_sided;
+        model->materials[i].alpha_mode   = mode[material->alpha_mode];
         if (material->normal_texture.texture) {
             model->materials[i].normal       = &model->textures[material->normal_texture.texture - &gltf->textures[0]];
             model->materials[i].normal_scale = material->normal_texture.scale;

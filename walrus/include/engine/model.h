@@ -22,15 +22,22 @@ typedef struct {
     bool                 srgb;
 } Walrus_Texture;
 
+typedef enum {
+    WR_ALPHA_MODE_OPAQUE,
+    WR_ALPHA_MODE_MASK,
+    WR_ALPHA_MODE_BLEND,
+} Walrus_AlphaMode;
+
 typedef struct {
-    Walrus_Texture *albedo;
-    vec4            albedo_factor;
-    Walrus_Texture *normal;
-    f32             normal_scale;
-    Walrus_Texture *metallic_roughness;
-    Walrus_Texture *emissive;
-    vec3            emissive_factor;
-    bool            double_sided;
+    Walrus_Texture  *albedo;
+    vec4             albedo_factor;
+    Walrus_Texture  *normal;
+    f32              normal_scale;
+    Walrus_Texture  *metallic_roughness;
+    Walrus_Texture  *emissive;
+    vec3             emissive_factor;
+    Walrus_AlphaMode alpha_mode;
+    bool             double_sided;
 } Walrus_MeshMaterial;
 
 typedef struct {

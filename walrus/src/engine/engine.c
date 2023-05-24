@@ -221,7 +221,7 @@ Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height,
     opt.window_height = height;
     opt.window_flags  = WR_WINDOW_FLAG_VSYNC | WR_WINDOW_FLAG_OPENGL;
     opt.minfps        = 30.f;
-    opt.single_thread = true;
+    opt.single_thread = false;
 
     Walrus_EngineError err = walrus_engine_init(&opt);
 

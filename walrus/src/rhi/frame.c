@@ -337,6 +337,8 @@ void draw_clear(RenderDraw *draw, u8 flags)
     if (flags & WR_RHI_DISCARD_INDEX_BUFFER) {
         draw->num_indices     = UINT32_MAX;
         draw->index_buffer.id = WR_INVALID_HANDLE;
+        draw->index_size   = 0;
+        draw->index_offset = 0;
     }
     if (flags & WR_RHI_DISCARD_INSTANCE_DATA) {
         draw->instance_offset    = 0;

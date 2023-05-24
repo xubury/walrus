@@ -429,7 +429,7 @@ static void submit(RenderFrame *frame)
         u64 const  key_val    = frame->sortkeys[item];
         bool const is_compute = sortkey_decode(&sortkey, key_val, frame->view_map);
 
-        u32 const         item_id     = frame->sortvalues[item];
+        u32 const item_id = frame->sortvalues[item];
         RenderItem const *render_item = &frame->render_items[item_id];
         RenderBind const *render_bind = &frame->render_binds[item_id];
         RenderDraw const *draw        = &render_item->draw;
@@ -725,7 +725,7 @@ static void submit(RenderFrame *frame)
                 GlBuffer const            *instance_buffer = &g_ctx->buffers[draw->instance_buffer.id];
                 num_instances = walrus_min(num_instances, instance_buffer->size / layout->stride);
             }
-            if (bind_attributes && draw->stream_mask != UINT16_MAX) {
+            if (bind_attributes) {
                 for (u8 i = 0; i < WR_RHI_MAX_VERTEX_ATTRIBUTES; ++i) {
                     lazy_disable_vertex_attribute(i);
                     glVertexAttribDivisor(i, 0);
