@@ -71,14 +71,14 @@ static void get_normal(SMikkTSpaceContext const *ctx, float *out, const int ifac
 {
     MikData *userdata = (MikData *)ctx->m_pUserData;
     i32      index    = get_vertex_index(ctx, iface, ivert);
-    cgltf_accessor_read_float(userdata->position->data, index, out, sizeof(vec3));
+    cgltf_accessor_read_float(userdata->normal->data, index, out, sizeof(vec3));
 }
 
 static void get_texcoord(SMikkTSpaceContext const *ctx, float *out, const int iface, const int ivert)
 {
     MikData *userdata = (MikData *)ctx->m_pUserData;
     i32      index    = get_vertex_index(ctx, iface, ivert);
-    cgltf_accessor_read_float(userdata->position->data, index, out, sizeof(vec2));
+    cgltf_accessor_read_float(userdata->texcoord->data, index, out, sizeof(vec2));
 }
 
 static void set_tangent_basic(SMikkTSpaceContext const *ctx, float const *tangents, f32 const fsign, i32 const iface,
