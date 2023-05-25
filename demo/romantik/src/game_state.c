@@ -130,7 +130,7 @@ void renderer_init(Romantik_GameState *state)
     walrus_vertex_layout_begin_instance(&layout, 1);
     walrus_vertex_layout_add(&layout, 2, 3, WR_RHI_COMPONENT_FLOAT, false);
     walrus_vertex_layout_add(&layout, 3, 1, WR_RHI_COMPONENT_FLOAT, false);
-    walrus_vertex_layout_add(&layout, 4, 1, WR_RHI_COMPONENT_MAT4, false);
+    walrus_vertex_layout_add_mat4(&layout, 4);
     walrus_vertex_layout_end(&layout);
     state->ins_layout = walrus_rhi_create_vertex_layout(&layout);
 

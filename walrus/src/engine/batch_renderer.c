@@ -210,7 +210,7 @@ void walrus_batch_render_init(void)
     walrus_vertex_layout_add(&layout, 6, 4, WR_RHI_COMPONENT_UINT8, true);   // Color
     walrus_vertex_layout_add(&layout, 7, 4, WR_RHI_COMPONENT_UINT8, true);   // Boarder color
     walrus_vertex_layout_add(&layout, 8, 1, WR_RHI_COMPONENT_UINT8, false);  // Texture Id
-    walrus_vertex_layout_add(&layout, 9, 1, WR_RHI_COMPONENT_MAT4, false);   // Model
+    walrus_vertex_layout_add_mat4(&layout, 9);                               // Model
     walrus_vertex_layout_end(&layout);
     s_renderer->quad_ins_layout = walrus_rhi_create_vertex_layout(&layout);
 
@@ -224,7 +224,7 @@ void walrus_batch_render_init(void)
     walrus_vertex_layout_add(&layout, 2, 1, WR_RHI_COMPONENT_FLOAT, false);  // Fade
     walrus_vertex_layout_add(&layout, 3, 4, WR_RHI_COMPONENT_UINT8, true);   // Color
     walrus_vertex_layout_add(&layout, 4, 4, WR_RHI_COMPONENT_UINT8, true);   // Boarder color
-    walrus_vertex_layout_add(&layout, 5, 1, WR_RHI_COMPONENT_MAT4, false);   // Model
+    walrus_vertex_layout_add_mat4(&layout, 5);                               // Model
     walrus_vertex_layout_end(&layout);
     s_renderer->circle_ins_layout = walrus_rhi_create_vertex_layout(&layout);
 

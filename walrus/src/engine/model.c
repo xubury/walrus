@@ -380,12 +380,10 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
                 stream->num_vertices                = accessor->count;
                 walrus_vertex_layout_begin(&layout);
                 if (accessor->type == cgltf_type_mat4) {
-                    walrus_vertex_layout_add_override(&layout, loc, 1, WR_RHI_COMPONENT_MAT4, accessor->normalized, 0,
-                                                      buffer_view->stride);
+                    walrus_vertex_layout_add_mat4_override(&layout, loc, 0, buffer_view->stride);
                 }
                 else if (accessor->type == cgltf_type_mat3) {
-                    walrus_vertex_layout_add_override(&layout, loc, 1, WR_RHI_COMPONENT_MAT3, accessor->normalized, 0,
-                                                      buffer_view->stride);
+                    walrus_vertex_layout_add_mat3_override(&layout, loc, 0, buffer_view->stride);
                 }
                 else {
                     walrus_vertex_layout_add_override(&layout, loc, component_num[accessor->type],
@@ -410,7 +408,7 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
                 stream->num_vertices           = num_vertices;
                 Walrus_VertexLayout layout;
                 walrus_vertex_layout_begin(&layout);
-                walrus_vertex_layout_add_override(&layout, cgltf_attribute_type_tangent - 1, 1, WR_RHI_COMPONENT_VEC4,
+                walrus_vertex_layout_add_override(&layout, cgltf_attribute_type_tangent - 1, 4, WR_RHI_COMPONENT_FLOAT,
                                                   false, 0, sizeof(vec4));
                 walrus_vertex_layout_end(&layout);
                 stream->layout_handle = walrus_rhi_create_vertex_layout(&layout);

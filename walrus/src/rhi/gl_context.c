@@ -28,10 +28,6 @@ static GLenum const s_attribute_type[WR_RHI_COMPONENT_COUNT] = {
     GL_INT,             // Int32
     GL_UNSIGNED_INT,    // Uint32
     GL_FLOAT,           // Float
-    GL_FLOAT,           // Vec3
-    GL_FLOAT,           // Vec4
-    GL_FLOAT,           // Mat3
-    GL_FLOAT,           // Mat4
 };
 
 static GLenum const s_access[] = {
@@ -429,7 +425,7 @@ static void submit(RenderFrame *frame)
         u64 const  key_val    = frame->sortkeys[item];
         bool const is_compute = sortkey_decode(&sortkey, key_val, frame->view_map);
 
-        u32 const item_id = frame->sortvalues[item];
+        u32 const         item_id     = frame->sortvalues[item];
         RenderItem const *render_item = &frame->render_items[item_id];
         RenderBind const *render_bind = &frame->render_binds[item_id];
         RenderDraw const *draw        = &render_item->draw;
