@@ -1,5 +1,6 @@
 find_package(stb REQUIRED)
 find_package(cgltf REQUIRED)
+find_package(mikktspace REQUIRED)
 
 add_library(
   walrus_engine STATIC
@@ -20,7 +21,7 @@ target_include_directories(walrus_engine PUBLIC ${walrus_root_dir}/include)
 target_link_libraries(
   walrus_engine
   PUBLIC walrus_core walrus_rhi
-  PRIVATE stb::stb cgltf::cgltf)
+  PRIVATE stb::stb cgltf::cgltf mikktspace::mikktspace)
 
 if(WASM)
   target_link_options(walrus_engine PUBLIC -Wl,-export=__engine_should_close)

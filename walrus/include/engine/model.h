@@ -34,14 +34,20 @@ typedef struct {
     Walrus_Texture  *normal;
     f32              normal_scale;
     Walrus_Texture  *metallic_roughness;
+    f32              metallic_factor;
+    f32              roughness_factor;
+    Walrus_Texture  *specular_glossiness;
+    vec3             specular_factor;
+    f32              glossiness_factor;
     Walrus_Texture  *emissive;
     vec3             emissive_factor;
+    Walrus_Texture  *occlusion;
     Walrus_AlphaMode alpha_mode;
     bool             double_sided;
 } Walrus_MeshMaterial;
 
 typedef struct {
-    Walrus_PrimitiveStream streams[16];
+    Walrus_PrimitiveStream streams[WR_RHI_MAX_VERTEX_STREAM];
     u32                    num_streams;
 
     Walrus_MeshIndices indices;
@@ -68,6 +74,8 @@ struct Walrus_ModelNode {
 typedef struct {
     Walrus_BufferHandle *buffers;
     u32                  num_buffers;
+
+    Walrus_BufferHandle  tangent_buffer;
 
     Walrus_Texture *textures;
     u32             num_textures;

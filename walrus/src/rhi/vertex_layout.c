@@ -33,6 +33,20 @@ static u8 s_component_align[WR_RHI_COMPONENT_COUNT] = {
     16,  // Mat4
 };
 
+static u8 s_component_num[WR_RHI_COMPONENT_COUNT] = {
+    1,  // UInt8
+    1,  // Int8
+    1,  // Int16
+    1,  // UInt16
+    1,  // Int32
+    1,  // UInt32
+    1,  // Float
+    3,  // Vec3
+    4,  // Vec4
+    4,  // Mat3
+    4,  // Mat4
+};
+
 void walrus_vertex_layout_begin(Walrus_VertexLayout* layout)
 {
     walrus_vertex_layout_begin_instance(layout, 0);
@@ -79,20 +93,22 @@ static void vertex_layout_add(Walrus_VertexLayout* layout, u8 attr, u8 num, Walr
     u32 stride    = layout->stride + s_component_stride[type][num - 1];
     if (type == WR_RHI_COMPONENT_MAT4) {
         for (u8 i = 0; i < 4; ++i) {
-            vertex_layout_add_internal(layout, attr + i, 4, type, offset, stride, normalized, as_int);
+            vertex_layout_add_internal(layout, attr + i, s_component_num[type], type, offset, stride, normalized,
+                                       as_int);
             offset = walrus_align_up(layout->stride, s_component_align[type]);
             stride += s_component_stride[type][num - 1];
         }
     }
     else if (type == WR_RHI_COMPONENT_MAT3) {
         for (u8 i = 0; i < 3; ++i) {
-            vertex_layout_add_internal(layout, attr + i, 3, type, offset, stride, normalized, as_int);
+            vertex_layout_add_internal(layout, attr + i, s_component_num[type], type, offset, stride, normalized,
+                                       as_int);
             offset = walrus_align_up(layout->stride, s_component_align[type]);
             stride += s_component_stride[type][num - 1];
         }
     }
     else {
-        vertex_layout_add_internal(layout, attr, num, type, offset, stride, normalized, as_int);
+        vertex_layout_add_internal(layout, attr, s_component_num[type], type, offset, stride, normalized, as_int);
     }
 }
 

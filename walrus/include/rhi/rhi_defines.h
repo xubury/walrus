@@ -21,7 +21,7 @@
 #endif
 
 #ifndef WR_RHI_MAX_VERTEX_STREAM
-#define WR_RHI_MAX_VERTEX_STREAM (8)
+#define WR_RHI_MAX_VERTEX_STREAM (15)
 #endif
 
 #ifndef WR_RHI_MAX_SHADERS

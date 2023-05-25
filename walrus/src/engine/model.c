@@ -15,7 +15,122 @@
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
+#include <mikktspace.h>
+
 #include <string.h>
+
+typedef struct {
+    cgltf_primitive *primitive;
+    cgltf_attribute *position;
+    cgltf_attribute *normal;
+    cgltf_attribute *texcoord;
+    u8              *buffer;
+} MikData;
+
+static i32 get_num_vertices_of_face(SMikkTSpaceContext const *ctx, i32 const iface)
+{
+    walrus_unused(iface);
+    walrus_unused(ctx);
+    // only triangle,  other primitive?
+    return 3;
+}
+
+static i32 get_num_of_faces(SMikkTSpaceContext const *ctx)
+{
+    MikData *userdata = (MikData *)ctx->m_pUserData;
+    if (userdata->primitive->indices) {
+        return userdata->primitive->indices->count / get_num_vertices_of_face(ctx, 0);
+    }
+    else {
+        return userdata->primitive->attributes[0].data->count / get_num_vertices_of_face(ctx, 0);
+    }
+}
+
+static i32 get_vertex_index(SMikkTSpaceContext const *ctx, i32 iface, i32 ivert)
+{
+    MikData *userdata = (MikData *)ctx->m_pUserData;
+    if (userdata->primitive->indices) {
+        i32 index = ivert + iface * get_num_vertices_of_face(ctx, iface);
+        i32 ret   = cgltf_accessor_read_index(userdata->primitive->indices, index);
+        return ret;
+    }
+    else {
+        i32 index = ivert + iface * get_num_vertices_of_face(ctx, iface);
+        return index;
+    }
+}
+
+static void get_position(SMikkTSpaceContext const *ctx, float *out, const int iface, const int ivert)
+{
+    MikData *userdata = (MikData *)ctx->m_pUserData;
+    i32      index    = get_vertex_index(ctx, iface, ivert);
+    cgltf_accessor_read_float(userdata->position->data, index, out, sizeof(vec3));
+}
+
+static void get_normal(SMikkTSpaceContext const *ctx, float *out, const int iface, const int ivert)
+{
+    MikData *userdata = (MikData *)ctx->m_pUserData;
+    i32      index    = get_vertex_index(ctx, iface, ivert);
+    cgltf_accessor_read_float(userdata->position->data, index, out, sizeof(vec3));
+}
+
+static void get_texcoord(SMikkTSpaceContext const *ctx, float *out, const int iface, const int ivert)
+{
+    MikData *userdata = (MikData *)ctx->m_pUserData;
+    i32      index    = get_vertex_index(ctx, iface, ivert);
+    cgltf_accessor_read_float(userdata->position->data, index, out, sizeof(vec2));
+}
+
+static void set_tangent_basic(SMikkTSpaceContext const *ctx, float const *tangents, f32 const fsign, i32 const iface,
+                              i32 const ivert)
+{
+    MikData *userdata = (MikData *)ctx->m_pUserData;
+    i32      index    = get_vertex_index(ctx, iface, ivert);
+    f32     *out      = (f32 *)&userdata->buffer[index * sizeof(vec4)];
+    out[0]            = tangents[0];
+    out[1]            = tangents[1];
+    out[2]            = tangents[2];
+    out[3]            = fsign;
+}
+
+static void create_tangents(cgltf_primitive *primitive, void *buffer)
+{
+    SMikkTSpaceContext   ctx;
+    SMikkTSpaceInterface mik_interface;
+    MikData              userdata;
+    userdata.primitive = primitive;
+    for (u32 i = 0; i < primitive->attributes_count; ++i) {
+        cgltf_attribute *attribute = &primitive->attributes[i];
+        if (attribute->index > 0) {
+            continue;
+        }
+        switch (attribute->type) {
+            default:
+                break;
+            case cgltf_attribute_type_position:
+                userdata.position = attribute;
+                break;
+            case cgltf_attribute_type_texcoord:
+                userdata.texcoord = attribute;
+                break;
+            case cgltf_attribute_type_normal:
+                userdata.normal = attribute;
+                break;
+        }
+    }
+    userdata.buffer  = buffer;
+    ctx.m_pInterface = &mik_interface;
+    ctx.m_pUserData  = &userdata;
+
+    mik_interface.m_getNumFaces          = get_num_of_faces;
+    mik_interface.m_getNumVerticesOfFace = get_num_vertices_of_face;
+    mik_interface.m_getPosition          = get_position;
+    mik_interface.m_getNormal            = get_normal;
+    mik_interface.m_getTexCoord          = get_texcoord;
+    mik_interface.m_setTSpaceBasic       = set_tangent_basic;
+    mik_interface.m_setTSpace            = NULL;
+    genTangSpaceDefault(&ctx);
+}
 
 #define resource_new(type, count) count > 0 ? walrus_new(type, count) : NULL;
 
@@ -116,6 +231,7 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
     for (u32 i = 0; i < model->num_buffers; ++i) {
         model->buffers[i].id = WR_INVALID_HANDLE;
     }
+    model->tangent_buffer.id = WR_INVALID_HANDLE;
 
     model->num_meshes = gltf->meshes_count;
     model->meshes     = resource_new(Walrus_Mesh, model->num_meshes);
@@ -140,13 +256,24 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
     model->materials     = resource_new(Walrus_MeshMaterial, model->num_materials);
     for (u32 i = 0; i < model->num_materials; ++i) {
         Walrus_MeshMaterial *material = &model->materials[i];
-        material->albedo              = NULL;
+
+        material->albedo = NULL;
         glm_vec4_one(material->albedo_factor);
+
         material->metallic_roughness = NULL;
-        material->normal             = NULL;
-        material->normal_scale       = 1.0;
-        material->emissive           = NULL;
+        material->metallic_factor    = 1.0;
+        material->roughness_factor   = 1.0;
+
+        material->specular_glossiness = NULL;
+        glm_vec3_one(material->specular_factor);
+        material->glossiness_factor = 1.0;
+
+        material->normal       = NULL;
+        material->normal_scale = 1.0;
+
+        material->emissive = NULL;
         glm_vec3_zero(material->emissive_factor);
+
         material->double_sided = true;
         material->alpha_mode   = WR_ALPHA_MODE_OPAQUE;
     }
@@ -216,6 +343,8 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
     for (u32 i = 0; i < gltf->meshes_count; ++i) {
         cgltf_mesh *mesh = &gltf->meshes[i];
         for (u32 j = 0; j < mesh->primitives_count; ++j) {
+            bool has_tangent = false;
+
             cgltf_primitive *prim = &mesh->primitives[j];
 
             cgltf_accessor *indices = prim->indices;
@@ -236,6 +365,9 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
                 cgltf_attribute *attribute = &prim->attributes[k];
                 if (attribute->index > 0) {
                     continue;
+                }
+                if (attribute->type == cgltf_attribute_type_tangent) {
+                    has_tangent = true;
                 }
                 Walrus_VertexLayout     layout;
                 cgltf_accessor         *accessor    = attribute->data;
@@ -263,6 +395,27 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
                 walrus_vertex_layout_end(&layout);
                 stream->layout_handle = walrus_rhi_create_vertex_layout(&layout);
                 ++model->meshes[i].primitives[j].num_streams;
+            }
+
+            if (!has_tangent && model->meshes[i].primitives[j].num_streams > 0) {
+                u32   num_vertices = model->meshes[i].primitives[j].streams[0].num_vertices;
+                u64   size         = num_vertices * sizeof(vec4);
+                u32   stream_id    = model->meshes[i].primitives[j].num_streams;
+                void *buffer       = walrus_malloc(size);
+                create_tangents(prim, buffer);
+                model->tangent_buffer          = walrus_rhi_create_buffer(buffer, size, 0);
+                Walrus_PrimitiveStream *stream = &model->meshes[i].primitives[j].streams[stream_id];
+                stream->offset                 = 0;
+                stream->buffer                 = model->tangent_buffer;
+                stream->num_vertices           = num_vertices;
+                Walrus_VertexLayout layout;
+                walrus_vertex_layout_begin(&layout);
+                walrus_vertex_layout_add_override(&layout, cgltf_attribute_type_tangent - 1, 1, WR_RHI_COMPONENT_VEC4,
+                                                  false, 0, sizeof(vec4));
+                walrus_vertex_layout_end(&layout);
+                stream->layout_handle = walrus_rhi_create_vertex_layout(&layout);
+                model->meshes[i].primitives[j].num_streams++;
+                walrus_free(buffer);
             }
         }
     }
@@ -386,6 +539,11 @@ static void materials_init(Walrus_Model *model, cgltf_data *gltf)
         }
         glm_vec3_copy(material->emissive_factor, model->materials[i].emissive_factor);
 
+        if (material->occlusion_texture.texture) {
+            model->materials[i].occlusion = &model->textures[material->occlusion_texture.texture - &gltf->textures[0]];
+            model->materials[i].occlusion->srgb = false;
+        }
+
         if (material->has_pbr_metallic_roughness) {
             cgltf_pbr_metallic_roughness *metallic_roughness = &material->pbr_metallic_roughness;
             if (metallic_roughness->base_color_texture.texture) {
@@ -393,6 +551,9 @@ static void materials_init(Walrus_Model *model, cgltf_data *gltf)
                     &model->textures[metallic_roughness->base_color_texture.texture - &gltf->textures[0]];
                 model->materials[i].albedo->srgb = true;
             }
+            glm_vec4_copy(metallic_roughness->base_color_factor, model->materials[i].albedo_factor);
+            model->materials[i].metallic_factor  = metallic_roughness->metallic_factor;
+            model->materials[i].roughness_factor = metallic_roughness->roughness_factor;
             if (metallic_roughness->metallic_roughness_texture.texture) {
                 model->materials[i].metallic_roughness =
                     &model->textures[metallic_roughness->metallic_roughness_texture.texture - &gltf->textures[0]];
@@ -401,11 +562,15 @@ static void materials_init(Walrus_Model *model, cgltf_data *gltf)
         }
         if (material->has_pbr_specular_glossiness) {
             cgltf_pbr_specular_glossiness *specular_glossiness = &material->pbr_specular_glossiness;
-            if (specular_glossiness->diffuse_texture.texture) {
-                model->materials[i].albedo =
-                    &model->textures[specular_glossiness->diffuse_texture.texture - &gltf->textures[0]];
-                model->materials[i].albedo->srgb = true;
-            }
+            model->materials[i].specular_glossiness =
+                &model->textures[specular_glossiness->specular_glossiness_texture.texture - &gltf->textures[0]];
+            model->materials[i].specular_glossiness->srgb = true;
+            model->materials[i].albedo =
+                &model->textures[specular_glossiness->diffuse_texture.texture - &gltf->textures[0]];
+            model->materials[i].albedo->srgb = true;
+            glm_vec4_copy(specular_glossiness->diffuse_factor, model->materials[i].albedo_factor);
+            glm_vec3_copy(specular_glossiness->specular_factor, model->materials[i].specular_factor);
+            model->materials[i].glossiness_factor = specular_glossiness->glossiness_factor;
         }
     }
 }
@@ -446,6 +611,7 @@ static void buffers_shutdown(Walrus_Model *model)
     for (u32 i = 0; i < model->num_buffers; ++i) {
         walrus_rhi_destroy_buffer(model->buffers[i]);
     }
+    walrus_rhi_destroy_buffer(model->tangent_buffer);
 }
 
 static void model_init(Walrus_Model *model, Walrus_Image *images, cgltf_data *gltf)
