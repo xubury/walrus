@@ -79,7 +79,7 @@ char const *fs_src =
     " vec3 emissive = texture(u_emissive, v_uv).rgb * u_emissive_factor;"
     " vec4 albedo = texture(u_albedo, v_uv) * u_albedo_factor;"
     " vec3 color = linear_to_srgb(diff * albedo.rgb + emissive);"
-    " fragcolor = vec4(color, albedo.a);"
+    " fragcolor = vec4(normalize(normal), albedo.a);"
     "}";
 
 Walrus_AppError on_init(Walrus_App *app)
@@ -119,7 +119,7 @@ Walrus_AppError on_init(Walrus_App *app)
     glm_ortho(0, 1440, 900, 0, 0, 1000, projection);
     walrus_rhi_set_view_transform(1, GLM_MAT4_IDENTITY, projection);
 
-    char const *filename = "assets/gltf/shibahu/scene.gltf";
+    char const *filename = "assets/gltf/helmet/DamagedHelmet.gltf";
     if (walrus_model_load_from_file(&data->model, filename) != WR_MODEL_SUCCESS) {
         walrus_error("error loading model from: %s !", filename);
     }

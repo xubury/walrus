@@ -340,6 +340,8 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
         WR_RHI_COMPONENT_UINT16, WR_RHI_COMPONENT_INT32, WR_RHI_COMPONENT_FLOAT};
     static u32 component_num[cgltf_type_max_enum] = {0, 1, 2, 3, 4, 4, 1, 1};
 
+    void *tangent_buffer      = NULL;
+    u64   tangent_buffer_size = 0;
     for (u32 i = 0; i < gltf->meshes_count; ++i) {
         cgltf_mesh *mesh = &gltf->meshes[i];
         for (u32 j = 0; j < mesh->primitives_count; ++j) {
@@ -396,16 +398,15 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
             }
 
             if (!has_tangent && model->meshes[i].primitives[j].num_streams > 0) {
-                u32   num_vertices = model->meshes[i].primitives[j].streams[0].num_vertices;
-                u64   size         = num_vertices * sizeof(vec4);
-                u32   stream_id    = model->meshes[i].primitives[j].num_streams;
-                void *buffer       = walrus_malloc(size);
-                create_tangents(prim, buffer);
-                model->tangent_buffer          = walrus_rhi_create_buffer(buffer, size, 0);
+                u32 num_vertices = model->meshes[i].primitives[j].streams[0].num_vertices;
+                u64 size         = num_vertices * sizeof(vec4);
+                u32 stream_id    = model->meshes[i].primitives[j].num_streams;
+                tangent_buffer   = walrus_realloc(tangent_buffer, tangent_buffer_size + size);
+                create_tangents(prim, (u8 *)tangent_buffer + tangent_buffer_size);
                 Walrus_PrimitiveStream *stream = &model->meshes[i].primitives[j].streams[stream_id];
-                stream->offset                 = 0;
-                stream->buffer                 = model->tangent_buffer;
+                stream->offset                 = tangent_buffer_size;
                 stream->num_vertices           = num_vertices;
+                stream->buffer.id              = WR_INVALID_HANDLE;  // ready for following tangent buffer
                 Walrus_VertexLayout layout;
                 walrus_vertex_layout_begin(&layout);
                 walrus_vertex_layout_add_override(&layout, cgltf_attribute_type_tangent - 1, 4, WR_RHI_COMPONENT_FLOAT,
@@ -413,7 +414,24 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
                 walrus_vertex_layout_end(&layout);
                 stream->layout_handle = walrus_rhi_create_vertex_layout(&layout);
                 model->meshes[i].primitives[j].num_streams++;
-                walrus_free(buffer);
+                tangent_buffer_size += size;
+            }
+        }
+    }
+    model->tangent_buffer = walrus_rhi_create_buffer(tangent_buffer, tangent_buffer_size, 0);
+    if (tangent_buffer) {
+        walrus_free(tangent_buffer);
+    }
+    for (u32 i = 0; i < gltf->meshes_count; ++i) {
+        cgltf_mesh *mesh = &gltf->meshes[i];
+        for (u32 j = 0; j < mesh->primitives_count; ++j) {
+            if (model->meshes[i].primitives[j].num_streams == 0) {
+                continue;
+            }
+            Walrus_PrimitiveStream *stream =
+                &model->meshes[i].primitives[j].streams[model->meshes[i].primitives[j].num_streams - 1];
+            if (stream->buffer.id == WR_INVALID_HANDLE) {
+                stream->buffer = model->tangent_buffer;
             }
         }
     }
