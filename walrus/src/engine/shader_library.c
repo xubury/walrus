@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <stdio.h>
 
+#define STB_INCLUDE_LINE_GLSL
 #define STB_INCLUDE_IMPLEMENTATION
 #include <stb_include.h>
 
@@ -28,8 +29,8 @@ WR_INLINE void shader_destroy(void *ptr)
 
 void walrus_shader_library_init(char const *dir)
 {
-    s_library      = walrus_new(Walrus_ShaderLibary, 1);
-    s_library->dir = walrus_str_dup(dir);
+    s_library             = walrus_new(Walrus_ShaderLibary, 1);
+    s_library->dir        = walrus_str_dup(dir);
     s_library->shader_map = walrus_hash_table_create_full(walrus_str_hash, walrus_str_equal, NULL, shader_destroy);
 }
 

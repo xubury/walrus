@@ -117,7 +117,7 @@ bool walrus_str_skip(char *str, u64 len)
     }
 
     StringHeader *header = get_header(str);
-    header->len          = walrus_min(len, header->capacity - 1);
+    header->len          = walrus_min(header->len + len, header->capacity - 1);
     str[header->len]     = 0;
     return true;
 }
