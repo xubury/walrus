@@ -11,6 +11,7 @@ typedef struct {
     i32         window_flags;
     f32         minfps;
     bool        single_thread;
+    char const *shader_folder;
 } Walrus_EngineOption;
 
 typedef struct Walrus_Engine Walrus_Engine;

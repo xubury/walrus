@@ -12,6 +12,7 @@ add_library(
   input_device.c
   input.c
   model.c
+  shader_library.c
   window.c)
 
 target_compile_options(walrus_engine PRIVATE -Wall -Wextra -Wundef -pedantic)

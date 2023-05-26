@@ -1,6 +1,7 @@
 #include <engine/engine.h>
 #include <engine/event.h>
 #include <engine/batch_renderer.h>
+#include <engine/shader_library.h>
 #include <rhi/rhi.h>
 #include <core/type.h>
 #include <core/sys.h>
@@ -92,6 +93,8 @@ static Walrus_EngineError register_service(void)
     }
     walrus_rhi_set_resolution(opt->window_width, opt->window_height);
 
+    walrus_shader_library_init(opt->shader_folder);
+
     walrus_batch_render_init();
 
     return WR_ENGINE_SUCCESS;
@@ -100,11 +103,19 @@ static Walrus_EngineError register_service(void)
 static void release_service(void)
 {
     walrus_batch_render_shutdown();
+
+    walrus_shader_library_shutdown();
+
     walrus_rhi_shutdown();
+
     walrus_inputs_destroy(s_engine->input);
+
     walrus_window_destroy(s_engine->window);
+
     walrus_event_shutdown();
+
     walrus_mutex_destroy(s_engine->log_mutex);
+
     walrus_log_set_lock(NULL, NULL);
 }
 
@@ -221,6 +232,7 @@ Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height,
     opt.window_height = height;
     opt.window_flags  = WR_WINDOW_FLAG_VSYNC | WR_WINDOW_FLAG_OPENGL;
     opt.minfps        = 30.f;
+    opt.shader_folder = "shaders";
     opt.single_thread = false;
 
     Walrus_EngineError err = walrus_engine_init(&opt);

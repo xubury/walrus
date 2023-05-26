@@ -17,16 +17,16 @@ typedef struct {
     u64 len;           // length of the string, excluding NULL
     u64 capacity;      // the max character capacity of the string
     u32 magic_number;  // validation magic number
-} Walrus_StringHeader;
+} StringHeader;
 
-static Walrus_StringHeader const *get_const_header(char const *str)
+static StringHeader const *get_const_header(char const *str)
 {
-    return (Walrus_StringHeader const *)(str - sizeof(Walrus_StringHeader));
+    return (StringHeader const *)(str - sizeof(StringHeader));
 }
 
-static Walrus_StringHeader *get_header(char const *str)
+static StringHeader *get_header(char const *str)
 {
-    return (Walrus_StringHeader *)(str - sizeof(Walrus_StringHeader));
+    return (StringHeader *)(str - sizeof(StringHeader));
 }
 
 static bool check_str_valid(char const *str)
@@ -47,62 +47,78 @@ char *walrus_str_substr(char const *str, u32 start, u64 len)
     return alloc_str;
 }
 
-static char *str_storage_realloc(void *ptr, u64 size)
+static char *str_storage_realloc(void *ptr, u64 len)
 {
-    u64 len = 0;
-
+    u64 capacity = len + 1;
     if (ptr) {
-        len = walrus_min(size, ((Walrus_StringHeader *)(ptr))->len);
+        len = walrus_min(len, ((StringHeader *)(ptr))->len);
     }
-    char                *mem    = walrus_realloc(ptr, (size + 1) * sizeof(char) + sizeof(Walrus_StringHeader));
-    Walrus_StringHeader *header = (Walrus_StringHeader *)mem;
-    char                *str    = mem + sizeof(Walrus_StringHeader);
+    else {
+        len = 0;
+    }
+
+    char         *mem    = walrus_realloc(ptr, capacity * sizeof(char) + sizeof(StringHeader));
+    StringHeader *header = (StringHeader *)mem;
+    char         *str    = mem + sizeof(StringHeader);
 
     str[len]             = 0;
     header->len          = len;
-    header->capacity     = size;
+    header->capacity     = capacity;
     header->magic_number = STR_MAGIC_NUMBER;
 
     return str;
 }
 
-char *walrus_str_alloc(u64 size)
+char *walrus_str_alloc(u64 len)
 {
-    return str_storage_realloc(NULL, size);
+    return str_storage_realloc(NULL, len);
 }
 
 void walrus_str_free(char *str)
 {
     walrus_assert(check_str_valid(str));
-    walrus_free(str - sizeof(Walrus_StringHeader));
+    walrus_free(str - sizeof(StringHeader));
 }
 
 u64 walrus_str_len(char const *str)
 {
     if (check_str_valid(str)) {
-        return get_const_header(str)->len;
+        StringHeader const *header = get_const_header(str);
+        return header->len;
     }
     else {
         return strlen(str);
     }
 }
 
-bool walrus_str_resize(char **pstr, u64 size)
+bool walrus_str_resize(char **pstr, u64 len)
 {
     char *str = *pstr;
     if (!check_str_valid(str)) {
         return false;
     }
 
-    Walrus_StringHeader const *header = get_const_header(str);
-    char                      *ptr    = (char *)header;
+    StringHeader const *header = get_const_header(str);
+    char               *ptr    = (char *)header;
 
-    if (header->capacity != size) {
-        str = str_storage_realloc(ptr, size);
+    if (header->capacity != len + 1) {
+        str = str_storage_realloc(ptr, len);
     }
 
     *pstr = str;
 
+    return true;
+}
+
+bool walrus_str_skip(char *str, u64 len)
+{
+    if (!check_str_valid(str)) {
+        return false;
+    }
+
+    StringHeader *header = get_header(str);
+    header->len          = walrus_min(len, header->capacity - 1);
+    str[header->len]     = 0;
     return true;
 }
 
@@ -119,11 +135,11 @@ void walrus_str_nappend(char **pdst, char const *src, u64 src_len)
         return;
     }
 
-    Walrus_StringHeader const *dst_header = get_const_header(dst);
-    u64 const                  dst_len    = dst_header->len;
-    u64 const                  new_len    = dst_len + src_len;
+    StringHeader const *dst_header = get_const_header(dst);
+    u64 const           dst_len    = dst_header->len;
+    u64 const           new_len    = dst_len + src_len;
 
-    bool can_append = new_len <= dst_header->capacity;
+    bool can_append = new_len + 1 <= dst_header->capacity;
     if (!can_append) {
         can_append = walrus_str_resize(&dst, new_len);
     }

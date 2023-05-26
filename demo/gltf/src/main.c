@@ -6,6 +6,7 @@
 #include <engine/model.h>
 #include <rhi/rhi.h>
 #include <engine/batch_renderer.h>
+#include <engine/shader_library.h>
 
 #include <cglm/cglm.h>
 #include <string.h>
@@ -27,62 +28,6 @@ typedef struct {
     f32 debug_yoffset;
 } AppData;
 
-char const *vs_src =
-    "layout(location = 0) in vec3 a_pos;"
-    "layout(location = 1) in vec3 a_normal;"
-    "layout(location = 2) in vec4 a_tangent;"
-    "layout(location = 3) in vec2 a_uv;"
-    "uniform mat4 u_viewproj;"
-    "uniform mat4 u_model;"
-    "out vec3 v_normal;"
-    "out vec2 v_uv;"
-    "out vec3 v_tangent;"
-    "out vec3 v_bitangent;"
-    "void main() {"
-    " gl_Position = u_viewproj * u_model * vec4(a_pos, 1);"
-    " mat3 nmat = transpose(inverse(mat3(u_model))); "
-    " v_normal = nmat * a_normal;"
-    " v_uv = a_uv;"
-    " v_tangent = nmat * a_tangent.xyz;"
-    " v_tangent = normalize(v_tangent - dot(v_tangent, v_normal) * v_normal);"
-    " v_bitangent = a_tangent.w * cross(v_tangent, v_normal);"
-    "}";
-
-char const *fs_src =
-    "out vec4 fragcolor;"
-    "in vec3 v_normal;"
-    "in vec2 v_uv;"
-    "in vec3 v_tangent;"
-    "in vec3 v_bitangent;"
-    "vec3 linear_to_srgb(vec3 linear)"
-    "{"
-    "    bvec3 cutoff = lessThan(linear, vec3(0.0031308));"
-    "    vec3 higher = vec3(1.055) * pow(linear, vec3(1.0 / 2.2)) - vec3(0.055);"
-    "    vec3 lower = linear * vec3(12.92);"
-    ""
-    "    return mix(higher, lower, cutoff);"
-    "}"
-    "uniform sampler2D u_albedo;"
-    "uniform vec4 u_albedo_factor;"
-    "uniform sampler2D u_emissive;"
-    "uniform vec3 u_emissive_factor;"
-    "uniform sampler2D u_normal;"
-    "uniform bool u_has_normal;"
-    "void main() {"
-    " vec3 light_dir = normalize(vec3(0, 0, 1));"
-    " vec3 normal = normalize(v_normal);"
-    " if (u_has_normal) {"
-    "   mat3 TBN = mat3(normalize(v_tangent), normalize(v_bitangent), normal);"
-    "   vec3 nomral_map = texture(u_normal, v_uv).xyz;"
-    "   normal = TBN * normalize(nomral_map * 2.0 - 1.0); "
-    " }"
-    " float diff = max(dot(normal, light_dir), 0.0);"
-    " vec3 emissive = texture(u_emissive, v_uv).rgb * u_emissive_factor;"
-    " vec4 albedo = texture(u_albedo, v_uv) * u_albedo_factor;"
-    " vec3 color = linear_to_srgb(diff * albedo.rgb + emissive);"
-    " fragcolor = vec4(color, albedo.a);"
-    "}";
-
 Walrus_AppError on_init(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
@@ -94,9 +39,10 @@ Walrus_AppError on_init(Walrus_App *app)
     data->u_normal          = walrus_rhi_create_uniform("u_normal", WR_RHI_UNIFORM_SAMPLER, 1);
     data->u_has_normal      = walrus_rhi_create_uniform("u_has_normal", WR_RHI_UNIFORM_BOOL, 1);
 
-    Walrus_ShaderHandle vs = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, vs_src);
-    Walrus_ShaderHandle fs = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_src);
-    data->shader           = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs, fs}, 2, true);
+    Walrus_ShaderHandle vs = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_mesh.glsl");
+    Walrus_ShaderHandle fs = walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_mesh.glsl");
+    
+    data->shader = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs, fs}, 2, true);
     walrus_rhi_destroy_shader(vs);
     walrus_rhi_destroy_shader(fs);
 

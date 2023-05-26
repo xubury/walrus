@@ -15,8 +15,8 @@ char *walrus_str_dup(char const *str);
 // Allocate a substr from a null-termiate string
 char *walrus_str_substr(char const *str, u32 start, u64 len);
 
-// Allocate an empty null-termiate string of capacity size
-char *walrus_str_alloc(u64 size);
+// Allocate an empty null-termiate string of len
+char *walrus_str_alloc(u64 len);
 
 // Free a allocated string
 void walrus_str_free(char *str);
@@ -26,6 +26,9 @@ u64 walrus_str_len(char const *str);
 
 // Resize the capacity of the string
 bool walrus_str_resize(char **pstr, u64 len);
+
+// Increase the len of str
+bool walrus_str_skip(char *str, u64 len);
 
 // Append entire src to the end of dst, dst must be allocated by walrus_alloc_str()
 void walrus_str_append(char **pdst, char const *src);
