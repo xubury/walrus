@@ -64,21 +64,27 @@ static void get_position(SMikkTSpaceContext const *ctx, float *out, const int if
 {
     MikData *userdata = (MikData *)ctx->m_pUserData;
     i32      index    = get_vertex_index(ctx, iface, ivert);
-    cgltf_accessor_read_float(userdata->position->data, index, out, sizeof(vec3));
+    if (userdata->position) {
+        cgltf_accessor_read_float(userdata->position->data, index, out, sizeof(vec3));
+    }
 }
 
 static void get_normal(SMikkTSpaceContext const *ctx, float *out, const int iface, const int ivert)
 {
     MikData *userdata = (MikData *)ctx->m_pUserData;
     i32      index    = get_vertex_index(ctx, iface, ivert);
-    cgltf_accessor_read_float(userdata->normal->data, index, out, sizeof(vec3));
+    if (userdata->normal) {
+        cgltf_accessor_read_float(userdata->normal->data, index, out, sizeof(vec3));
+    }
 }
 
 static void get_texcoord(SMikkTSpaceContext const *ctx, float *out, const int iface, const int ivert)
 {
     MikData *userdata = (MikData *)ctx->m_pUserData;
     i32      index    = get_vertex_index(ctx, iface, ivert);
-    cgltf_accessor_read_float(userdata->texcoord->data, index, out, sizeof(vec2));
+    if (userdata->texcoord) {
+        cgltf_accessor_read_float(userdata->texcoord->data, index, out, sizeof(vec2));
+    }
 }
 
 static void set_tangent_basic(SMikkTSpaceContext const *ctx, float const *tangents, f32 const fsign, i32 const iface,
@@ -98,6 +104,9 @@ static void create_tangents(cgltf_primitive *primitive, void *buffer)
     SMikkTSpaceContext   ctx;
     SMikkTSpaceInterface mik_interface;
     MikData              userdata;
+    userdata.normal    = NULL;
+    userdata.position  = NULL;
+    userdata.texcoord  = NULL;
     userdata.primitive = primitive;
     for (u32 i = 0; i < primitive->attributes_count; ++i) {
         cgltf_attribute *attribute = &primitive->attributes[i];

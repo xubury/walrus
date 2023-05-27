@@ -25,6 +25,6 @@ void main() {
     float diff = max(dot(normal, light_dir), 0.0);
     vec3 emissive = texture(u_emissive, v_uv).rgb * u_emissive_factor;
     vec4 albedo = texture(u_albedo, v_uv) * u_albedo_factor;
-    vec3 color = linear_to_srgb(diff * albedo.rgb + emissive);
+    vec3 color = linear_to_srgb(diff * albedo.rgb + emissive, 2.2);
     fragcolor = vec4(color, albedo.a);
 };

@@ -17,19 +17,25 @@
 typedef struct {
     char             *dir;
     Walrus_HashTable *shader_map;
-} Walrus_ShaderLibary;
+} ShaderLibary;
 
-static Walrus_ShaderLibary *s_library;
+typedef struct {
+    Walrus_ShaderType   type;
+    Walrus_ShaderHandle handle;
+} ShaderRef;
+
+static ShaderLibary *s_library;
 
 WR_INLINE void shader_destroy(void *ptr)
 {
-    Walrus_ShaderHandle handle = {walrus_ptr_to_val(ptr)};
-    walrus_rhi_destroy_shader(handle);
+    ShaderRef *ref = ptr;
+    walrus_rhi_destroy_shader(ref->handle);
+    walrus_free(ref);
 }
 
 void walrus_shader_library_init(char const *dir)
 {
-    s_library             = walrus_new(Walrus_ShaderLibary, 1);
+    s_library             = walrus_new(ShaderLibary, 1);
     s_library->dir        = walrus_str_dup(dir);
     s_library->shader_map = walrus_hash_table_create_full(walrus_str_hash, walrus_str_equal, NULL, shader_destroy);
 }
@@ -44,9 +50,9 @@ void walrus_shader_library_shutdown(void)
 
 Walrus_ShaderHandle walrus_shader_library_load(Walrus_ShaderType type, char const *path)
 {
-    char full_path[255];
-    snprintf(full_path, 255, "%s/%s", s_library->dir, path);
-    Walrus_ShaderHandle handle = {WR_INVALID_HANDLE};
+    char full_path[256];
+    snprintf(full_path, sizeof(full_path), "%s/%s", s_library->dir, path);
+    ShaderRef *ref = NULL;
 
     for (u32 i = 0; full_path[i] != '\0'; ++i) {
         if (full_path[i] == '\\') {
@@ -58,7 +64,16 @@ Walrus_ShaderHandle walrus_shader_library_load(Walrus_ShaderType type, char cons
     }
 
     if (walrus_hash_table_contains(s_library->shader_map, full_path)) {
-        handle.id = walrus_ptr_to_val(walrus_hash_table_lookup(s_library->shader_map, full_path));
+        char const *name[WR_RHI_SHADER_COUNT] = {
+            "Compute shader",
+            "Vertex shader",
+            "Geometry shader",
+            "Fragment shader",
+        };
+        ref = walrus_hash_table_lookup(s_library->shader_map, full_path);
+        if (ref->type != type) {
+            walrus_error("Mimatched type shader is loaded, type \"%s\" should be \"%s\"", name[type], name[ref->type]);
+        }
     }
     else {
         FILE *file = fopen(full_path, "rb");
@@ -72,12 +87,12 @@ Walrus_ShaderHandle walrus_shader_library_load(Walrus_ShaderType type, char cons
             char *source = walrus_str_alloc(size);
             fread(source, 1, size, file);
             walrus_str_skip(source, size);
-            char tmp[255];
-            snprintf(tmp, 255, "\"%s\"", full_path);
-            char *final = stb_include_string(source, NULL, s_library->dir, tmp, error);
+            char *final = stb_include_string(source, NULL, s_library->dir, full_path, error);
             if (final != NULL) {
-                handle = walrus_rhi_create_shader(type, final);
-                walrus_hash_table_insert(s_library->shader_map, full_path, walrus_val_to_ptr(handle.id));
+                ref         = walrus_new(ShaderRef, 1);
+                ref->type   = type;
+                ref->handle = walrus_rhi_create_shader(type, final);
+                walrus_hash_table_insert(s_library->shader_map, full_path, ref);
                 free(final);
             }
             else {
@@ -92,5 +107,5 @@ Walrus_ShaderHandle walrus_shader_library_load(Walrus_ShaderType type, char cons
         }
     }
 
-    return handle;
+    return ref ? ref->handle : (Walrus_ShaderHandle){WR_INVALID_HANDLE};
 }

@@ -16,6 +16,7 @@ void walrus_rhi_frame(void);
 
 Walrus_RenderResult walrus_rhi_render_frame(i32 ms);
 
+void walrus_rhi_touch(u16 view_id);
 void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u32 depth, u8 flags);
 
 u32  walrus_rhi_compose_rgba(u8 r, u8 g, u8 b, u8 a);

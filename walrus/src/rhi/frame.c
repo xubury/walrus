@@ -9,7 +9,7 @@
 
 #define SortKeyViewNumBits     (31 - walrus_u32cntlz(WR_RHI_MAX_VIEWS))
 #define SortKeySortTypeNumBits (2)
-#define SortKeyProgramNumBits  (16)
+#define SortKeyProgramNumBits  (32)
 #define SortKeyBlendNumBits    (2)
 #define SortKeyDepthNumBits    (32)
 #define SortKeySeqNumBits      (20)

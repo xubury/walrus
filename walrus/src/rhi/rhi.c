@@ -677,6 +677,12 @@ Walrus_RenderResult walrus_rhi_render_frame(i32 ms)
     return res;
 }
 
+void walrus_rhi_touch(u16 view_id)
+{
+    discard(WR_RHI_DISCARD_ALL);
+    walrus_rhi_submit(view_id, (Walrus_ProgramHandle){WR_INVALID_HANDLE}, 0, WR_RHI_DISCARD_ALL);
+}
+
 void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u32 depth, u8 flags)
 {
     if (s_ctx->draw.num_indices == 0 || s_ctx->draw.num_vertices == 0) {

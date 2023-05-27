@@ -23,10 +23,17 @@ typedef struct {
     Walrus_UniformHandle u_has_normal;
     Walrus_TextureHandle black_texture;
     Walrus_TextureHandle white_texture;
-
-    f32 debug_xoffset;
-    f32 debug_yoffset;
 } AppData;
+
+static void setup_texture_uniforms(AppData *data)
+{
+    u32 unit = 0;
+    walrus_rhi_set_uniform(data->u_albedo, 0, sizeof(u32), &unit);
+    unit = 1;
+    walrus_rhi_set_uniform(data->u_emissive, 0, sizeof(u32), &unit);
+    unit = 2;
+    walrus_rhi_set_uniform(data->u_normal, 0, sizeof(u32), &unit);
+}
 
 Walrus_AppError on_init(Walrus_App *app)
 {
@@ -41,7 +48,7 @@ Walrus_AppError on_init(Walrus_App *app)
 
     Walrus_ShaderHandle vs = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_mesh.glsl");
     Walrus_ShaderHandle fs = walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_mesh.glsl");
-    
+
     data->shader = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs, fs}, 2, true);
     walrus_rhi_destroy_shader(vs);
     walrus_rhi_destroy_shader(fs);
@@ -71,7 +78,9 @@ Walrus_AppError on_init(Walrus_App *app)
         walrus_error("error loading model from: %s !", filename);
     }
 
-    walrus_rhi_frame();
+    setup_texture_uniforms(data);
+
+    walrus_rhi_touch(0);
 
     return WR_APP_SUCCESS;
 }
@@ -94,40 +103,27 @@ static void submit_callback(Walrus_ModelNode *node, Walrus_MeshPrimitive *prim, 
         walrus_rhi_set_state(flags, 0);
 
         if (prim->material->albedo) {
-            u32 unit = 0;
-            walrus_rhi_set_texture(unit, prim->material->albedo->handle);
-            walrus_rhi_set_uniform(data->u_albedo, 0, sizeof(u32), &unit);
+            walrus_rhi_set_texture(0, prim->material->albedo->handle);
         }
         else {
-            u32 unit = 0;
-            walrus_rhi_set_texture(unit, data->black_texture);
-            walrus_rhi_set_uniform(data->u_albedo, 0, sizeof(u32), &unit);
+            walrus_rhi_set_texture(0, data->black_texture);
         }
         walrus_rhi_set_uniform(data->u_albedo_factor, 0, sizeof(vec4), prim->material->albedo_factor);
 
         if (prim->material->emissive) {
-            u32 unit = 1;
-            walrus_rhi_set_texture(unit, prim->material->emissive->handle);
-            walrus_rhi_set_uniform(data->u_emissive, 0, sizeof(u32), &unit);
-            data->debug_xoffset += 100;
+            walrus_rhi_set_texture(1, prim->material->emissive->handle);
         }
         else {
-            u32 unit = 1;
-            walrus_rhi_set_texture(unit, data->white_texture);
-            walrus_rhi_set_uniform(data->u_emissive, 0, sizeof(u32), &unit);
+            walrus_rhi_set_texture(1, data->white_texture);
         }
 
         bool has_normal = prim->material->normal != NULL;
         walrus_rhi_set_uniform(data->u_has_normal, 0, sizeof(bool), &has_normal);
         if (has_normal) {
-            u32 unit = 2;
-            walrus_rhi_set_texture(unit, prim->material->normal->handle);
-            walrus_rhi_set_uniform(data->u_normal, 0, sizeof(u32), &unit);
+            walrus_rhi_set_texture(2, prim->material->normal->handle);
         }
         else {
-            u32 unit = 2;
-            walrus_rhi_set_texture(unit, data->black_texture);
-            walrus_rhi_set_uniform(data->u_normal, 0, sizeof(u32), &unit);
+            walrus_rhi_set_texture(2, data->black_texture);
         }
         walrus_rhi_set_uniform(data->u_emissive_factor, 0, sizeof(vec3), prim->material->emissive_factor);
     }
@@ -135,9 +131,7 @@ static void submit_callback(Walrus_ModelNode *node, Walrus_MeshPrimitive *prim, 
 
 void on_render(Walrus_App *app)
 {
-    AppData *data       = walrus_app_userdata(app);
-    data->debug_xoffset = 50;
-    data->debug_yoffset = 600;
+    AppData *data = walrus_app_userdata(app);
     walrus_model_submit(0, &data->model, data->shader, 0, submit_callback, data);
 }
 

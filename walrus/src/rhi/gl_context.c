@@ -475,7 +475,12 @@ static void submit(RenderFrame *frame)
         bool const program_changed = current_prog.id != sortkey.program.id;
         if (program_changed) {
             current_prog = sortkey.program;
-            glUseProgram(g_ctx->programs[current_prog.id].id);
+            if (current_prog.id != WR_INVALID_HANDLE) {
+                glUseProgram(g_ctx->programs[current_prog.id].id);
+            }
+            else {
+                glUseProgram(0);
+            }
         }
         u64 const new_flags       = draw->state_flags;
         u64       changed_flags   = current_state.state_flags ^ draw->state_flags;
