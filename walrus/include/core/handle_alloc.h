@@ -6,7 +6,10 @@
 
 typedef u32 Walrus_Handle;
 
-typedef struct Walrus_HandleAlloc Walrus_HandleAlloc;
+typedef struct {
+    Walrus_Handle num_handles;
+    Walrus_Handle max_handles;
+} Walrus_HandleAlloc;
 
 // Create a handle allocator
 Walrus_HandleAlloc *walrus_handle_create(u32 capacity);

@@ -23,6 +23,8 @@ typedef struct {
 } RenderClear;
 
 typedef struct {
+    Walrus_FramebufferHandle fb;
+
     RenderClear clear;
     ViewRect    viewport;
     ViewRect    scissor;

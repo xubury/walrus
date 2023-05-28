@@ -234,15 +234,16 @@ void gl_texture_destroy(Walrus_TextureHandle handle)
 
 void gl_texture_resize(Walrus_TextureHandle handle, u32 width, u32 height, u32 depth, u8 num_mipmaps, u8 num_layers)
 {
-    GlTexture               *tex = &g_ctx->textures[handle.id];
-    Walrus_TextureCreateInfo info;
-    info.width       = width;
-    info.height      = height;
-    info.depth       = depth;
-    info.num_mipmaps = num_mipmaps;
-    info.num_layers  = num_layers;
-    info.format      = tex->format;
-    info.flags       = tex->flags;
+    GlTexture               *tex  = &g_ctx->textures[handle.id];
+    Walrus_TextureCreateInfo info = {0};
+    info.width                    = width;
+    info.height                   = height;
+    info.depth                    = depth;
+    info.num_mipmaps              = num_mipmaps;
+    info.num_layers               = num_layers;
+    info.format                   = tex->format;
+    info.flags                    = tex->flags;
+    info.cube_map                 = false;
 
     gl_texture_destroy(handle);
     gl_texture_create(handle, &info, NULL);

@@ -35,11 +35,6 @@ u16  sortkey_decode_view(u64 key_val);
 u64  sortkey_remapview(u64 key_val, u16 *view_map);
 
 typedef struct {
-    u32 width;
-    u32 height;
-} Resolution;
-
-typedef struct {
     Walrus_BufferHandle handle;
     Walrus_LayoutHandle layout_handle;
     u64                 offset;
@@ -120,7 +115,7 @@ typedef struct {
     u64 sortkeys[WR_RHI_MAX_DRAW_CALLS + 1];
     u32 sortvalues[WR_RHI_MAX_DRAW_CALLS + 1];
 
-    Resolution resolution;
+    Walrus_Resolution resolution;
 
     UniformBuffer *uniforms;
 

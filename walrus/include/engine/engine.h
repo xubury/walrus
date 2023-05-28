@@ -3,15 +3,15 @@
 #include <engine/app.h>
 #include <engine/window.h>
 #include <engine/input.h>
+#include <rhi/rhi.h>
 
 typedef struct {
-    char const *window_title;
-    i32         window_width;
-    i32         window_height;
-    i32         window_flags;
-    f32         minfps;
-    bool        single_thread;
-    char const *shader_folder;
+    char const       *window_title;
+    u32               window_flags;
+    Walrus_Resolution resolution;
+    f32               minfps;
+    bool              single_thread;
+    char const       *shader_folder;
 } Walrus_EngineOption;
 
 typedef struct Walrus_Engine Walrus_Engine;

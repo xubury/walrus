@@ -31,6 +31,9 @@ typedef void (*RhiDestroyTextureFn)(Walrus_TextureHandle handle);
 typedef void (*RhiResizeTextureFn)(Walrus_TextureHandle handle, u32 width, u32 height, u32 depth, u8 num_layers,
                                    u8 num_mipmaps);
 
+typedef void (*RhiCreateFramebuffer)(Walrus_FramebufferHandle handle, Walrus_Attachment *attachments, u8 num);
+typedef void (*RhiDestroyFramebuffer)(Walrus_FramebufferHandle handle);
+
 typedef struct {
     RhiSubmitFn submit_fn;
 
@@ -55,6 +58,9 @@ typedef struct {
     RhiCreateTextureFn  texture_create_fn;
     RhiDestroyTextureFn texture_destroy_fn;
     RhiResizeTextureFn  texture_resize_fn;
+
+    RhiCreateFramebuffer  framebuffer_create_fn;
+    RhiDestroyFramebuffer framebuffer_destroy_fn;
 } RhiRenderer;
 
 typedef struct {
@@ -76,6 +82,7 @@ typedef struct {
 
 typedef struct {
     Walrus_BackBufferRatio ratio;
+    Walrus_TextureHandle   handle;
     u32                    width;
     u32                    height;
     u32                    depth;
@@ -92,7 +99,7 @@ typedef struct {
     Walrus_Semaphore *api_sem;
     Walrus_Semaphore *render_sem;
 
-    Resolution resolution;
+    Walrus_Resolution resolution;
 
     RenderDraw    draw;
     RenderCompute compute;
@@ -154,7 +161,7 @@ u8 get_predefined_type(char const *name);
 
 char const *get_glsl_header(void);
 
-void gl_backend_init(RhiContext *ctx, RhiRenderer *vtable);
+void gl_backend_init(Walrus_RhiCreateInfo *info, RhiRenderer *renderer);
 
 void gl_backend_shutdown(void);
 

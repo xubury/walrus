@@ -4,6 +4,7 @@ add_library(
   frame.c
   rhi.c
   gl_context.c
+  gl_framebuffer.c
   gl_shader.c
   gl_texture.c
   uniform_buffer.c

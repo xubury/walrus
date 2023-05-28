@@ -136,6 +136,7 @@ WR_RHI_HANDLE(Walrus_UniformHandle);
 WR_RHI_HANDLE(Walrus_BufferHandle);
 WR_RHI_HANDLE(Walrus_LayoutHandle);
 WR_RHI_HANDLE(Walrus_TextureHandle);
+WR_RHI_HANDLE(Walrus_FramebufferHandle);
 
 typedef struct {
     u8*                 data;
@@ -162,6 +163,21 @@ typedef enum {
 } Walrus_RenderResult;
 
 typedef struct {
-    Walrus_RhiFlag flags;
-    bool           single_thread;
+    u32 width;
+    u32 height;
+    u32 flags;
+} Walrus_Resolution;
+
+typedef struct {
+    Walrus_Resolution resolution;
+    Walrus_RhiFlag    flags;
+    bool              single_thread;
 } Walrus_RhiCreateInfo;
+
+typedef struct {
+    Walrus_DataAccess    access;
+    Walrus_TextureHandle handle;
+    u8                   mip;
+    u8                   layer;
+    u8                   num_layers;
+} Walrus_Attachment;

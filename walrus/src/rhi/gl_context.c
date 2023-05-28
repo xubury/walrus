@@ -267,29 +267,79 @@ static void set_predefineds(GlProgram const *prog, RenderFrame const *frame, Ren
     }
 }
 
-static void init_ctx(RhiContext *rhi)
+static void create_msaa_fbo(u32 width, u32 height, u8 msaa)
+{
+    if (g_ctx->msaa_fbo == 0 && msaa > 1) {
+        glGenFramebuffers(1, &g_ctx->msaa_fbo);
+        glGenRenderbuffers(2, g_ctx->msaa_rbos);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, g_ctx->msaa_fbo);
+        glBindRenderbuffer(GL_RENDERBUFFER, g_ctx->msaa_rbos[0]);
+        glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaa, GL_RGBA8, width, height);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, g_ctx->msaa_rbos[0]);
+
+        glBindRenderbuffer(GL_RENDERBUFFER, g_ctx->msaa_rbos[1]);
+        glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaa, GL_DEPTH24_STENCIL8, width, height);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, g_ctx->msaa_rbos[1]);
+
+        walrus_assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+    }
+}
+
+static void destroy_msaa_fbo(void)
+{
+    if (g_ctx->msaa_fbo != 0) {
+        glDeleteFramebuffers(1, &g_ctx->msaa_fbo);
+        g_ctx->msaa_fbo = 0;
+        if (g_ctx->msaa_rbos[0] != 0) {
+            glDeleteRenderbuffers(2, g_ctx->msaa_rbos);
+            g_ctx->msaa_rbos[0] = 0;
+            g_ctx->msaa_rbos[1] = 0;
+        }
+    }
+}
+
+static void set_render_context_size(u32 width, u32 height, u32 flags)
+{
+    g_ctx->resolution.width  = width;
+    g_ctx->resolution.height = height;
+    g_ctx->resolution.flags  = flags;
+
+    destroy_msaa_fbo();
+    u32 msaa = (flags & WR_RHI_RESOLUTION_MSAA_MASK) >> WR_RHI_RESOLUTION_MSAA_SHIFT;
+    msaa     = walrus_min(16, msaa == 0 ? 0 : 1 << msaa);
+    create_msaa_fbo(width, height, msaa);
+}
+
+static void init_ctx(Walrus_RhiCreateInfo *info)
 {
 #if WR_PLATFORM != WR_PLATFORM_WASM
     GLenum err = glew_init();
     if (err != GLEW_OK) {
-        rhi->err     = WR_RHI_INIT_GLEW_ERROR;
-        rhi->err_msg = (char const *)glewGetErrorString(err);
-
         return;
     }
 #else
     wajs_setup_gl_context();
 #endif
     g_ctx = walrus_malloc(sizeof(GlContext));
-    if (g_ctx == NULL) {
-        rhi->err     = WR_RHI_ALLOC_ERROR;
-        rhi->err_msg = WR_RHI_GL_ALLOC_FAIL_STR;
-        return;
-    }
 
     g_ctx->uniform_registry = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
 
+    g_ctx->msaa_fbo = 0;
+    memset(g_ctx->msaa_rbos, 0, sizeof(g_ctx->msaa_rbos));
+    set_render_context_size(info->resolution.width, info->resolution.height, info->resolution.flags);
     glGenVertexArrays(1, &g_ctx->vao);
+}
+
+static void shutdown_ctx(void)
+{
+    if (g_ctx) {
+        walrus_hash_table_destroy(g_ctx->uniform_registry);
+        destroy_msaa_fbo();
+        glDeleteVertexArrays(1, &g_ctx->vao);
+        walrus_free(g_ctx);
+        g_ctx = NULL;
+    }
 }
 
 static void gl_uniform_create(Walrus_UniformHandle handle, const char *name, u32 size)
@@ -382,6 +432,32 @@ static void bind_vertex_attributes(Walrus_VertexLayout const *layout, u64 offset
     }
 }
 
+static u32 set_framebuffer(Walrus_FramebufferHandle handle, u32 height, u32 flags)
+{
+    if (handle.id != WR_INVALID_HANDLE && handle.id != g_ctx->fbo.id) {
+        gl_framebuffer_resolve(g_ctx->fbo);
+        if (g_ctx->discards != WR_RHI_CLEAR_NONE) {
+            gl_framebuffer_discard(g_ctx->fbo, g_ctx->discards);
+            g_ctx->discards = WR_RHI_CLEAR_NONE;
+        }
+    }
+
+    if (handle.id != WR_INVALID_HANDLE) {
+        GlFramebuffer *fb  = &g_ctx->framebuffers[handle.id];
+        g_ctx->current_fbo = fb->fbo[0];
+        height             = fb->height;
+    }
+    else {
+        g_ctx->current_fbo = g_ctx->msaa_fbo;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, g_ctx->current_fbo);
+
+    g_ctx->fbo      = handle;
+    g_ctx->discards = flags;
+
+    return height;
+}
+
 static void submit(RenderFrame *frame)
 {
     if (frame->vbo_offset > 0) {
@@ -393,7 +469,7 @@ static void submit(RenderFrame *frame)
         gl_buffer_update(ib->handle, 0, frame->ibo_offset, ib->data);
     }
 
-    u32 const resolution_height = frame->resolution.height;
+    u32 resolution_height = frame->resolution.height;
 
     Sortkey sortkey;
     frame_sort(frame);
@@ -402,6 +478,9 @@ static void submit(RenderFrame *frame)
 
     u16             view_id      = UINT16_MAX;
     const ViewRect *view_scissor = NULL;
+
+    Walrus_FramebufferHandle fbh      = (Walrus_FramebufferHandle){WR_RHI_MAX_FRAMEBUFFERS};
+    u16                      discards = WR_RHI_CLEAR_NONE;
 
     Walrus_ProgramHandle current_prog = {WR_INVALID_HANDLE};
 
@@ -436,6 +515,12 @@ static void submit(RenderFrame *frame)
         if (view_changed) {
             view_id = sortkey.view_id;
 
+            if (frame->views[view_id].fb.id != fbh.id) {
+                fbh               = frame->views[view_id].fb;
+                resolution_height = frame->resolution.height;
+                resolution_height = set_framebuffer(fbh, resolution_height, discards);
+            }
+
             RenderClear const *clear    = &view->clear;
             ViewRect const    *viewport = &view->viewport;
 
@@ -444,6 +529,7 @@ static void submit(RenderFrame *frame)
             if (!viewrect_zero_area(&view->scissor)) {
                 view_scissor = &view->scissor;
             }
+            discards = view->clear.flags & WR_RHI_CLEAR_DISCARD_MASK;
 
             GLbitfield clear_flags = 0;
             if (WR_RHI_CLEAR_COLOR & clear->flags) {
@@ -503,7 +589,7 @@ static void submit(RenderFrame *frame)
             current_state.scissor = draw->scissor;
             if (viewrect_zero_area(&current_state.scissor)) {
                 if (view_scissor) {
-                    glScissor(view_scissor->x, resolution_height - view_scissor->height - view_scissor->y,
+                    glScissor(view_scissor->x, g_ctx->resolution.height - view_scissor->height - view_scissor->y,
                               view_scissor->width, view_scissor->height);
                     glEnable(GL_SCISSOR_TEST);
                 }
@@ -516,8 +602,8 @@ static void submit(RenderFrame *frame)
                 if (view_scissor) {
                     viewrect_intersect(&scissor_rect, view_scissor);
                 }
-                glScissor(scissor_rect.x, resolution_height - scissor_rect.height - scissor_rect.y, scissor_rect.width,
-                          scissor_rect.height);
+                glScissor(scissor_rect.x, g_ctx->resolution.height - scissor_rect.height - scissor_rect.y,
+                          scissor_rect.width, scissor_rect.height);
                 glEnable(GL_SCISSOR_TEST);
             }
         }
@@ -782,47 +868,54 @@ static void submit(RenderFrame *frame)
 
     glBindVertexArray(0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    if (g_ctx->msaa_fbo != 0) {
+        glDisable(GL_SCISSOR_TEST);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, g_ctx->msaa_fbo);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glBlitFramebuffer(0, 0, g_ctx->resolution.width, g_ctx->resolution.height, 0, 0, g_ctx->resolution.width,
+                          g_ctx->resolution.height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    }
 }
 
-static void init_api(RhiRenderer *vtable)
+static void init_api(RhiRenderer *renderer)
 {
-    vtable->submit_fn = submit;
+    renderer->submit_fn = submit;
 
-    vtable->shader_create_fn  = gl_shader_create;
-    vtable->shader_destroy_fn = gl_shader_destroy;
+    renderer->shader_create_fn  = gl_shader_create;
+    renderer->shader_destroy_fn = gl_shader_destroy;
 
-    vtable->program_create_fn  = gl_program_create;
-    vtable->program_destroy_fn = gl_program_destroy;
+    renderer->program_create_fn  = gl_program_create;
+    renderer->program_destroy_fn = gl_program_destroy;
 
-    vtable->uniform_create_fn  = gl_uniform_create;
-    vtable->uniform_destroy_fn = gl_uniform_destroy;
-    vtable->uniform_resize_fn  = gl_uniform_resize;
-    vtable->uniform_update_fn  = gl_uniform_update;
+    renderer->uniform_create_fn  = gl_uniform_create;
+    renderer->uniform_destroy_fn = gl_uniform_destroy;
+    renderer->uniform_resize_fn  = gl_uniform_resize;
+    renderer->uniform_update_fn  = gl_uniform_update;
 
-    vtable->vertex_layout_create_fn  = gl_vertex_layout_create;
-    vtable->vertex_layout_destroy_fn = gl_vertex_layout_destroy;
+    renderer->vertex_layout_create_fn  = gl_vertex_layout_create;
+    renderer->vertex_layout_destroy_fn = gl_vertex_layout_destroy;
 
-    vtable->buffer_create_fn  = gl_buffer_create;
-    vtable->buffer_destroy_fn = gl_buffer_destroy;
-    vtable->buffer_update_fn  = gl_buffer_update;
+    renderer->buffer_create_fn  = gl_buffer_create;
+    renderer->buffer_destroy_fn = gl_buffer_destroy;
+    renderer->buffer_update_fn  = gl_buffer_update;
 
-    vtable->texture_create_fn  = gl_texture_create;
-    vtable->texture_destroy_fn = gl_texture_destroy;
-    vtable->texture_resize_fn  = gl_texture_resize;
+    renderer->texture_create_fn  = gl_texture_create;
+    renderer->texture_destroy_fn = gl_texture_destroy;
+    renderer->texture_resize_fn  = gl_texture_resize;
+
+    renderer->framebuffer_create_fn  = gl_framebuffer_create;
+    renderer->framebuffer_destroy_fn = gl_framebuffer_destroy;
 }
 
-void gl_backend_init(RhiContext *rhi, RhiRenderer *vtable)
+void gl_backend_init(Walrus_RhiCreateInfo *info, RhiRenderer *renderer)
 {
-    init_ctx(rhi);
-    init_api(vtable);
+    init_ctx(info);
+    init_api(renderer);
 }
 
 void gl_backend_shutdown(void)
 {
-    if (g_ctx) {
-        walrus_hash_table_destroy(g_ctx->uniform_registry);
-        glDeleteVertexArrays(1, &g_ctx->vao);
-        walrus_free(g_ctx);
-        g_ctx = NULL;
-    }
+    shutdown_ctx();
 }

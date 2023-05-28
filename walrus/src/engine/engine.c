@@ -73,7 +73,7 @@ static Walrus_EngineError register_service(void)
         return WR_ENGINE_INIT_INPUT_ERROR;
     }
     s_engine->window =
-        walrus_window_create(opt->window_title, opt->window_width, opt->window_height, opt->window_flags);
+        walrus_window_create(opt->window_title, opt->resolution.width, opt->resolution.height, opt->window_flags);
     if (s_engine->window == NULL) {
         return WR_ENGINE_INIT_WINDOW_ERROR;
     }
@@ -83,6 +83,7 @@ static Walrus_EngineError register_service(void)
     }
 
     Walrus_RhiCreateInfo info;
+    info.resolution = opt->resolution;
     if (opt->window_flags & WR_WINDOW_FLAG_OPENGL) {
         info.flags |= WR_RHI_FLAG_OPENGL;
     }
@@ -91,7 +92,7 @@ static Walrus_EngineError register_service(void)
     if (walrus_rhi_init(&info) != WR_RHI_SUCCESS) {
         return WR_ENGINE_INIT_RHI_ERROR;
     }
-    walrus_rhi_set_resolution(opt->window_width, opt->window_height);
+    walrus_rhi_set_resolution(opt->resolution.width, opt->resolution.height);
 
     walrus_shader_library_init(opt->shader_folder);
 
@@ -227,13 +228,14 @@ char const *walrus_engine_error_msg(Walrus_EngineError err)
 Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height, Walrus_App *app)
 {
     Walrus_EngineOption opt;
-    opt.window_title  = title;
-    opt.window_width  = width;
-    opt.window_height = height;
-    opt.window_flags  = WR_WINDOW_FLAG_VSYNC | WR_WINDOW_FLAG_OPENGL;
-    opt.minfps        = 30.f;
-    opt.shader_folder = "shaders";
-    opt.single_thread = false;
+    opt.window_title      = title;
+    opt.resolution.width  = width;
+    opt.resolution.height = height;
+    opt.resolution.flags  = WR_RHI_RESOLUTION_MSAA_X8;
+    opt.window_flags      = WR_WINDOW_FLAG_VSYNC | WR_WINDOW_FLAG_OPENGL;
+    opt.minfps            = 30.f;
+    opt.shader_folder     = "shaders";
+    opt.single_thread     = false;
 
     Walrus_EngineError err = walrus_engine_init(&opt);
 
@@ -280,10 +282,10 @@ Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
         s_engine->opt = *opt;
     }
 
-    opt                = &s_engine->opt;
-    opt->minfps        = walrus_max(opt->minfps, 1.0);
-    opt->window_width  = walrus_max(opt->window_width, 1);
-    opt->window_height = walrus_max(opt->window_height, 1);
+    opt                    = &s_engine->opt;
+    opt->minfps            = walrus_max(opt->minfps, 1.0);
+    opt->resolution.width  = walrus_max(opt->resolution.width, 1);
+    opt->resolution.height = walrus_max(opt->resolution.height, 1);
 
     s_engine->app    = NULL;
     s_engine->window = NULL;
