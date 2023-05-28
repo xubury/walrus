@@ -60,6 +60,20 @@ static void setup_window(void)
     walrus_window_set_vsync(s_engine->window, s_engine->opt.window_flags & WR_WINDOW_FLAG_VSYNC);
 }
 
+static i32 render_thread_fn(Walrus_Thread *thread, void *userdata)
+{
+    walrus_unused(thread);
+    walrus_unused(userdata);
+
+    setup_window();
+
+    while (walrus_rhi_render_frame(-1) != WR_RHI_RENDER_EXITING) {
+        walrus_window_swap_buffers(s_engine->window);
+    }
+
+    return 0;
+}
+
 static Walrus_EngineError register_service(void)
 {
     Walrus_EngineOption *opt = &s_engine->opt;
@@ -84,6 +98,11 @@ static Walrus_EngineError register_service(void)
 
     if (opt->single_thread) {
         setup_window();
+    }
+
+    if (!opt->single_thread) {
+        s_engine->render = walrus_thread_create();
+        walrus_thread_init(s_engine->render, render_thread_fn, NULL, 0);
     }
 
     Walrus_RhiCreateInfo info;
@@ -112,6 +131,10 @@ static void release_service(void)
     walrus_shader_library_shutdown();
 
     walrus_rhi_shutdown();
+
+    if (s_engine->render != NULL) {
+        walrus_thread_destroy(s_engine->render);
+    }
 
     walrus_inputs_destroy(s_engine->input);
 
@@ -262,25 +285,6 @@ Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height,
     }
 }
 
-static i32 render_thread_fn(Walrus_Thread *thread, void *userdata)
-{
-    walrus_unused(thread);
-    walrus_unused(userdata);
-
-    Walrus_Window *window = NULL;
-    while (window == NULL) {
-        window = s_engine->window;
-    }
-
-    setup_window();
-
-    while (walrus_rhi_render_frame(-1) != WR_RHI_RENDER_EXITING) {
-        walrus_window_swap_buffers(window);
-    }
-
-    return 0;
-}
-
 Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
 {
     s_engine = walrus_malloc(sizeof(Walrus_Engine));
@@ -300,11 +304,6 @@ Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
     s_engine->render = NULL;
     s_engine->quit   = true;
 
-    if (!opt->single_thread) {
-        s_engine->render = walrus_thread_create();
-        walrus_thread_init(s_engine->render, render_thread_fn, NULL, 0);
-    }
-
     Walrus_EngineError error = WR_ENGINE_SUCCESS;
 
     error = register_service();
@@ -321,10 +320,6 @@ void walrus_engine_shutdown(void)
     walrus_engine_exit();
 
     release_service();
-
-    if (s_engine->render != NULL) {
-        walrus_thread_destroy(s_engine->render);
-    }
 
     walrus_free(s_engine);
     s_engine = NULL;

@@ -11,7 +11,7 @@
 #define SortKeySortTypeNumBits (2)
 #define SortKeyProgramNumBits  (32)
 #define SortKeyBlendNumBits    (2)
-#define SortKeyDepthNumBits    (32)
+#define SortKeyDepthNumBits    (16)
 #define SortKeySeqNumBits      (20)
 
 #define SortKeyViewBitShift (64 - SortKeyViewNumBits)

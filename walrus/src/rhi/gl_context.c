@@ -812,7 +812,7 @@ static void submit(RenderFrame *frame)
                 GlBuffer const            *instance_buffer = &g_ctx->buffers[draw->instance_buffer.id];
                 num_instances = walrus_min(num_instances, instance_buffer->size / layout->stride);
             }
-            if (bind_attributes) {
+            if (bind_attributes && draw->stream_mask != UINT16_MAX) {
                 for (u8 i = 0; i < WR_RHI_MAX_VERTEX_ATTRIBUTES; ++i) {
                     lazy_disable_vertex_attribute(i);
                     glVertexAttribDivisor(i, 0);
@@ -867,7 +867,6 @@ static void submit(RenderFrame *frame)
     }
 
     glBindVertexArray(0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     if (g_ctx->msaa_fbo != 0) {
         glDisable(GL_SCISSOR_TEST);
         glBindFramebuffer(GL_READ_FRAMEBUFFER, g_ctx->msaa_fbo);

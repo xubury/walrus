@@ -46,7 +46,7 @@ typedef struct {
     Walrus_BufferHandle  index_buffer;
     Walrus_LayoutHandle  layout;
     Walrus_LayoutHandle  uv_layout;
-    Walrus_TextureHandle font;
+    Walrus_TextureHandle texture;
 
     mat4 model;
 
@@ -61,7 +61,7 @@ void on_render(Walrus_App *app)
     walrus_rhi_set_vertex_buffer(1, data->uv_buffer, data->uv_layout, 0, UINT32_MAX);
     walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
     u32 unit = 0;
-    walrus_rhi_set_texture(unit, data->font);
+    walrus_rhi_set_texture(unit, data->texture);
     walrus_rhi_set_uniform(data->u_texture, 0, sizeof(u32), &unit);
     /* walrus_rhi_set_image(0, data->texture, 0, WR_RHI_ACCESS_READ, WR_RHI_FORMAT_RGBA8); */
     walrus_rhi_submit(0, data->map_shader, 0, WR_RHI_DISCARD_ALL);
@@ -194,7 +194,6 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_vertex_layout_add(&layout, 0, 3, WR_RHI_COMPONENT_FLOAT, false);
     walrus_vertex_layout_end(&layout);
     app_data->layout = walrus_rhi_create_vertex_layout(&layout);
-    app_data->layout = walrus_rhi_create_vertex_layout(&layout);
 
     walrus_vertex_layout_begin(&layout);
     walrus_vertex_layout_add(&layout, 1, 2, WR_RHI_COMPONENT_FLOAT, false);
@@ -225,7 +224,7 @@ Walrus_AppError on_init(Walrus_App *app)
     if (image.data != NULL) {
         walrus_trace("load image width: %d height: %d", image.width, image.height);
 
-        app_data->font = walrus_rhi_create_texture2d(
+        app_data->texture = walrus_rhi_create_texture2d(
             image.width, image.height, WR_RHI_FORMAT_RGBA8, 0,
             WR_RHI_SAMPLER_MIN_LINEAR | WR_RHI_SAMPLER_MIP_LINEAR | WR_RHI_TEXTURE_SRGB, image.data);
 

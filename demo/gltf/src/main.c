@@ -8,6 +8,7 @@
 #include <engine/batch_renderer.h>
 #include <engine/shader_library.h>
 #include <engine/thread_pool.h>
+#include <core/sys.h>
 
 #include <cglm/cglm.h>
 #include <string.h>
@@ -74,10 +75,12 @@ Walrus_AppError on_init(Walrus_App *app)
     glm_ortho(0, 1440, 900, 0, 0, 1000, projection);
     walrus_rhi_set_view_transform(1, GLM_MAT4_IDENTITY, projection);
 
+    u64         ts       = walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC);
     char const *filename = "assets/gltf/shibahu/scene.gltf";
     if (walrus_model_load_from_file(&data->model, filename) != WR_MODEL_SUCCESS) {
         walrus_error("error loading model from: %s !", filename);
     }
+    walrus_trace("model load time: %llu ms", walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC) - ts);
 
     setup_texture_uniforms(data);
 

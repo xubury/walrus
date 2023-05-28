@@ -5,6 +5,7 @@
 #include <core/thread.h>
 #include <core/mutex.h>
 #include <core/macro.h>
+#include <core/assert.h>
 
 typedef struct {
     Walrus_List      *workers;
@@ -95,20 +96,11 @@ void walrus_thread_pool_shutdown(void)
 
 void walrus_thread_pool_queue(ThreadTaskFn func, void *userdata)
 {
-    walrus_mutex_lock(s_pool->mutex);
     ThreadTask *task = walrus_new(ThreadTask, 1);
     task->fn         = func;
     task->userdata   = userdata;
-    walrus_queue_push(s_pool->tasks, task);
-    walrus_semaphore_post(s_pool->sem, 1);
-    walrus_mutex_unlock(s_pool->mutex);
-}
-
-bool walrus_thread_pool_empty(void)
-{
-    bool empty;
     walrus_mutex_lock(s_pool->mutex);
-    empty = s_pool->tasks->length == 0;
+    walrus_queue_push(s_pool->tasks, task);
     walrus_mutex_unlock(s_pool->mutex);
-    return empty;
+    walrus_semaphore_post(s_pool->sem, 1);
 }

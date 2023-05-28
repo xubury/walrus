@@ -26,24 +26,24 @@ static char const* no_backend_str = "No render backend specifed";
 static RhiContext*  s_ctx      = NULL;
 static RhiRenderer* s_renderer = NULL;
 
-static void handles_init(void)
+static void handles_init(RhiContext* ctx)
 {
-    s_ctx->shaders        = walrus_handle_create(WR_RHI_MAX_SHADERS);
-    s_ctx->programs       = walrus_handle_create(WR_RHI_MAX_PROGRAMS);
-    s_ctx->uniforms       = walrus_handle_create(WR_RHI_MAX_UNIFORMS);
-    s_ctx->vertex_layouts = walrus_handle_create(WR_RHI_MAX_VERTEX_LAYOUTS);
-    s_ctx->buffers        = walrus_handle_create(WR_RHI_MAX_BUFFERS);
-    s_ctx->textures       = walrus_handle_create(WR_RHI_MAX_TEXTURES);
+    ctx->shaders        = walrus_handle_create(WR_RHI_MAX_SHADERS);
+    ctx->programs       = walrus_handle_create(WR_RHI_MAX_PROGRAMS);
+    ctx->uniforms       = walrus_handle_create(WR_RHI_MAX_UNIFORMS);
+    ctx->vertex_layouts = walrus_handle_create(WR_RHI_MAX_VERTEX_LAYOUTS);
+    ctx->buffers        = walrus_handle_create(WR_RHI_MAX_BUFFERS);
+    ctx->textures       = walrus_handle_create(WR_RHI_MAX_TEXTURES);
 }
 
-static void handles_shutdown(void)
+static void handles_shutdown(RhiContext* ctx)
 {
-    walrus_handle_destroy(s_ctx->textures);
-    walrus_handle_destroy(s_ctx->buffers);
-    walrus_handle_destroy(s_ctx->vertex_layouts);
-    walrus_handle_destroy(s_ctx->uniforms);
-    walrus_handle_destroy(s_ctx->programs);
-    walrus_handle_destroy(s_ctx->shaders);
+    walrus_handle_destroy(ctx->textures);
+    walrus_handle_destroy(ctx->buffers);
+    walrus_handle_destroy(ctx->vertex_layouts);
+    walrus_handle_destroy(ctx->uniforms);
+    walrus_handle_destroy(ctx->programs);
+    walrus_handle_destroy(ctx->shaders);
 }
 
 static void discard(u8 flags)
@@ -582,80 +582,81 @@ static void destroy_transient_buffer(Walrus_TransientBuffer* buffer)
     walrus_free(buffer);
 }
 
-static void init_resources(void)
+static void init_resources(RhiContext* ctx)
 {
-    frame_init(s_ctx->submit_frame, WR_RHI_MIN_RESOURCE_COMMAND_BUFFER_SIZE, WR_RHI_MIN_TRANSIENT_BUFFER_SIZE,
+    frame_init(ctx->submit_frame, WR_RHI_MIN_RESOURCE_COMMAND_BUFFER_SIZE, WR_RHI_MIN_TRANSIENT_BUFFER_SIZE,
                WR_RHI_MIN_TRANSIENT_INDEX_BUFFER_SIZE);
-    if (!s_ctx->info.single_thread) {
-        frame_init(s_ctx->render_frame, WR_RHI_MIN_RESOURCE_COMMAND_BUFFER_SIZE, WR_RHI_MIN_TRANSIENT_BUFFER_SIZE,
+    if (!ctx->info.single_thread) {
+        frame_init(ctx->render_frame, WR_RHI_MIN_RESOURCE_COMMAND_BUFFER_SIZE, WR_RHI_MIN_TRANSIENT_BUFFER_SIZE,
                    WR_RHI_MIN_TRANSIENT_INDEX_BUFFER_SIZE);
     }
-    if (!s_ctx->info.single_thread) {
-        s_ctx->api_sem    = walrus_semaphore_create();
-        s_ctx->render_sem = walrus_semaphore_create();
+    if (!ctx->info.single_thread) {
+        ctx->api_sem    = walrus_semaphore_create();
+        ctx->render_sem = walrus_semaphore_create();
     }
 
-    handles_init();
+    handles_init(ctx);
 
-    s_ctx->shader_map          = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
-    s_ctx->uniform_map         = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
-    s_ctx->vertex_layout_table = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
+    ctx->shader_map          = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
+    ctx->uniform_map         = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
+    ctx->vertex_layout_table = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
 }
 
-static void shutdown_resources(void)
+static void shutdown_resources(RhiContext* ctx)
 {
-    if (!s_ctx->info.single_thread) {
-        walrus_semaphore_destroy(s_ctx->api_sem);
-        walrus_semaphore_destroy(s_ctx->render_sem);
+    if (!ctx->info.single_thread) {
+        walrus_semaphore_destroy(ctx->api_sem);
+        walrus_semaphore_destroy(ctx->render_sem);
     }
 
-    walrus_hash_table_destroy(s_ctx->shader_map);
-    walrus_hash_table_destroy(s_ctx->uniform_map);
-    walrus_hash_table_destroy(s_ctx->vertex_layout_table);
+    walrus_hash_table_destroy(ctx->shader_map);
+    walrus_hash_table_destroy(ctx->uniform_map);
+    walrus_hash_table_destroy(ctx->vertex_layout_table);
 
-    handles_shutdown();
-    frame_shutdown(s_ctx->submit_frame);
-    if (!s_ctx->info.single_thread) {
-        frame_shutdown(s_ctx->render_frame);
+    handles_shutdown(ctx);
+    frame_shutdown(ctx->submit_frame);
+    if (!ctx->info.single_thread) {
+        frame_shutdown(ctx->render_frame);
     }
 }
 
 Walrus_RhiError walrus_rhi_init(Walrus_RhiCreateInfo* info)
 {
-    s_ctx = walrus_malloc(sizeof(RhiContext));
+    RhiContext* ctx = walrus_malloc(sizeof(RhiContext));
 
-    s_ctx->info         = *info;
-    s_ctx->resolution   = info->resolution;
-    s_ctx->exit         = false;
-    s_ctx->initialized  = false;
-    s_ctx->api_sem      = NULL;
-    s_ctx->render_sem   = NULL;
-    s_ctx->submit_frame = &s_ctx->frames[0];
-    s_ctx->render_frame = info->single_thread ? &s_ctx->frames[0] : &s_ctx->frames[1];
+    ctx->info         = *info;
+    ctx->resolution   = info->resolution;
+    ctx->exit         = false;
+    ctx->initialized  = false;
+    ctx->api_sem      = NULL;
+    ctx->render_sem   = NULL;
+    ctx->submit_frame = &ctx->frames[0];
+    ctx->render_frame = info->single_thread ? &ctx->frames[0] : &ctx->frames[1];
 
-    s_ctx->uniform_begin = 0;
-    s_ctx->uniform_end   = 0;
+    ctx->uniform_begin = 0;
+    ctx->uniform_end   = 0;
 
-    init_resources();
+    init_resources(ctx);
 
     for (u32 i = 0; i < WR_RHI_MAX_UNIFORMS; ++i) {
-        s_ctx->uniform_refs[i].ref_count = 0;
+        ctx->uniform_refs[i].ref_count = 0;
     }
     for (u32 i = 0; i < WR_RHI_MAX_VERTEX_LAYOUTS; ++i) {
-        s_ctx->vertex_layout_ref[i].ref_count = 0;
+        ctx->vertex_layout_ref[i].ref_count = 0;
     }
     for (u32 i = 0; i < WR_RHI_MAX_SHADERS; ++i) {
-        s_ctx->shader_refs[i].ref_count = 0;
+        ctx->shader_refs[i].ref_count = 0;
     }
 
-    for (u32 i = 0; i < walrus_array_len(s_ctx->views); ++i) {
-        view_reset(&s_ctx->views[i]);
+    for (u32 i = 0; i < walrus_array_len(ctx->views); ++i) {
+        view_reset(&ctx->views[i]);
     }
 
-    for (u32 i = 0; i < walrus_array_len(s_ctx->view_map); ++i) {
-        s_ctx->view_map[i] = i;
+    for (u32 i = 0; i < walrus_array_len(ctx->view_map); ++i) {
+        ctx->view_map[i] = i;
     }
 
+    s_ctx = ctx;
     discard(WR_RHI_DISCARD_ALL);
 
     CommandBuffer* buf = get_command_buffer(COMMAND_RENDERER_INIT);
@@ -670,7 +671,7 @@ Walrus_RhiError walrus_rhi_init(Walrus_RhiCreateInfo* info)
         walrus_rhi_frame();
         walrus_rhi_frame();
 
-        shutdown_resources();
+        shutdown_resources(s_ctx);
 
         return WR_RHI_INIT_ERROR;
     }
@@ -714,7 +715,7 @@ void walrus_rhi_shutdown(void)
 
     render_sem_wait(-1);  // Waiting for RenderShutdown to finish
 
-    shutdown_resources();
+    shutdown_resources(s_ctx);
 
     walrus_free(s_ctx);
     s_ctx = NULL;
