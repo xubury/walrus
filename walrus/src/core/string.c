@@ -42,7 +42,8 @@ char *walrus_str_dup(char const *str)
 char *walrus_str_substr(char const *str, u32 start, u64 len)
 {
     char *alloc_str = walrus_str_alloc(len);
-    walrus_str_nappend(&alloc_str, str + start, len);
+    u64   max_len   = walrus_str_len(str);
+    walrus_str_nappend(&alloc_str, str + start, walrus_min(len, max_len - start));
 
     return alloc_str;
 }
@@ -165,4 +166,22 @@ Walrus_StringView walrus_str_substrview(char const *str, u32 start, u64 len)
     string_view.len = walrus_min(avail_len, len);
 
     return string_view;
+}
+
+u64 walrus_str_first_of(char const *str, char c)
+{
+    char *find = strchr(str, c);
+    if (find) {
+        return find - str;
+    }
+    return WR_STRING_INVALID_POS;
+}
+
+u64 walrus_str_last_of(char const *str, char c)
+{
+    char *find = strrchr(str, c);
+    if (find) {
+        return find - str;
+    }
+    return WR_STRING_INVALID_POS;
 }

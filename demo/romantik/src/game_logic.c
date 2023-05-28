@@ -188,7 +188,7 @@ static u8 const border_layer_map[] = {
 u8 romantik_get_border_type(u8 bits)
 {
     u8 type = 0;
-    for (u32 i = 0; i < walrus_array_len(border_layer_map); ++i) {
+    for (u32 i = 0; i < walrus_count_of(border_layer_map); ++i) {
         if (border_layer_map[i] == bits) {
             type = i;
             break;

@@ -16,14 +16,10 @@ typedef struct {
     bool              stop;
 } ThreadPool;
 
-struct Walrus_TaskResult {
-    i32               exitcode;
-    Walrus_Semaphore *sem;
-};
-
 typedef struct {
-    ThreadTaskFn fn;
-    void        *userdata;
+    ThreadTaskFn       fn;
+    void              *userdata;
+    Walrus_TaskResult *res;
 } ThreadTask;
 
 static ThreadPool *s_pool;
@@ -48,7 +44,11 @@ static i32 worker_fn(Walrus_Thread *self, void *userdata)
             ThreadTask *task = walrus_queue_pop(s_pool->tasks);
             walrus_mutex_unlock(s_pool->mutex);
 
-            task->fn(task->userdata);
+            i32 code = task->fn(task->userdata);
+            if (task->res) {
+                task->res->exit_code = code;
+                walrus_semaphore_post(task->res->sem, 1);
+            }
             walrus_free(task);
         }
     }
@@ -94,13 +94,35 @@ void walrus_thread_pool_shutdown(void)
     s_pool = NULL;
 }
 
-void walrus_thread_pool_queue(ThreadTaskFn func, void *userdata)
+void walrus_thread_pool_queue(ThreadTaskFn func, void *userdata, Walrus_TaskResult *res)
 {
     ThreadTask *task = walrus_new(ThreadTask, 1);
     task->fn         = func;
     task->userdata   = userdata;
+    task->res        = res;
+    if (res != NULL) {
+        res->sem       = walrus_semaphore_create();
+        res->exit_code = 0;
+    }
     walrus_mutex_lock(s_pool->mutex);
     walrus_queue_push(s_pool->tasks, task);
     walrus_mutex_unlock(s_pool->mutex);
     walrus_semaphore_post(s_pool->sem, 1);
+}
+
+Walrus_TaskResult *walrus_thread_pool_result(void)
+{
+    Walrus_TaskResult *res = walrus_new(Walrus_TaskResult, 1);
+    return res;
+}
+
+i32 walrus_thread_pool_result_get(Walrus_TaskResult *res, i32 ms)
+{
+    if (res->sem) {
+        if (walrus_semaphore_wait(res->sem, ms)) {
+            walrus_semaphore_destroy(res->sem);
+            res->sem = NULL;
+        }
+    }
+    return res->exit_code;
 }

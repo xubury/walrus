@@ -648,11 +648,11 @@ Walrus_RhiError walrus_rhi_init(Walrus_RhiCreateInfo* info)
         ctx->shader_refs[i].ref_count = 0;
     }
 
-    for (u32 i = 0; i < walrus_array_len(ctx->views); ++i) {
+    for (u32 i = 0; i < walrus_count_of(ctx->views); ++i) {
         view_reset(&ctx->views[i]);
     }
 
-    for (u32 i = 0; i < walrus_array_len(ctx->view_map); ++i) {
+    for (u32 i = 0; i < walrus_count_of(ctx->view_map); ++i) {
         ctx->view_map[i] = i;
     }
 

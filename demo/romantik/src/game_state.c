@@ -138,7 +138,7 @@ void renderer_init(Romantik_GameState *state)
     state->avail_buffer  = walrus_rhi_create_buffer(NULL, 2000 * sizeof(HexInstanceBuffer), 0);
 
     HexInstanceBuffer queue_hexs[5];
-    u32               queue_len = walrus_array_len(queue_hexs);
+    u32               queue_len = walrus_count_of(queue_hexs);
     for (u8 i = 0; i < queue_len; ++i) {
         mat4 model = GLM_MAT4_IDENTITY_INIT;
         glm_translate(model, (vec3){0, (i - queue_len / 2.0) * 0.2, -3.5});

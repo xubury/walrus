@@ -32,7 +32,7 @@ Walrus_InputDevice* walrus_input_create(u16 num_btns, u8 num_axes)
         device->axis        = walrus_malloc(num_axes * sizeof(vec3));
         device->last_axis   = walrus_malloc(num_axes * sizeof(vec3));
 
-        memset(device->first_buttons, 0, walrus_array_len(device->first_buttons) * sizeof(u16));
+        memset(device->first_buttons, 0, walrus_count_of(device->first_buttons) * sizeof(u16));
         memset(device->state, 0, num_btns * sizeof(bool));
         memset(device->last_state, 0, num_btns * sizeof(bool));
         memset(device->axis, 0, num_axes * sizeof(vec3));

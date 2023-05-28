@@ -349,17 +349,17 @@ typedef struct {
     cgltf_primitive  *prim;
     void             *buffer;
     u64               offset;
-    Walrus_Semaphore *sem;
-} TangentData;
+    Walrus_TaskResult res;
+} TangentTask;
 
-static void tangent_create_task(void *userdata)
+static i32 tangent_create_task(void *userdata)
 {
-    TangentData *data = userdata;
+    TangentTask *data = userdata;
     create_tangents(data->prim, (u8 *)data->buffer + data->offset);
-    walrus_semaphore_post(data->sem, 1);
+    return 0;
 }
 
-static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
+static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
 {
     static Walrus_LayoutComponent components[cgltf_component_type_max_enum] = {
         WR_RHI_COMPONENT_COUNT,  WR_RHI_COMPONENT_INT8,  WR_RHI_COMPONENT_UINT8, WR_RHI_COMPONENT_INT16,
@@ -427,11 +427,10 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
                 u32          num_vertices = model->meshes[i].primitives[j].streams[0].num_vertices;
                 u64          size         = num_vertices * sizeof(vec4);
                 u32          stream_id    = model->meshes[i].primitives[j].num_streams;
-                TangentData *data         = walrus_new(TangentData, 1);
+                TangentTask *data         = walrus_new(TangentTask, 1);
 
                 data->prim   = prim;
                 data->buffer = NULL;
-                data->sem    = NULL;
                 data->offset = tangent_buffer_size;
                 task_list    = walrus_list_append(task_list, data);
 
@@ -452,36 +451,24 @@ static void mesh_init(Walrus_Model *model, cgltf_data *gltf)
     }
     // Allocate the buffer, push task to thread pool
     if (tangent_buffer_size > 0) {
-        void             *tangent_buffer = walrus_malloc(tangent_buffer_size);
-        Walrus_Semaphore *sem            = walrus_semaphore_create();
+        void *tangent_buffer = walrus_malloc(tangent_buffer_size);
 
         Walrus_List *head = task_list;
         while (head) {
-            TangentData *data = head->data;
+            TangentTask *data = head->data;
             data->buffer      = tangent_buffer;
-            data->sem         = sem;
-#if 1
-            walrus_thread_pool_queue(tangent_create_task, data);
-#else
-            tangent_create_task(data);
-#endif
+            walrus_thread_pool_queue(tangent_create_task, data, &data->res);
             head = head->next;
         }
         // Wait for all the tasks to finish
         head = task_list;
         while (head) {
-            walrus_semaphore_wait(sem, -1);
-            head = head->next;
-        }
-        // Free all data
-        head = task_list;
-        while (head) {
+            TangentTask *data = head->data;
+            walrus_thread_pool_result_get(&data->res, -1);
             walrus_free(head->data);
             head = head->next;
         }
         walrus_list_free(task_list);
-
-        walrus_semaphore_destroy(sem);
 
         model->tangent_buffer = walrus_rhi_create_buffer(tangent_buffer, tangent_buffer_size, 0);
         walrus_free(tangent_buffer);
@@ -575,45 +562,47 @@ static void nodes_init(Walrus_Model *model, cgltf_data *gltf)
 typedef struct {
     Walrus_Image     *image;
     char             *path;
-    Walrus_Semaphore *sem;
-} ImageLoadData;
+    Walrus_TaskResult res;
+} ImageTask;
 
-static void image_load_task(void *userdata)
+static i32 image_load_task(void *userdata)
 {
-    ImageLoadData *data = userdata;
+    ImageTask *data = userdata;
     walrus_trace("loading image: %s", data->path);
-    walrus_image_load_from_file_full(data->image, data->path, 4);
-    walrus_semaphore_post(data->sem, 1);
+    if (walrus_image_load_from_file_full(data->image, data->path, 4) != WR_MODEL_SUCCESS) {
+        return WR_MODEL_IMAGE_ERROR;
+    }
+    return WR_MODEL_SUCCESS;
 }
 
 static Walrus_ModelResult images_load_from_file(Walrus_Image *images, cgltf_data *gltf, char const *filename)
 {
     Walrus_ModelResult res         = WR_MODEL_SUCCESS;
     u32 const          num_images  = gltf->images_count;
-    char              *parent_path = walrus_str_substr(filename, 0, strrchr(filename, '/') - filename);
+    char              *parent_path = walrus_str_substr(filename, 0, walrus_str_last_of(filename, '/'));
 
-    ImageLoadData    *userdata = walrus_new(ImageLoadData, num_images);
-    Walrus_Semaphore *sem      = walrus_semaphore_create();
+    ImageTask *taskes = walrus_new(ImageTask, num_images);
     for (u32 i = 0; i < num_images; ++i) {
         cgltf_image *image = &gltf->images[i];
         char         path[255];
         snprintf(path, 255, "%s/%s", parent_path, image->uri);
-        userdata[i].image = &images[i];
-        userdata[i].path  = walrus_str_dup(path);
-        userdata[i].sem   = sem;
+        taskes[i].image = &images[i];
+        taskes[i].path  = walrus_str_dup(path);
 #if 0
         userdata[i].ready = true;
         image_load_fn(&userdata[i]);
 #else
-        walrus_thread_pool_queue(image_load_task, &userdata[i]);
+        walrus_thread_pool_queue(image_load_task, &taskes[i], &taskes[i].res);
 #endif
     }
 
     for (u32 i = 0; i < num_images; ++i) {
-        walrus_semaphore_wait(sem, -1);
+        if (walrus_thread_pool_result_get(&taskes[i].res, -1) != WR_MODEL_SUCCESS) {
+            walrus_error("fail to load image from %s", taskes[i].path);
+        }
+        walrus_str_free(taskes[i].path);
     }
-    walrus_semaphore_destroy(sem);
-    walrus_free(userdata);
+    walrus_free(taskes);
 
     walrus_str_free(parent_path);
 
@@ -697,6 +686,7 @@ static void textures_init(Walrus_Model *model, Walrus_Image *images, cgltf_data 
         if (model->textures[i].srgb) flags |= WR_RHI_TEXTURE_SRGB;
         model->textures[i].handle =
             walrus_rhi_create_texture2d(img->width, img->height, WR_RHI_FORMAT_RGBA8, 0, flags, img->data);
+        walrus_rhi_frame();
     }
 }
 
@@ -711,6 +701,7 @@ static void buffers_init(Walrus_Model *model, cgltf_data *gltf)
 {
     for (u32 i = 0; i < model->num_buffers; ++i) {
         model->buffers[i] = walrus_rhi_create_buffer(gltf->buffers[i].data, gltf->buffers[i].size, 0);
+        walrus_rhi_frame();
     }
 }
 
@@ -732,7 +723,7 @@ static void model_init(Walrus_Model *model, Walrus_Image *images, cgltf_data *gl
 
     textures_init(model, images, gltf);
 
-    mesh_init(model, gltf);
+    meshes_init(model, gltf);
 
     nodes_init(model, gltf);
 }
@@ -771,6 +762,8 @@ Walrus_ModelResult walrus_model_load_from_file(Walrus_Model *model, char const *
     }
 
     model_init(model, images, gltf);
+
+    walrus_rhi_frame();
 
     images_shutdown(images, num_images);
 

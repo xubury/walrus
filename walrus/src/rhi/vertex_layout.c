@@ -49,7 +49,7 @@ static void vertex_layout_add_internal(Walrus_VertexLayout* layout, u8 attr, u8 
     layout->offsets[attr]                      = offset;
     layout->stride                             = stride;
     ++layout->num_attributes;
-    walrus_assert_msg(layout->num_attributes <= walrus_array_len(layout->attributes),
+    walrus_assert_msg(layout->num_attributes <= walrus_count_of(layout->attributes),
                       "Number of attributes exceeds limit!");
 }
 

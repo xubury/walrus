@@ -2,6 +2,8 @@
 
 #include "type.h"
 
+#define WR_STRING_INVALID_POS UINT64_MAX
+
 typedef struct {
     char const *str;
     u64         len;
@@ -37,3 +39,7 @@ void walrus_str_append(char **pdst, char const *src);
 void walrus_str_nappend(char **pdst, char const *src, u64 src_len);
 
 Walrus_StringView walrus_str_substrview(char const *str, u32 start, u64 len);
+
+u64 walrus_str_first_of(char const *str, char c);
+
+u64 walrus_str_last_of(char const *str, char c);

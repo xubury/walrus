@@ -7,7 +7,7 @@
 #define WR_STMT_BEGIN do
 #define WR_STMT_END   while (0)
 
-#define walrus_array_len(arr) sizeof(arr) / sizeof(arr[0])
+#define walrus_count_of(arr) sizeof(arr) / sizeof(arr[0])
 
 #define walrus_unused(x) (void)(x)
 
