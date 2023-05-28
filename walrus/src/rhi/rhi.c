@@ -495,7 +495,7 @@ static void render_exec_command(CommandBuffer* buffer)
                 u8 num_layers;
                 command_buffer_read(buffer, u8, &num_layers);
 
-                s_renderer->texture_resize_fn(handle, width, height, depth, num_layers, num_mipmaps);
+                s_renderer->texture_resize_fn(handle, width, height, depth, num_mipmaps, num_layers);
             } break;
             case COMMAND_CREATE_UNIFORM: {
                 Walrus_UniformHandle handle;
@@ -733,8 +733,8 @@ char const* walrus_rhi_error_msg(void)
 void walrus_rhi_set_resolution(u32 width, u32 height)
 {
     if (s_ctx->resolution.width != width || s_ctx->resolution.height != height) {
-        s_ctx->resolution.width  = width;
-        s_ctx->resolution.height = height;
+        s_ctx->resolution.width  = walrus_max(width, 1);
+        s_ctx->resolution.height = walrus_max(height, 1);
 
         for (u32 i = 0; i < WR_RHI_MAX_VIEWS; ++i) {
             s_ctx->views[i].fb.id = WR_INVALID_HANDLE;

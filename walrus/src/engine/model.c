@@ -1,4 +1,5 @@
 #include <engine/model.h>
+#include <engine/thread_pool.h>
 #include <core/memory.h>
 #include <core/hash.h>
 #include <core/log.h>
@@ -8,6 +9,7 @@
 #include <core/string.h>
 #include <core/math.h>
 #include <core/sort.h>
+#include <core/sys.h>
 #include <rhi/rhi.h>
 
 #include <cglm/cglm.h>
@@ -515,22 +517,45 @@ static void nodes_init(Walrus_Model *model, cgltf_data *gltf)
     }
 }
 
+typedef struct {
+    Walrus_Image *image;
+    char         *path;
+    bool          ready;
+} ImageLoadData;
+
+static void image_load_fn(void *userdata)
+{
+    ImageLoadData *data = userdata;
+    walrus_trace("loading image: %s", data->path);
+    walrus_image_load_from_file_full(data->image, data->path, 4);
+    data->ready = true;
+}
+
 static Walrus_ModelResult images_load_from_file(Walrus_Image *images, cgltf_data *gltf, char const *filename)
 {
     Walrus_ModelResult res         = WR_MODEL_SUCCESS;
     u32 const          num_images  = gltf->images_count;
     char              *parent_path = walrus_str_substr(filename, 0, strrchr(filename, '/') - filename);
 
+    u64            ts       = walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC);
+    ImageLoadData *userdata = walrus_new(ImageLoadData, num_images);
     for (u32 i = 0; i < num_images; ++i) {
         cgltf_image *image = &gltf->images[i];
         char         path[255];
         snprintf(path, 255, "%s/%s", parent_path, image->uri);
-        walrus_trace("loading image: %s", path);
-
-        if (walrus_image_load_from_file_full(&images[i], path, 4) != WR_IMAGE_SUCCESS) {
-            res = WR_MODEL_IMAGE_ERROR;
-        }
+        userdata[i].image = &images[i];
+        userdata[i].path  = walrus_str_dup(path);
+        userdata[i].ready = false;
+        walrus_thread_pool_queue(image_load_fn, &userdata[i]);
     }
+
+    for (u32 i = 0; i < num_images; ++i) {
+        while (!userdata[i].ready) {
+        }
+        walrus_str_free(userdata[i].path);
+    }
+    walrus_free(userdata);
+    walrus_trace("image load time: %llu ms", walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC) - ts);
 
     walrus_str_free(parent_path);
 

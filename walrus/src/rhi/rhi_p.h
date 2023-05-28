@@ -28,8 +28,8 @@ typedef void (*RhiUpdateBufferFn)(Walrus_BufferHandle handle, u64 offset, u64 si
 
 typedef void (*RhiCreateTextureFn)(Walrus_TextureHandle handle, Walrus_TextureCreateInfo const *info, void const *data);
 typedef void (*RhiDestroyTextureFn)(Walrus_TextureHandle handle);
-typedef void (*RhiResizeTextureFn)(Walrus_TextureHandle handle, u32 width, u32 height, u32 depth, u8 num_layers,
-                                   u8 num_mipmaps);
+typedef void (*RhiResizeTextureFn)(Walrus_TextureHandle handle, u32 width, u32 height, u32 depth, u8 num_mipmaps,
+                                   u8 num_layers);
 
 typedef void (*RhiCreateFramebuffer)(Walrus_FramebufferHandle handle, Walrus_Attachment *attachments, u8 num);
 typedef void (*RhiDestroyFramebuffer)(Walrus_FramebufferHandle handle);

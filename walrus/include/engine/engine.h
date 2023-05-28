@@ -12,6 +12,7 @@ typedef struct {
     f32               minfps;
     bool              single_thread;
     char const       *shader_folder;
+    u8                thread_pool_size;
 } Walrus_EngineOption;
 
 typedef struct Walrus_Engine Walrus_Engine;

@@ -88,6 +88,9 @@ bool walrus_thread_init(Walrus_Thread* thread, Walrus_ThreadFn fn, void* userdat
 
 void walrus_thread_shutdown(Walrus_Thread* thread)
 {
+    if (!thread->running) {
+        return;
+    }
 #if WR_PLATFORM == WR_PLATFORM_WINDOWS
     WaitForSingleObject(thread->handle, INFINITE);
     GetExitCodeThread(thread->handle, &thread->exitcode);

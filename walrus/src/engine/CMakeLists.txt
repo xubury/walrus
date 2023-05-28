@@ -13,6 +13,7 @@ add_library(
   input.c
   model.c
   shader_library.c
+  thread_pool.c
   window.c)
 
 target_compile_options(walrus_engine PRIVATE -Wall -Wextra -Wundef -pedantic)

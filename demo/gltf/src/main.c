@@ -7,6 +7,7 @@
 #include <rhi/rhi.h>
 #include <engine/batch_renderer.h>
 #include <engine/shader_library.h>
+#include <engine/thread_pool.h>
 
 #include <cglm/cglm.h>
 #include <string.h>

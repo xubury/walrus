@@ -2,6 +2,7 @@
 #include <engine/event.h>
 #include <engine/batch_renderer.h>
 #include <engine/shader_library.h>
+#include <engine/thread_pool.h>
 #include <rhi/rhi.h>
 #include <core/type.h>
 #include <core/sys.h>
@@ -64,7 +65,10 @@ static Walrus_EngineError register_service(void)
     Walrus_EngineOption *opt = &s_engine->opt;
 
     s_engine->log_mutex = walrus_mutex_create();
+
     walrus_log_set_lock(log_lock_fn, s_engine->log_mutex);
+
+    walrus_thread_pool_init(opt->thread_pool_size);
 
     walrus_event_init();
 
@@ -114,6 +118,8 @@ static void release_service(void)
     walrus_window_destroy(s_engine->window);
 
     walrus_event_shutdown();
+
+    walrus_thread_pool_shutdown();
 
     walrus_mutex_destroy(s_engine->log_mutex);
 
@@ -236,6 +242,7 @@ Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height,
     opt.minfps            = 30.f;
     opt.shader_folder     = "shaders";
     opt.single_thread     = false;
+    opt.thread_pool_size  = 8;
 
     Walrus_EngineError err = walrus_engine_init(&opt);
 
