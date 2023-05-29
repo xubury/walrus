@@ -10,12 +10,12 @@ typedef struct {
     // internal use only, to get exitcode use `walrus_thread_pool_result_get`
     Walrus_Semaphore *sem;
     i32               exit_code;
-} Walrus_TaskResult;
+} Walrus_ThreadResult;
 
 void walrus_thread_pool_init(u8 num_threads);
 
 void walrus_thread_pool_shutdown(void);
 
-void walrus_thread_pool_queue(ThreadTaskFn func, void *userdata, Walrus_TaskResult *res);
+void walrus_thread_pool_queue(ThreadTaskFn func, void *userdata, Walrus_ThreadResult *res);
 
-i32 walrus_thread_pool_result_get(Walrus_TaskResult *res, i32 ms);
+i32 walrus_thread_pool_result_get(Walrus_ThreadResult *res, i32 ms);

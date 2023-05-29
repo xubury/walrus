@@ -3,6 +3,7 @@ find_package(stb REQUIRED)
 
 add_library(
   walrus_core STATIC
+  array.c
   handle_alloc.c
   hash.c
   image.c

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "macro.h"
+#include "assert.h"
 
 #define walrus_max(a, b) ((a) > (b) ? a : b)
 
@@ -184,4 +185,20 @@ WR_INLINE u32 walrus_align_up(u32 a, u32 align)
 {
     u32 const mask = align - 1;
     return (a + mask) & ~mask;
+}
+
+WR_INLINE u64 walrus_nearest_pow(u64 num)
+{
+    u64 n = num - 1;
+
+    walrus_assert(num > 0 && num <= UINT64_MAX / 2);
+
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n |= n >> 32;
+
+    return n + 1;
 }

@@ -9,6 +9,7 @@
 #include <engine/shader_library.h>
 #include <engine/thread_pool.h>
 #include <core/sys.h>
+#include <core/array.h>
 
 #include <cglm/cglm.h>
 #include <string.h>
@@ -39,6 +40,14 @@ static void setup_texture_uniforms(AppData *data)
 
 Walrus_AppError on_init(Walrus_App *app)
 {
+    u32 num[] = {0, 1, 4, 2, 3, 2, 21};
+
+    Walrus_Array *array = walrus_array_create_full(u32, walrus_count_of(num), num);
+    walrus_trace("array len: %d", walrus_array_len(array));
+    for (u32 i = 0; i < walrus_array_len(array); ++i) {
+        walrus_trace("%d", walrus_array_get_val(array, u32, i));
+    }
+    walrus_array_destroy(array);
     AppData *data = walrus_app_userdata(app);
     glm_mat4_identity(data->world);
     data->u_albedo          = walrus_rhi_create_uniform("u_albedo", WR_RHI_UNIFORM_SAMPLER, 1);

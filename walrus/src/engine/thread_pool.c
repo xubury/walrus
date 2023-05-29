@@ -19,7 +19,7 @@ typedef struct {
 typedef struct {
     ThreadTaskFn       fn;
     void              *userdata;
-    Walrus_TaskResult *res;
+    Walrus_ThreadResult *res;
 } ThreadTask;
 
 static ThreadPool *s_pool;
@@ -94,7 +94,7 @@ void walrus_thread_pool_shutdown(void)
     s_pool = NULL;
 }
 
-void walrus_thread_pool_queue(ThreadTaskFn func, void *userdata, Walrus_TaskResult *res)
+void walrus_thread_pool_queue(ThreadTaskFn func, void *userdata, Walrus_ThreadResult *res)
 {
     ThreadTask *task = walrus_new(ThreadTask, 1);
     task->fn         = func;
@@ -110,13 +110,7 @@ void walrus_thread_pool_queue(ThreadTaskFn func, void *userdata, Walrus_TaskResu
     walrus_semaphore_post(s_pool->sem, 1);
 }
 
-Walrus_TaskResult *walrus_thread_pool_result(void)
-{
-    Walrus_TaskResult *res = walrus_new(Walrus_TaskResult, 1);
-    return res;
-}
-
-i32 walrus_thread_pool_result_get(Walrus_TaskResult *res, i32 ms)
+i32 walrus_thread_pool_result_get(Walrus_ThreadResult *res, i32 ms)
 {
     if (res->sem) {
         if (walrus_semaphore_wait(res->sem, ms)) {

@@ -11,6 +11,7 @@
 #include <core/sort.h>
 #include <core/sys.h>
 #include <core/list.h>
+#include <core/array.h>
 #include <rhi/rhi.h>
 
 #include <cglm/cglm.h>
@@ -346,10 +347,9 @@ static void model_deallocate(Walrus_Model *model)
 }
 
 typedef struct {
-    cgltf_primitive  *prim;
-    void             *buffer;
-    u64               offset;
-    Walrus_TaskResult res;
+    cgltf_primitive *prim;
+    void            *buffer;
+    u64              offset;
 } TangentTask;
 
 static i32 tangent_create_task(void *userdata)
@@ -366,8 +366,9 @@ static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
         WR_RHI_COMPONENT_UINT16, WR_RHI_COMPONENT_INT32, WR_RHI_COMPONENT_FLOAT};
     static u32 component_num[cgltf_type_max_enum] = {0, 1, 2, 3, 4, 4, 1, 1};
 
-    Walrus_List *task_list           = NULL;
-    u64          tangent_buffer_size = 0;
+    Walrus_Array *task_list = walrus_array_create_full(TangentTask, 0, NULL);
+
+    u64 tangent_buffer_size = 0;
     for (u32 i = 0; i < gltf->meshes_count; ++i) {
         cgltf_mesh *mesh = &gltf->meshes[i];
         for (u32 j = 0; j < mesh->primitives_count; ++j) {
@@ -424,15 +425,15 @@ static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
             }
 
             if (!has_tangent && model->meshes[i].primitives[j].num_streams > 0) {
-                u32          num_vertices = model->meshes[i].primitives[j].streams[0].num_vertices;
-                u64          size         = num_vertices * sizeof(vec4);
-                u32          stream_id    = model->meshes[i].primitives[j].num_streams;
-                TangentTask *data         = walrus_new(TangentTask, 1);
+                u32 num_vertices = model->meshes[i].primitives[j].streams[0].num_vertices;
+                u64 size         = num_vertices * sizeof(vec4);
+                u32 stream_id    = model->meshes[i].primitives[j].num_streams;
 
-                data->prim   = prim;
-                data->buffer = NULL;
-                data->offset = tangent_buffer_size;
-                task_list    = walrus_list_append(task_list, data);
+                TangentTask data;
+                data.prim   = prim;
+                data.buffer = NULL;
+                data.offset = tangent_buffer_size;
+                walrus_array_append(task_list, &data);
 
                 Walrus_PrimitiveStream *stream = &model->meshes[i].primitives[j].streams[stream_id];
                 stream->offset                 = tangent_buffer_size;
@@ -453,26 +454,24 @@ static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
     if (tangent_buffer_size > 0) {
         void *tangent_buffer = walrus_malloc(tangent_buffer_size);
 
-        Walrus_List *head = task_list;
-        while (head) {
-            TangentTask *data = head->data;
-            data->buffer      = tangent_buffer;
-            walrus_thread_pool_queue(tangent_create_task, data, &data->res);
-            head = head->next;
+        u32                  num_task = walrus_array_len(task_list);
+        Walrus_ThreadResult *threads  = walrus_new(Walrus_ThreadResult, num_task);
+        for (u32 i = 0; i < num_task; ++i) {
+            TangentTask *task = walrus_array_get_ptr(task_list, TangentTask, i);
+            task->buffer      = tangent_buffer;
+            walrus_thread_pool_queue(tangent_create_task, task, &threads[i]);
         }
         // Wait for all the tasks to finish
-        head = task_list;
-        while (head) {
-            TangentTask *data = head->data;
-            walrus_thread_pool_result_get(&data->res, -1);
-            walrus_free(head->data);
-            head = head->next;
+        for (u32 i = 0; i < num_task; ++i) {
+            walrus_thread_pool_result_get(&threads[i], -1);
         }
-        walrus_list_free(task_list);
+        walrus_free(threads);
 
         model->tangent_buffer = walrus_rhi_create_buffer(tangent_buffer, tangent_buffer_size, 0);
         walrus_free(tangent_buffer);
     }
+
+    walrus_array_destroy(task_list);
 
     // Assgin  buffer handle
     for (u32 i = 0; i < gltf->meshes_count; ++i) {
@@ -560,9 +559,8 @@ static void nodes_init(Walrus_Model *model, cgltf_data *gltf)
 }
 
 typedef struct {
-    Walrus_Image     *image;
-    char             *path;
-    Walrus_TaskResult res;
+    Walrus_Image *image;
+    char         *path;
 } ImageTask;
 
 static i32 image_load_task(void *userdata)
@@ -581,28 +579,30 @@ static Walrus_ModelResult images_load_from_file(Walrus_Image *images, cgltf_data
     u32 const          num_images  = gltf->images_count;
     char              *parent_path = walrus_str_substr(filename, 0, walrus_str_last_of(filename, '/'));
 
-    ImageTask *taskes = walrus_new(ImageTask, num_images);
+    ImageTask           *tasks    = walrus_new(ImageTask, num_images);
+    Walrus_ThreadResult *task_res = walrus_new(Walrus_ThreadResult, num_images);
     for (u32 i = 0; i < num_images; ++i) {
         cgltf_image *image = &gltf->images[i];
         char         path[255];
         snprintf(path, 255, "%s/%s", parent_path, image->uri);
-        taskes[i].image = &images[i];
-        taskes[i].path  = walrus_str_dup(path);
+        tasks[i].image = &images[i];
+        tasks[i].path  = walrus_str_dup(path);
 #if 0
         userdata[i].ready = true;
         image_load_fn(&userdata[i]);
 #else
-        walrus_thread_pool_queue(image_load_task, &taskes[i], &taskes[i].res);
+        walrus_thread_pool_queue(image_load_task, &tasks[i], &task_res[i]);
 #endif
     }
 
     for (u32 i = 0; i < num_images; ++i) {
-        if (walrus_thread_pool_result_get(&taskes[i].res, -1) != WR_MODEL_SUCCESS) {
-            walrus_error("fail to load image from %s", taskes[i].path);
+        if (walrus_thread_pool_result_get(&task_res[i], -1) != WR_MODEL_SUCCESS) {
+            walrus_error("fail to load image from %s", tasks[i].path);
         }
-        walrus_str_free(taskes[i].path);
+        walrus_str_free(tasks[i].path);
     }
-    walrus_free(taskes);
+    walrus_free(tasks);
+    walrus_free(task_res);
 
     walrus_str_free(parent_path);
 
