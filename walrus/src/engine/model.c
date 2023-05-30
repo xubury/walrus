@@ -587,12 +587,7 @@ static Walrus_ModelResult images_load_from_file(Walrus_Image *images, cgltf_data
         snprintf(path, 255, "%s/%s", parent_path, image->uri);
         tasks[i].image = &images[i];
         tasks[i].path  = walrus_str_dup(path);
-#if 0
-        userdata[i].ready = true;
-        image_load_fn(&userdata[i]);
-#else
         walrus_thread_pool_queue(image_load_task, &tasks[i], &task_res[i]);
-#endif
     }
 
     for (u32 i = 0; i < num_images; ++i) {

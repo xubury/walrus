@@ -40,14 +40,6 @@ static void setup_texture_uniforms(AppData *data)
 
 Walrus_AppError on_init(Walrus_App *app)
 {
-    u32 num[] = {0, 1, 4, 2, 3, 2, 21};
-
-    Walrus_Array *array = walrus_array_create_full(u32, walrus_count_of(num), num);
-    walrus_trace("array len: %d", walrus_array_len(array));
-    for (u32 i = 0; i < walrus_array_len(array); ++i) {
-        walrus_trace("%d", walrus_array_get_val(array, u32, i));
-    }
-    walrus_array_destroy(array);
     AppData *data = walrus_app_userdata(app);
     glm_mat4_identity(data->world);
     data->u_albedo          = walrus_rhi_create_uniform("u_albedo", WR_RHI_UNIFORM_SAMPLER, 1);
@@ -72,17 +64,11 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_rhi_set_view_rect(0, 0, 0, 1440, 900);
     walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_COLOR | WR_RHI_CLEAR_DEPTH, 0, 1.0, 0);
 
-    walrus_rhi_set_view_rect(1, 0, 0, 1440, 900);
-    walrus_rhi_set_view_clear(1, WR_RHI_CLEAR_NONE, 0, 1.0, 0);
-
     mat4 view;
     mat4 projection;
     glm_lookat((vec3){0, 2, 5}, (vec3){0, 0, 0}, (vec3){0, 1, 0}, view);
     glm_perspective(glm_rad(45), 1440.0 / 900.0, 0.1, 1000.0, projection);
     walrus_rhi_set_view_transform(0, view, projection);
-
-    glm_ortho(0, 1440, 900, 0, 0, 1000, projection);
-    walrus_rhi_set_view_transform(1, GLM_MAT4_IDENTITY, projection);
 
     u64         ts       = walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC);
     char const *filename = "assets/gltf/shibahu/scene.gltf";
