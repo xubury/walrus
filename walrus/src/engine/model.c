@@ -767,16 +767,23 @@ Walrus_ModelResult walrus_model_load_from_file(Walrus_Model *model, char const *
     return WR_MODEL_SUCCESS;
 }
 
-static void model_node_submit(u16 view_id, Walrus_ModelNode *node, Walrus_ProgramHandle shader, u32 depth,
+static void model_node_submit(u16 view_id, Walrus_ModelNode *node, mat4 world, Walrus_ProgramHandle shader, u32 depth,
                               ModelSubmitCallback cb, void *userdata)
 {
     Walrus_Mesh *mesh = node->mesh;
+
+    mat4 node_world;
+    walrus_transform_compose(&node->world_transform, node_world);
+    glm_mat4_mul(world, node_world, node_world);
+
     if (mesh) {
         for (u32 i = 0; i < mesh->num_primitives; ++i) {
+            walrus_rhi_set_transform(node_world);
+
             Walrus_MeshPrimitive *prim = &mesh->primitives[i];
 
             if (cb) {
-                cb(node, prim, userdata);
+                cb(prim, userdata);
             }
 
             if (prim->indices.buffer.id != WR_INVALID_HANDLE) {
@@ -798,14 +805,14 @@ static void model_node_submit(u16 view_id, Walrus_ModelNode *node, Walrus_Progra
     }
 
     for (u32 i = 0; i < node->num_children; ++i) {
-        model_node_submit(view_id, node->children[i], shader, depth, cb, userdata);
+        model_node_submit(view_id, node->children[i], world, shader, depth, cb, userdata);
     }
 }
 
-void walrus_model_submit(u16 view_id, Walrus_Model *model, Walrus_ProgramHandle shader, u32 depth,
+void walrus_model_submit(u16 view_id, Walrus_Model *model, mat4 world, Walrus_ProgramHandle shader, u32 depth,
                          ModelSubmitCallback cb, void *userdata)
 {
     for (u32 i = 0; i < model->num_roots; ++i) {
-        model_node_submit(view_id, model->roots[i], shader, depth, cb, userdata);
+        model_node_submit(view_id, model->roots[i], world, shader, depth, cb, userdata);
     }
 }

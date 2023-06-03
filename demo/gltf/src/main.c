@@ -85,14 +85,10 @@ Walrus_AppError on_init(Walrus_App *app)
     return WR_APP_SUCCESS;
 }
 
-static void submit_callback(Walrus_ModelNode *node, Walrus_MeshPrimitive *prim, void *userdata)
+static void submit_callback(Walrus_MeshPrimitive *prim, void *userdata)
 {
-    AppData *data = userdata;
-    mat4     world;
-    walrus_transform_compose(&node->world_transform, world);
-    glm_mat4_mul(data->world, world, world);
-    walrus_rhi_set_transform(world);
-    u64 flags = WR_RHI_STATE_DEFAULT;
+    AppData *data  = userdata;
+    u64      flags = WR_RHI_STATE_DEFAULT;
     if (prim->material) {
         if (!prim->material->double_sided) {
             flags |= WR_RHI_STATE_CULL_CW;
@@ -132,7 +128,7 @@ static void submit_callback(Walrus_ModelNode *node, Walrus_MeshPrimitive *prim, 
 void on_render(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
-    walrus_model_submit(0, &data->model, data->shader, 0, submit_callback, data);
+    walrus_model_submit(0, &data->model, data->world, data->shader, 0, submit_callback, data);
 
     walrus_imgui_new_frame(400, 400, 1);
     igBegin("Hello, world!", NULL, 0);

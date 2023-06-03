@@ -75,7 +75,7 @@ typedef struct {
     Walrus_BufferHandle *buffers;
     u32                  num_buffers;
 
-    Walrus_BufferHandle  tangent_buffer;
+    Walrus_BufferHandle tangent_buffer;
 
     Walrus_Texture *textures;
     u32             num_textures;
@@ -102,11 +102,11 @@ typedef enum {
     WR_MODEL_UNKNOWN_ERROR = -1
 } Walrus_ModelResult;
 
-typedef void (*ModelSubmitCallback)(Walrus_ModelNode *node, Walrus_MeshPrimitive *primitive, void *userdata);
+typedef void (*ModelSubmitCallback)(Walrus_MeshPrimitive *primitive, void *userdata);
 
 Walrus_ModelResult walrus_model_load_from_file(Walrus_Model *model, char const *filename);
 
 void walrus_model_shutdown(Walrus_Model *model);
 
-void walrus_model_submit(u16 view_id, Walrus_Model *model, Walrus_ProgramHandle shader, u32 depth,
+void walrus_model_submit(u16 view_id, Walrus_Model *model, mat4 world, Walrus_ProgramHandle shader, u32 depth,
                          ModelSubmitCallback cb, void *userdata);
