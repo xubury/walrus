@@ -9,6 +9,7 @@ add_library(
   batch_renderer.c
   event.c
   font.c
+  imgui.c
   input_device.c
   input.c
   model.c
@@ -22,7 +23,7 @@ target_include_directories(walrus_engine PUBLIC ${walrus_root_dir}/include)
 
 target_link_libraries(
   walrus_engine
-  PUBLIC walrus_core walrus_rhi
+  PUBLIC walrus_core walrus_rhi cimgui
   PRIVATE stb::stb cgltf::cgltf mikktspace::mikktspace)
 
 if(WASM)

@@ -1,4 +1,5 @@
 #include "frame.h"
+#include "rhi_p.h"
 
 #include <core/assert.h>
 #include <core/math.h>
@@ -12,7 +13,7 @@
 #define SortKeyProgramNumBits  (32)
 #define SortKeyBlendNumBits    (2)
 #define SortKeyDepthNumBits    (16)
-#define SortKeySeqNumBits      (20)
+#define SortKeySeqNumBits      (16)
 
 #define SortKeyViewBitShift (64 - SortKeyViewNumBits)
 #define SortKeyViewMask     ((u64)((1 << SortKeyViewNumBits) - 1) << SortKeyViewBitShift)
@@ -321,7 +322,9 @@ void draw_clear(RenderDraw *draw, u8 flags)
         draw->uniform_end   = 0;
 
         draw->state_flags  = WR_RHI_STATE_DEFAULT;
+        draw->stencil      = pack_stencil(WR_RHI_STENCIL_DEFAULT, WR_RHI_STENCIL_DEFAULT);
         draw->blend_factor = 0;
+        draw->scissor      = (ViewRect){0, 0, 0, 0};
     }
     if (flags & WR_RHI_DISCARD_TRANSFORM) {
         draw->start_matrix = 0;
@@ -337,8 +340,8 @@ void draw_clear(RenderDraw *draw, u8 flags)
     if (flags & WR_RHI_DISCARD_INDEX_BUFFER) {
         draw->num_indices     = UINT32_MAX;
         draw->index_buffer.id = WR_INVALID_HANDLE;
-        draw->index_size   = 0;
-        draw->index_offset = 0;
+        draw->index_size      = 0;
+        draw->index_offset    = 0;
     }
     if (flags & WR_RHI_DISCARD_INSTANCE_DATA) {
         draw->instance_offset    = 0;

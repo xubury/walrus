@@ -526,7 +526,7 @@ static void submit(RenderFrame *frame)
 
             glViewport(viewport->x, resolution_height - viewport->height - viewport->y, viewport->width,
                        viewport->height);
-            if (!viewrect_zero_area(&view->scissor)) {
+            if (!viewrect_zero(&view->scissor)) {
                 view_scissor = &view->scissor;
             }
             discards = view->clear.flags & WR_RHI_CLEAR_DISCARD_MASK;
@@ -548,7 +548,11 @@ static void submit(RenderFrame *frame)
                 clear_flags |= GL_STENCIL_BUFFER_BIT;
             }
             if (clear_flags != 0) {
+                glScissor(viewport->x, resolution_height - viewport->height - viewport->y, viewport->width,
+                          viewport->height);
+                glEnable(GL_SCISSOR_TEST);
                 glClear(clear_flags);
+                glDisable(GL_SCISSOR_TEST);
             }
 
             glDisable(GL_STENCIL_TEST);

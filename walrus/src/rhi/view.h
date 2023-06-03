@@ -47,6 +47,11 @@ WR_INLINE void viewrect_intersect(ViewRect *rect, ViewRect const *other)
     rect->height = walrus_u32satsub(ey, sy);
 }
 
+WR_INLINE bool viewrect_zero(ViewRect const *rect)
+{
+    return rect->width == 0 && rect->height == 0 && rect->x == 0 && rect->y == 0;
+}
+
 WR_INLINE bool viewrect_zero_area(ViewRect const *rect)
 {
     return rect->width == 0 || rect->height == 0;

@@ -48,8 +48,6 @@ static i32 worker_fn(Walrus_Thread *self, void *userdata)
             if (task->res) {
                 task->res->exit_code = code;
                 walrus_semaphore_post(task->res->sem, 1);
-                walrus_semaphore_destroy(task->res->sem);
-                task->res->sem = NULL;
             }
             walrus_free(task);
         }
@@ -113,6 +111,8 @@ i32 walrus_thread_pool_result_get(Walrus_ThreadResult *res, i32 ms)
 {
     if (res->sem) {
         walrus_semaphore_wait(res->sem, ms);
+        walrus_semaphore_destroy(res->sem);
+        res->sem = NULL;
     }
     return res->exit_code;
 }

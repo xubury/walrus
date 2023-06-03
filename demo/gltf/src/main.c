@@ -4,6 +4,7 @@
 #include <core/log.h>
 #include <core/assert.h>
 #include <engine/model.h>
+#include <engine/imgui.h>
 #include <rhi/rhi.h>
 #include <engine/batch_renderer.h>
 #include <engine/shader_library.h>
@@ -132,6 +133,13 @@ void on_render(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
     walrus_model_submit(0, &data->model, data->shader, 0, submit_callback, data);
+
+    walrus_imgui_new_frame(400, 400, 1);
+    igBegin("Hello, world!", NULL, 0);
+    igText("This is some useful text");
+    igText("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO()->Framerate, igGetIO()->Framerate);
+    igEnd();
+    walrus_imgui_end_frame();
 }
 
 void on_tick(Walrus_App *app, f32 dt)

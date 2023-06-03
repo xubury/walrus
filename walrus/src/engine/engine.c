@@ -3,6 +3,7 @@
 #include <engine/batch_renderer.h>
 #include <engine/shader_library.h>
 #include <engine/thread_pool.h>
+#include <engine/imgui.h>
 #include <rhi/rhi.h>
 #include <core/type.h>
 #include <core/sys.h>
@@ -121,11 +122,15 @@ static Walrus_EngineError register_service(void)
 
     walrus_batch_render_init();
 
+    walrus_imgui_init();
+
     return WR_ENGINE_SUCCESS;
 }
 
 static void release_service(void)
 {
+    walrus_imgui_shutdown();
+
     walrus_batch_render_shutdown();
 
     walrus_shader_library_shutdown();
@@ -183,6 +188,7 @@ static void event_process(void)
             default:
                 break;
         }
+        walrus_imgui_process_event(&e);
         app->event(app, &e);
     }
 }

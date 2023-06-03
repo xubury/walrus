@@ -13,7 +13,7 @@
 #endif
 
 #ifndef WR_RHI_MAX_VIEWS
-#define WR_RHI_MAX_VIEWS (25)
+#define WR_RHI_MAX_VIEWS (256)
 #endif
 
 #ifndef WR_RHI_MAX_DRAW_CALLS

@@ -76,5 +76,6 @@ endif()
 # ##############################################################################
 
 set(walrus_root_dir ${CMAKE_CURRENT_SOURCE_DIR}/walrus)
+add_subdirectory(libs/cimgui)  
 add_subdirectory(walrus/src)
 add_subdirectory(demo)

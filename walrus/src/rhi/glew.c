@@ -17,7 +17,7 @@ static void dbg_callback(GLenum p0, GLenum p1, GLuint p2, GLenum severity, i32 p
             walrus_assert_msg(false, message);
             return;
         case GL_DEBUG_SEVERITY_MEDIUM:
-            /* walrus_assert_msg(false, message); */
+            walrus_assert_msg(false, message);
             walrus_error(message);
             return;
         case GL_DEBUG_SEVERITY_LOW:
