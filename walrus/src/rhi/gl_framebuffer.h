@@ -6,8 +6,8 @@ void gl_framebuffer_create(Walrus_FramebufferHandle handle, Walrus_Attachment *a
 
 void gl_framebuffer_destroy(Walrus_FramebufferHandle handle);
 
-void gl_framebuffer_post_reset(Walrus_FramebufferHandle handle);
+void gl_framebuffer_post_reset(GlFramebuffer *fb);
 
-void gl_framebuffer_resolve(Walrus_FramebufferHandle handle);
+void gl_framebuffer_resolve(GlFramebuffer *fb);
 
-void gl_framebuffer_discard(Walrus_FramebufferHandle handle, u32 discard);
+void gl_framebuffer_discard(GlFramebuffer *fb, u32 discard);

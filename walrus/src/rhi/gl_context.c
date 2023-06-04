@@ -1,6 +1,7 @@
 #include "rhi_p.h"
 #include "gl_shader.h"
 #include "gl_texture.h"
+#include "gl_framebuffer.h"
 #include "frame.h"
 
 #include <core/macro.h>
@@ -325,6 +326,11 @@ static void init_ctx(Walrus_RhiCreateInfo *info)
 
     g_ctx->uniform_registry = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
 
+    for (u32 i = 0; i < walrus_count_of(g_ctx->framebuffers); ++i) {
+        g_ctx->framebuffers[i].fbo[0] = 0;
+        g_ctx->framebuffers[i].fbo[1] = 0;
+    }
+
     g_ctx->msaa_fbo = 0;
     memset(g_ctx->msaa_rbos, 0, sizeof(g_ctx->msaa_rbos));
     set_render_context_size(info->resolution.width, info->resolution.height, info->resolution.flags);
@@ -435,9 +441,10 @@ static void bind_vertex_attributes(Walrus_VertexLayout const *layout, u64 offset
 static u32 set_framebuffer(Walrus_FramebufferHandle handle, u32 height, u32 flags)
 {
     if (handle.id != WR_INVALID_HANDLE && handle.id != g_ctx->fbo.id) {
-        gl_framebuffer_resolve(g_ctx->fbo);
+        GlFramebuffer *fb = &g_ctx->framebuffers[handle.id];
+        gl_framebuffer_resolve(fb);
         if (g_ctx->discards != WR_RHI_CLEAR_NONE) {
-            gl_framebuffer_discard(g_ctx->fbo, g_ctx->discards);
+            gl_framebuffer_discard(fb, g_ctx->discards);
             g_ctx->discards = WR_RHI_CLEAR_NONE;
         }
     }
@@ -458,8 +465,25 @@ static u32 set_framebuffer(Walrus_FramebufferHandle handle, u32 height, u32 flag
     return height;
 }
 
+static void update_resolution(Walrus_Resolution *res)
+{
+    if (res->width != g_ctx->resolution.width || res->height != g_ctx->resolution.height ||
+        res->flags != g_ctx->resolution.flags) {
+        set_render_context_size(res->width, res->height, res->flags);
+
+        for (u32 i = 0; i < walrus_count_of(g_ctx->framebuffers); ++i) {
+            gl_framebuffer_post_reset(&g_ctx->framebuffers[i]);
+        }
+        g_ctx->current_fbo = 0;
+
+        glBindFramebuffer(GL_FRAMEBUFFER, g_ctx->current_fbo);
+    }
+}
+
 static void submit(RenderFrame *frame)
 {
+    update_resolution(&frame->resolution);
+
     if (frame->vbo_offset > 0) {
         Walrus_TransientBuffer *vb = frame->transient_vb;
         gl_buffer_update(vb->handle, 0, frame->vbo_offset, vb->data);
@@ -583,7 +607,7 @@ static void submit(RenderFrame *frame)
             current_state.scissor = draw->scissor;
             if (viewrect_zero_area(&current_state.scissor)) {
                 if (view_scissor) {
-                    glScissor(view_scissor->x, g_ctx->resolution.height - view_scissor->height - view_scissor->y,
+                    glScissor(view_scissor->x, resolution_height - view_scissor->height - view_scissor->y,
                               view_scissor->width, view_scissor->height);
                     glEnable(GL_SCISSOR_TEST);
                 }
@@ -596,8 +620,8 @@ static void submit(RenderFrame *frame)
                 if (view_scissor) {
                     viewrect_intersect(&scissor_rect, view_scissor);
                 }
-                glScissor(scissor_rect.x, g_ctx->resolution.height - scissor_rect.height - scissor_rect.y,
-                          scissor_rect.width, scissor_rect.height);
+                glScissor(scissor_rect.x, resolution_height - scissor_rect.height - scissor_rect.y, scissor_rect.width,
+                          scissor_rect.height);
                 glEnable(GL_SCISSOR_TEST);
             }
         }

@@ -2,7 +2,6 @@
 
 #include "rhi_p.h"
 #include "uniform_buffer.h"
-#include "gl_framebuffer.h"
 #include "gl.h"
 
 #include <core/hash.h>

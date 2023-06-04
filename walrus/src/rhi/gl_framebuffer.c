@@ -46,7 +46,7 @@ void gl_framebuffer_create(Walrus_FramebufferHandle handle, Walrus_Attachment *a
     memcpy(fb->attachments, attachments, num * sizeof(Walrus_Attachment));
     fb->num_textures = num;
 
-    gl_framebuffer_post_reset(handle);
+    gl_framebuffer_post_reset(fb);
 }
 
 void gl_framebuffer_destroy(Walrus_FramebufferHandle handle)
@@ -58,9 +58,8 @@ void gl_framebuffer_destroy(Walrus_FramebufferHandle handle)
     memset(fb->fbo, 0, sizeof(fb->fbo));
 }
 
-void gl_framebuffer_post_reset(Walrus_FramebufferHandle handle)
+void gl_framebuffer_post_reset(GlFramebuffer *fb)
 {
-    GlFramebuffer *fb = &g_ctx->framebuffers[handle.id];
     if (fb->fbo[0] != 0) {
         bool   need_resolve = false;
         u32    color_id     = 0;
@@ -138,9 +137,8 @@ void gl_framebuffer_post_reset(Walrus_FramebufferHandle handle)
     }
 }
 
-void gl_framebuffer_resolve(Walrus_FramebufferHandle handle)
+void gl_framebuffer_resolve(GlFramebuffer *fb)
 {
-    GlFramebuffer *fb = &g_ctx->framebuffers[handle.id];
     if (fb->fbo[1] != 0) {
         u32 color_id = 0;
         for (u32 i = 0; i < fb->num_textures; ++i) {
@@ -181,11 +179,10 @@ void gl_framebuffer_resolve(Walrus_FramebufferHandle handle)
     }
 }
 
-void gl_framebuffer_discard(Walrus_FramebufferHandle handle, u32 discard)
+void gl_framebuffer_discard(GlFramebuffer *fb, u32 discard)
 {
-    GLenum         buffers[WR_RHI_MAX_FRAMEBUFFER_ATTACHMENTS + 2];
-    GlFramebuffer *fb = &g_ctx->framebuffers[handle.id];
-    u32            id = 0;
+    GLenum buffers[WR_RHI_MAX_FRAMEBUFFER_ATTACHMENTS + 2];
+    u32    id = 0;
     if ((discard & WR_RHI_CLEAR_DISCARD_COLOR_MASK) != WR_RHI_CLEAR_NONE) {
         for (u32 i = 0; i < fb->num_textures; ++i) {
             if ((discard & (WR_RHI_CLEAR_DISCARD_COLOR_0 << i)) != WR_RHI_CLEAR_NONE) {
