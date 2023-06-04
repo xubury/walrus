@@ -15,6 +15,13 @@ static void error_callback(i32 error, char const *description)
     walrus_error("GLFW Error ({%d}): {%s}\n", error, description);
 }
 
+static void window_size_callback(GLFWwindow *window, i32 width, i32 height)
+{
+    Walrus_Window *win = (Walrus_Window *)glfwGetWindowUserPointer(window);
+    win->width         = width;
+    win->height        = height;
+}
+
 static void framebuffer_size_callback(GLFWwindow *window, i32 width, i32 height)
 {
     walrus_unused(window);
@@ -352,7 +359,7 @@ static void mousebtn_callback(GLFWwindow *window, i32 btn, i32 action, i32 mods)
     walrus_event_push(&e);
 }
 
-void *glfw_create_window(char const *title, u32 width, u32 height, u32 flags)
+void glfw_create_window(Walrus_Window *window, char const *title, u32 width, u32 height, u32 flags)
 {
     walrus_assert_msg(glfwInit(), "Cannot initialize glfw!");
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -361,16 +368,17 @@ void *glfw_create_window(char const *title, u32 width, u32 height, u32 flags)
     glfwWindowHint(GLFW_RESIZABLE, flags & WR_WINDOW_FLAG_RESIZABLE ? GLFW_TRUE : GLFW_FALSE);
     glfwSetErrorCallback(error_callback);
 
-    void *handle = glfwCreateWindow(width, height, title, NULL, NULL);
-    if (handle != NULL) {
-        glfwSetWindowCloseCallback(handle, window_close_callback);
-        glfwSetFramebufferSizeCallback(handle, framebuffer_size_callback);
-        glfwSetKeyCallback(handle, key_callback);
-        glfwSetCursorPosCallback(handle, cursor_callback);
-        glfwSetScrollCallback(handle, scroll_callback);
-        glfwSetMouseButtonCallback(handle, mousebtn_callback);
+    window->handle = glfwCreateWindow(width, height, title, NULL, NULL);
+    if (window->handle != NULL) {
+        glfwSetWindowUserPointer(window->handle, window);
+        glfwSetWindowCloseCallback(window->handle, window_close_callback);
+        glfwSetWindowSizeCallback(window->handle, window_size_callback);
+        glfwSetFramebufferSizeCallback(window->handle, framebuffer_size_callback);
+        glfwSetKeyCallback(window->handle, key_callback);
+        glfwSetCursorPosCallback(window->handle, cursor_callback);
+        glfwSetScrollCallback(window->handle, scroll_callback);
+        glfwSetMouseButtonCallback(window->handle, mousebtn_callback);
     }
-    return handle;
 }
 
 void glfw_destroy_window(void *handle)

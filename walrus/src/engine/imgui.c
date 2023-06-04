@@ -23,6 +23,15 @@ typedef struct {
     u64                  timestamp;
 } Walrus_ImGuiContext;
 
+typedef union {
+    ImTextureID ptr;
+    struct {
+        Walrus_TextureHandle handle;
+        u8                   flags;
+        u8                   mip;
+    } s;
+} TextureDesc;
+
 static Walrus_ImGuiContext *s_ctx;
 
 void *memalloc(size_t size, void *userdata)
@@ -118,7 +127,7 @@ static void render(ImDrawData *data)
         f32 const y      = data->DisplayPos.y;
         f32 const width  = data->DisplaySize.x;
         f32 const height = data->DisplaySize.y;
-        walrus_rhi_set_view_clear(s_ctx->view_id, WR_RHI_CLEAR_COLOR, 0, 0, 0);
+        walrus_rhi_set_view_clear(s_ctx->view_id, WR_RHI_CLEAR_NONE, 0, 0, 0);
         walrus_rhi_set_view_rect(s_ctx->view_id, 0, 0, width, height);
         mat4 proj;
         glm_ortho(x, x + width, y + height, y, 0, 1000, proj);
@@ -147,7 +156,9 @@ static void render(ImDrawData *data)
 
         u32 offset = 0;
 
-        Walrus_TextureHandle th = s_ctx->font_atlas;
+        Walrus_ProgramHandle prog = s_ctx->texture_shader;
+        Walrus_TextureHandle th   = s_ctx->font_atlas;
+        u64 const alpha_flags = WR_RHI_STATE_BLEND_FUNC(WR_RHI_STATE_BLEND_SRC_ALPHA, WR_RHI_STATE_BLEND_INV_SRC_ALPHA);
         for (i32 j = 0; j < list->CmdBuffer.Size; ++j) {
             ImDrawCmd *cmd = &list->CmdBuffer.Data[j];
             if (cmd->UserCallback) {
@@ -156,9 +167,20 @@ static void render(ImDrawData *data)
             else if (cmd->ElemCount != 0) {
                 u64 state = WR_RHI_STATE_WRITE_RGB | WR_RHI_STATE_WRITE_A;
                 if (cmd->TextureId != NULL) {
+                    TextureDesc tex = {cmd->TextureId};
+                    if (IMGUI_TEXTURE_FLAGS_ALPHA_BLEND & tex.s.flags) {
+                        state |= alpha_flags;
+                    }
+
+                    th = tex.s.handle;
+                    if (tex.s.mip != 0) {
+                        prog      = s_ctx->image_shader;
+                        float mip = tex.s.mip;
+                        walrus_rhi_set_uniform(s_ctx->u_lod, 0, sizeof(mip), &mip);
+                    }
                 }
                 else {
-                    state |= WR_RHI_STATE_BLEND_FUNC(WR_RHI_STATE_BLEND_SRC_ALPHA, WR_RHI_STATE_BLEND_INV_SRC_ALPHA);
+                    state |= alpha_flags;
                 }
                 ImVec4 clip_rect;
                 clip_rect.x = (cmd->ClipRect.x - clip_pos.x) * clip_scale.x;
@@ -177,7 +199,7 @@ static void render(ImDrawData *data)
                     u32 unit = 0;
                     walrus_rhi_set_uniform(s_ctx->u_texture, 0, sizeof(u32), &unit);
                     walrus_rhi_set_texture(unit, th);
-                    walrus_rhi_submit(s_ctx->view_id, s_ctx->texture_shader, 0, WR_RHI_DISCARD_ALL);
+                    walrus_rhi_submit(s_ctx->view_id, prog, 0, WR_RHI_DISCARD_ALL);
                 }
             }
             offset += cmd->ElemCount * sizeof(ImDrawIdx);
@@ -452,4 +474,13 @@ void walrus_imgui_process_event(Walrus_Event *event)
         default:
             break;
     }
+}
+
+ImTextureID igHandle(Walrus_TextureHandle handle, u8 flags, u8 mip)
+{
+    TextureDesc desc;
+    desc.s.handle = handle;
+    desc.s.flags  = flags;
+    desc.s.mip    = mip;
+    return desc.ptr;
 }

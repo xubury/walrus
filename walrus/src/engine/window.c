@@ -3,12 +3,7 @@
 #include <core/platform.h>
 #include <core/memory.h>
 
-struct Walrus_Window {
-    u32   width;
-    u32   height;
-    u32   flags;
-    void *handle;
-};
+#include "window_p.h"
 
 #if WR_PLATFORM == WR_PLATFORM_WASM
 void wajs_create_window(char const *title, u32 width, u32 height);
@@ -28,7 +23,7 @@ Walrus_Window *walrus_window_create(char const *title, u32 width, u32 height, u3
     win->handle = NULL;
     wajs_create_window(title, width, height);
 #else
-    win->handle = glfw_create_window(title, width, height, flags);
+    glfw_create_window(win, title, width, height, flags);
     if (win->handle == NULL) {
         walrus_window_destroy(win);
         win = NULL;

@@ -749,6 +749,12 @@ void walrus_rhi_set_resolution(u32 width, u32 height)
     }
 }
 
+void walrus_rhi_get_resolution(u32* width, u32* height)
+{
+    *width  = s_ctx->resolution.width;
+    *height = s_ctx->resolution.height;
+}
+
 void walrus_rhi_frame(void)
 {
     render_sem_wait(-1);

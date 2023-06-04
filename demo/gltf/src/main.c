@@ -127,14 +127,20 @@ static void submit_callback(Walrus_MeshPrimitive *prim, void *userdata)
 
 void on_render(Walrus_App *app)
 {
-    walrus_imgui_new_frame(400, 400, 255);
+    AppData *data = walrus_app_userdata(app);
+    u32      width, height;
+    walrus_rhi_get_resolution(&width, &height);
+    walrus_imgui_new_frame(width, height, 255);
     igBegin("Hello, world!", NULL, 0);
     igText("This is some useful text");
     igText("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO()->Framerate, igGetIO()->Framerate);
+    static i32 lod = 0;
+    igInputInt("LOD", &lod, 1, 1, 0);
+    igImage(igHandle(data->model.textures[0].handle, IMGUI_TEXTURE_FLAGS_ALPHA_BLEND, lod), (ImVec2){100, 100},
+            (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){0});
     igEnd();
     walrus_imgui_end_frame();
 
-    AppData *data = walrus_app_userdata(app);
     walrus_model_submit(0, &data->model, data->world, data->shader, 0, submit_callback, data);
 }
 
