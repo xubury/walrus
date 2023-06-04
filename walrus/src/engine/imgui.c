@@ -63,6 +63,7 @@ void walrus_imgui_init(void)
     u8 *data;
     i32 width;
     i32 height;
+    ImFontAtlas_AddFontFromFileTTF(io->Fonts, "c:/windows/fonts/arialbd.ttf", 14, NULL, NULL);
     ImFontAtlas_GetTexDataAsRGBA32(io->Fonts, &data, &width, &height, NULL);
     s_ctx->font_atlas =
         walrus_rhi_create_texture2d(width, height, WR_RHI_FORMAT_RGBA8, 0, 0, walrus_memdup(data, width * height * 4));
