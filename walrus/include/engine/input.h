@@ -19,10 +19,11 @@ typedef enum {
 
 typedef enum {
     WR_KEYMOD_NONE  = 0,
-    WR_KEYMOD_ALT   = 1 << 1,
-    WR_KEYMOD_CTRL  = 1 << 2,
-    WR_KEYMOD_SHIFT = 1 << 3,
-} Walrus_KeyMod;
+    WR_KEYMOD_ALT   = 1 << 0,
+    WR_KEYMOD_CTRL  = 1 << 1,
+    WR_KEYMOD_SHIFT = 1 << 2,
+    WR_KEYMOD_SUPER = 1 << 3,
+} Walrus_Keymod;
 
 typedef enum {
     WR_KEY_SPACE = 0,

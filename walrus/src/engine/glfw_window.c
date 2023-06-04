@@ -251,6 +251,25 @@ static u16 translate_key(i32 keycode)
     }
 }
 
+static Walrus_Keymod translate_keymods(i32 mods)
+{
+    Walrus_Keymod res = WR_KEYMOD_NONE;
+
+    if (GLFW_MOD_ALT & mods) {
+        res |= WR_KEYMOD_ALT;
+    }
+    if (GLFW_MOD_CONTROL & mods) {
+        res |= WR_KEYMOD_CTRL;
+    }
+    if (GLFW_MOD_SHIFT & mods) {
+        res |= WR_KEYMOD_SHIFT;
+    }
+    if (GLFW_MOD_SUPER & mods) {
+        res |= WR_KEYMOD_SUPER;
+    }
+    return res;
+}
+
 static void key_callback(GLFWwindow *window, i32 keycode, i32 scancode, i32 action, i32 mods)
 {
     walrus_unused(window);
@@ -267,7 +286,7 @@ static void key_callback(GLFWwindow *window, i32 keycode, i32 scancode, i32 acti
         e.button.button = button;
         e.button.device = WR_INPUT_KEYBOARD;
         e.button.state  = action != GLFW_RELEASE;
-        e.button.mods   = mods;
+        e.button.mods   = translate_keymods(mods);
         walrus_event_push(&e);
     }
 }
@@ -329,7 +348,7 @@ static void mousebtn_callback(GLFWwindow *window, i32 btn, i32 action, i32 mods)
     e.button.device = WR_INPUT_MOUSE;
     e.button.button = translate_btn(btn);
     e.button.state  = action != GLFW_RELEASE;
-    e.button.mods   = mods;
+    e.button.mods   = translate_keymods(mods);
     walrus_event_push(&e);
 }
 
