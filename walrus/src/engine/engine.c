@@ -361,6 +361,7 @@ Walrus_AppError walrus_engine_run(Walrus_App *app)
     }
 
     Walrus_AppError err = app_init(app);
+    walrus_rhi_frame();  // make sure everthing is submit from init
 
     if (err == WR_APP_SUCCESS) {
         // On wasm platfrom, loop is send to js process

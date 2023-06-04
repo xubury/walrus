@@ -562,16 +562,6 @@ static void submit(RenderFrame *frame)
             glDisable(GL_BLEND);
         }
 
-        bool const program_changed = current_prog.id != sortkey.program.id;
-        if (program_changed) {
-            current_prog = sortkey.program;
-            if (current_prog.id != WR_INVALID_HANDLE) {
-                glUseProgram(g_ctx->programs[current_prog.id].id);
-            }
-            else {
-                glUseProgram(0);
-            }
-        }
         u64 const new_flags       = draw->state_flags;
         u64       changed_flags   = current_state.state_flags ^ draw->state_flags;
         current_state.state_flags = new_flags;
@@ -707,10 +697,21 @@ static void submit(RenderFrame *frame)
         }
 
         renderer_uniform_updates(frame->uniforms, draw->uniform_begin, draw->uniform_end);
+        bool const program_changed = current_prog.id != sortkey.program.id;
+        if (program_changed) {
+            current_prog = sortkey.program;
+            if (current_prog.id != WR_INVALID_HANDLE) {
+                glUseProgram(g_ctx->programs[current_prog.id].id);
+            }
+            else {
+                glUseProgram(0);
+            }
+        }
 
-        bool const constants_changed = draw->uniform_begin < draw->uniform_end;
         if (current_prog.id != WR_INVALID_HANDLE) {
             GlProgram const *program = &g_ctx->programs[current_prog.id];
+
+            bool const constants_changed = draw->uniform_begin < draw->uniform_end;
             if (program_changed || constants_changed) {
                 commit(program);
             }
