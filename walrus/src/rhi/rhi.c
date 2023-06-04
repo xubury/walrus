@@ -740,7 +740,7 @@ void walrus_rhi_set_resolution(u32 width, u32 height)
         for (u32 i = 0; i < WR_RHI_MAX_VIEWS; ++i) {
             s_ctx->views[i].fb.id = WR_INVALID_HANDLE;
         }
-        for (u32 i = 0; i < s_ctx->textures->max_handles; ++i) {
+        for (u32 i = 0; i < s_ctx->textures->num_handles; ++i) {
             TextureRef* ref = &s_ctx->texture_refs[i];
             if (ref->ratio != WR_RHI_RATIO_COUNT) {
                 resize_texture(ref->handle, s_ctx->resolution.width, s_ctx->resolution.height, 0, ref->num_layers);
