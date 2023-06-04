@@ -25,6 +25,10 @@ static void window_size_callback(GLFWwindow *window, i32 width, i32 height)
 static void framebuffer_size_callback(GLFWwindow *window, i32 width, i32 height)
 {
     walrus_unused(window);
+    if (width == 1 && height == 1) {
+        // minimize callback?
+        return;
+    }
     Walrus_Event e;
     e.type              = WR_EVENT_TYPE_RESOLUTION;
     e.resolution.width  = width;
