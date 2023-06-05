@@ -214,27 +214,27 @@ void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo con
     }
     glBindTexture(target, 0);
 
-    g_ctx->textures[handle.id].id     = id;
-    g_ctx->textures[handle.id].rbo    = rbo;
-    g_ctx->textures[handle.id].target = target;
-    g_ctx->textures[handle.id].width  = info->width;
-    g_ctx->textures[handle.id].height = info->height;
-    g_ctx->textures[handle.id].format = info->format;
-    g_ctx->textures[handle.id].flags  = info->flags;
-    g_ctx->textures[handle.id].gl     = gl_format;
+    gl_ctx->textures[handle.id].id     = id;
+    gl_ctx->textures[handle.id].rbo    = rbo;
+    gl_ctx->textures[handle.id].target = target;
+    gl_ctx->textures[handle.id].width  = info->width;
+    gl_ctx->textures[handle.id].height = info->height;
+    gl_ctx->textures[handle.id].format = info->format;
+    gl_ctx->textures[handle.id].flags  = info->flags;
+    gl_ctx->textures[handle.id].gl     = gl_format;
 }
 
 void gl_texture_destroy(Walrus_TextureHandle handle)
 {
-    glDeleteTextures(1, &g_ctx->textures[handle.id].id);
-    glDeleteRenderbuffers(1, &g_ctx->textures[handle.id].rbo);
-    g_ctx->textures[handle.id].id  = 0;
-    g_ctx->textures[handle.id].rbo = 0;
+    glDeleteTextures(1, &gl_ctx->textures[handle.id].id);
+    glDeleteRenderbuffers(1, &gl_ctx->textures[handle.id].rbo);
+    gl_ctx->textures[handle.id].id  = 0;
+    gl_ctx->textures[handle.id].rbo = 0;
 }
 
 void gl_texture_resize(Walrus_TextureHandle handle, u32 width, u32 height, u32 depth, u8 num_mipmaps, u8 num_layers)
 {
-    GlTexture               *tex  = &g_ctx->textures[handle.id];
+    GlTexture               *tex  = &gl_ctx->textures[handle.id];
     Walrus_TextureCreateInfo info = {0};
     info.width                    = width;
     info.height                   = height;

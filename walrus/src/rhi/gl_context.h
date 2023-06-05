@@ -76,4 +76,4 @@ typedef struct {
     GlFramebuffer framebuffers[WR_RHI_MAX_FRAMEBUFFERS];
 } GlContext;
 
-extern GlContext *g_ctx;
+extern GlContext *gl_ctx;

@@ -40,7 +40,7 @@ static void framebuffer_validate(void)
 
 void gl_framebuffer_create(Walrus_FramebufferHandle handle, Walrus_Attachment *attachments, u8 num)
 {
-    GlFramebuffer *fb = &g_ctx->framebuffers[handle.id];
+    GlFramebuffer *fb = &gl_ctx->framebuffers[handle.id];
     memset(fb->fbo, 0, sizeof(fb->fbo));
     glGenFramebuffers(1, &fb->fbo[0]);
     memcpy(fb->attachments, attachments, num * sizeof(Walrus_Attachment));
@@ -51,7 +51,7 @@ void gl_framebuffer_create(Walrus_FramebufferHandle handle, Walrus_Attachment *a
 
 void gl_framebuffer_destroy(Walrus_FramebufferHandle handle)
 {
-    GlFramebuffer *fb = &g_ctx->framebuffers[handle.id];
+    GlFramebuffer *fb = &gl_ctx->framebuffers[handle.id];
     if (fb->fbo[0] != 0) {
         glDeleteFramebuffers(fb->fbo[1] == 0 ? 1 : 2, &fb->fbo[0]);
     }
@@ -68,7 +68,7 @@ void gl_framebuffer_post_reset(GlFramebuffer *fb)
         for (u8 i = 0; i < fb->num_textures; ++i) {
             Walrus_Attachment *attach = &fb->attachments[i];
             if (attach->handle.id != WR_INVALID_HANDLE) {
-                GlTexture *texture = &g_ctx->textures[attach->handle.id];
+                GlTexture *texture = &gl_ctx->textures[attach->handle.id];
                 if (color_id == 0) {
                     fb->width  = texture->width;
                     fb->height = texture->height;
@@ -111,7 +111,7 @@ void gl_framebuffer_post_reset(GlFramebuffer *fb)
             for (u8 i = 0; i < fb->num_textures; ++i) {
                 Walrus_Attachment *attach = &fb->attachments[i];
                 if (attach->handle.id != WR_INVALID_HANDLE) {
-                    GlTexture *texture = &g_ctx->textures[attach->handle.id];
+                    GlTexture *texture = &gl_ctx->textures[attach->handle.id];
                     if (texture->id != 0) {
                         GLenum             gl_attach = GL_COLOR_ATTACHMENT0 + color_id;
                         Walrus_PixelFormat format    = texture->format;
@@ -144,7 +144,7 @@ void gl_framebuffer_resolve(GlFramebuffer *fb)
         for (u32 i = 0; i < fb->num_textures; ++i) {
             Walrus_Attachment *attach = &fb->attachments[i];
             if (attach->handle.id != WR_INVALID_HANDLE) {
-                GlTexture         *texture    = &g_ctx->textures[attach->handle.id];
+                GlTexture         *texture    = &gl_ctx->textures[attach->handle.id];
                 bool const         write_only = texture->flags & WR_RHI_TEXTURE_RT_WRITE_ONLY;
                 Walrus_PixelFormat format     = texture->format;
                 if (format != WR_RHI_FORMAT_DEPTH24 && format != WR_RHI_FORMAT_STENCIL8 &&
@@ -173,7 +173,7 @@ void gl_framebuffer_resolve(GlFramebuffer *fb)
     for (u32 i = 0; i < fb->num_textures; ++i) {
         Walrus_Attachment *attach = &fb->attachments[i];
         if (attach->handle.id != WR_INVALID_HANDLE) {
-            GlTexture *texture = &g_ctx->textures[attach->handle.id];
+            GlTexture *texture = &gl_ctx->textures[attach->handle.id];
             glGenerateTextureMipmap(texture->id);
         }
     }
