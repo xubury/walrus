@@ -119,7 +119,7 @@ void walrus_log(i32 level, char const *file, i32 line, char const *fmt, ...)
     lock();
 
     if (!L.quiet && level >= L.level) {
-        init_event(&ev, stdout);
+        init_event(&ev, level >= WR_LOG_ERROR ? stderr : stdout);
         va_start(ev.ap, fmt);
         stdout_callback(&ev);
         va_end(ev.ap);
