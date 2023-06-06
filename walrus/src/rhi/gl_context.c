@@ -326,6 +326,22 @@ static void init_ctx(Walrus_RhiCreateInfo *info)
 
     gl_ctx->uniform_registry = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
 
+    for (u32 i = 0; i < walrus_count_of(gl_ctx->buffers); ++i) {
+        gl_ctx->buffers[i].id = 0;
+    }
+
+    for (u32 i = 0; i < walrus_count_of(gl_ctx->shaders); ++i) {
+        gl_ctx->shaders[i] = 0;
+    }
+
+    for (u32 i = 0; i < walrus_count_of(gl_ctx->programs); ++i) {
+        gl_ctx->programs[i].id = 0;
+    }
+
+    for (u32 i = 0; i < walrus_count_of(gl_ctx->textures); ++i) {
+        gl_ctx->textures[i].id = 0;
+    }
+
     for (u32 i = 0; i < walrus_count_of(gl_ctx->framebuffers); ++i) {
         gl_ctx->framebuffers[i].fbo[0] = 0;
         gl_ctx->framebuffers[i].fbo[1] = 0;
@@ -450,9 +466,9 @@ static u32 set_framebuffer(Walrus_FramebufferHandle handle, u32 height, u32 flag
     }
 
     if (handle.id != WR_INVALID_HANDLE) {
-        GlFramebuffer *fb  = &gl_ctx->framebuffers[handle.id];
+        GlFramebuffer *fb   = &gl_ctx->framebuffers[handle.id];
         gl_ctx->current_fbo = fb->fbo[0];
-        height             = fb->height;
+        height              = fb->height;
     }
     else {
         gl_ctx->current_fbo = gl_ctx->msaa_fbo;
