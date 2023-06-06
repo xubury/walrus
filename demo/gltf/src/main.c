@@ -24,6 +24,7 @@ typedef struct {
     Walrus_UniformHandle u_emissive;
     Walrus_UniformHandle u_emissive_factor;
     Walrus_UniformHandle u_normal;
+    Walrus_UniformHandle u_normal_scale;
     Walrus_UniformHandle u_has_normal;
     Walrus_TextureHandle black_texture;
     Walrus_TextureHandle white_texture;
@@ -48,6 +49,7 @@ Walrus_AppError on_init(Walrus_App *app)
     data->u_emissive        = walrus_rhi_create_uniform("u_emissive", WR_RHI_UNIFORM_SAMPLER, 1);
     data->u_emissive_factor = walrus_rhi_create_uniform("u_emissive_factor", WR_RHI_UNIFORM_VEC3, 1);
     data->u_normal          = walrus_rhi_create_uniform("u_normal", WR_RHI_UNIFORM_SAMPLER, 1);
+    data->u_normal_scale    = walrus_rhi_create_uniform("u_normal_scale", WR_RHI_UNIFORM_FLOAT, 1);
     data->u_has_normal      = walrus_rhi_create_uniform("u_has_normal", WR_RHI_UNIFORM_BOOL, 1);
 
     Walrus_ShaderHandle vs = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_mesh.glsl");
@@ -87,41 +89,43 @@ Walrus_AppError on_init(Walrus_App *app)
 
 static void submit_callback(Walrus_MeshPrimitive *prim, void *userdata)
 {
-    AppData *data  = userdata;
-    u64      flags = WR_RHI_STATE_DEFAULT;
-    if (prim->material) {
-        if (!prim->material->double_sided) {
+    AppData             *data     = userdata;
+    Walrus_MeshMaterial *material = prim->material;
+    if (material) {
+        u64 flags = WR_RHI_STATE_DEFAULT;
+        if (!material->double_sided) {
             flags |= WR_RHI_STATE_CULL_CW;
         }
-        if (prim->material->alpha_mode == WR_ALPHA_MODE_BLEND) {
+        if (material->alpha_mode == WR_ALPHA_MODE_BLEND) {
             flags |= WR_RHI_STATE_BLEND_ALPHA;
         }
         walrus_rhi_set_state(flags, 0);
 
-        if (prim->material->albedo) {
-            walrus_rhi_set_texture(0, prim->material->albedo->handle);
+        if (material->albedo) {
+            walrus_rhi_set_texture(0, material->albedo->handle);
         }
         else {
             walrus_rhi_set_texture(0, data->black_texture);
         }
-        walrus_rhi_set_uniform(data->u_albedo_factor, 0, sizeof(vec4), prim->material->albedo_factor);
+        walrus_rhi_set_uniform(data->u_albedo_factor, 0, sizeof(vec4), material->albedo_factor);
 
-        if (prim->material->emissive) {
-            walrus_rhi_set_texture(1, prim->material->emissive->handle);
+        if (material->emissive) {
+            walrus_rhi_set_texture(1, material->emissive->handle);
         }
         else {
             walrus_rhi_set_texture(1, data->white_texture);
         }
 
-        bool has_normal = prim->material->normal != NULL;
+        bool has_normal = material->normal != NULL;
         walrus_rhi_set_uniform(data->u_has_normal, 0, sizeof(bool), &has_normal);
+        walrus_rhi_set_uniform(data->u_normal_scale, 0, sizeof(f32), &material->normal_scale);
         if (has_normal) {
-            walrus_rhi_set_texture(2, prim->material->normal->handle);
+            walrus_rhi_set_texture(2, material->normal->handle);
         }
         else {
             walrus_rhi_set_texture(2, data->black_texture);
         }
-        walrus_rhi_set_uniform(data->u_emissive_factor, 0, sizeof(vec3), prim->material->emissive_factor);
+        walrus_rhi_set_uniform(data->u_emissive_factor, 0, sizeof(vec3), material->emissive_factor);
     }
 }
 
