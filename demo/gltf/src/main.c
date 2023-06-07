@@ -56,8 +56,6 @@ Walrus_AppError on_init(Walrus_App *app)
     Walrus_ShaderHandle fs = walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_mesh.glsl");
 
     data->shader = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs, fs}, 2, true);
-    walrus_rhi_destroy_shader(vs);
-    walrus_rhi_destroy_shader(fs);
 
     u32 rgba            = 0;
     data->black_texture = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 0, 0, &rgba);
