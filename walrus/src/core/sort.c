@@ -19,7 +19,7 @@ void swap(void* a, void* b, u64 num_bytes)
     }
 }
 
-static void quick_sort(void* pivot, void* ptr, u32 num, u32 stride, const ComparisonFn fn)
+static void quick_sort(void* pivot, void* ptr, u32 num, u32 stride, ComparisonFn fn)
 {
     if (2 > num) {
         return;
@@ -52,7 +52,7 @@ static void quick_sort(void* pivot, void* ptr, u32 num, u32 stride, const Compar
     quick_sort(pivot, &data[gg * stride], num - gg, stride, fn);
 }
 
-void walrus_quick_sort(void* data, u32 num, u32 stride, const ComparisonFn fn)
+void walrus_quick_sort(void* data, u32 num, u32 stride, ComparisonFn fn)
 {
     u8* pivot = (u8*)walrus_alloca(stride);
     quick_sort(pivot, data, num, stride, fn);
