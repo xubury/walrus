@@ -73,7 +73,7 @@ static void set_wrap(GLenum target, uint64_t flags)
         if (u_wrap == GL_CLAMP_TO_BORDER || v_wrap == GL_CLAMP_TO_BORDER || w_wrap == GL_CLAMP_TO_BORDER) {
             const uint32_t rgba = (flags & WR_RHI_SAMPLER_BORDER_COLOR_MASK) >> WR_RHI_SAMPLER_BORDER_COLOR_SHIFT;
             u8             color[4];
-            walrus_rhi_decompose_rgba(rgba, color, color + 1, color + 2, color + 3);
+            unpack_rgba(rgba, color, color + 1, color + 2, color + 3);
             f32 fcolor[4] = {color[0] / 255.f, color[1] / 255.f, color[2] / 255.f, color[3] / 255.f};
             glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, fcolor);
         }
@@ -82,7 +82,7 @@ static void set_wrap(GLenum target, uint64_t flags)
         if (u_wrap == GL_CLAMP_TO_BORDER || v_wrap == GL_CLAMP_TO_BORDER) {
             const uint32_t rgba = (flags & WR_RHI_SAMPLER_BORDER_COLOR_MASK) >> WR_RHI_SAMPLER_BORDER_COLOR_SHIFT;
             u8             color[4];
-            walrus_rhi_decompose_rgba(rgba, color, color + 1, color + 2, color + 3);
+            unpack_rgba(rgba, color, color + 1, color + 2, color + 3);
             f32 fcolor[4] = {color[0] / 255.f, color[1] / 255.f, color[2] / 255.f, color[3] / 255.f};
             glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, fcolor);
         }

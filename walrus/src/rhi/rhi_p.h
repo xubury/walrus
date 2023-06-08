@@ -174,3 +174,16 @@ WR_INLINE u32 unpack_stencil(bool zero, u64 pack)
 {
     return pack >> (zero ? 0 : 32);
 }
+
+WR_INLINE u32 pack_rgba(u8 r, u8 g, u8 b, u8 a)
+{
+    return (u32)(r) << 24 | (u32)(g) << 16 | (u32)(b) << 8 | (u32)(a) << 0;
+}
+
+WR_INLINE void unpack_rgba(u32 rgba, u8 *r, u8 *g, u8 *b, u8 *a)
+{
+    *r = (u8)(rgba >> 24);
+    *g = (u8)(rgba >> 16);
+    *b = (u8)(rgba >> 8);
+    *a = (u8)(rgba >> 0);
+}

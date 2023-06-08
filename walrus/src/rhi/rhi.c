@@ -61,8 +61,7 @@ static void view_reset(RenderView* view)
 
     view->mode = WR_RHI_VIEWMODE_DEFAULT;
 
-    walrus_rhi_decompose_rgba(0, view->clear.index, view->clear.index + 1, view->clear.index + 2,
-                              view->clear.index + 3);
+    unpack_rgba(0, view->clear.index, view->clear.index + 1, view->clear.index + 2, view->clear.index + 3);
     view->clear.flags   = WR_RHI_CLEAR_NONE;
     view->clear.depth   = 0;
     view->clear.stencil = 0;
@@ -864,19 +863,6 @@ void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u32 depth, u8 
     }
 }
 
-u32 walrus_rhi_compose_rgba(u8 r, u8 g, u8 b, u8 a)
-{
-    return (u32)(r) << 24 | (u32)(g) << 16 | (u32)(b) << 8 | (u32)(a) << 0;
-}
-
-void walrus_rhi_decompose_rgba(u32 rgba, u8* r, u8* g, u8* b, u8* a)
-{
-    *r = (u8)(rgba >> 24);
-    *g = (u8)(rgba >> 16);
-    *b = (u8)(rgba >> 8);
-    *a = (u8)(rgba >> 0);
-}
-
 void walrus_rhi_set_state(u64 state, u32 rgba)
 {
     u8 const blend = ((state & WR_RHI_STATE_BLEND_MASK) >> WR_RHI_STATE_BLEND_SHIFT) & 0xff;
@@ -929,7 +915,7 @@ void walrus_rhi_set_view_clear(u16 view_id, u16 flags, u32 rgba, f32 depth, u8 s
 {
     RenderClear* clear = &s_ctx->views[view_id].clear;
 
-    walrus_rhi_decompose_rgba(rgba, &clear->index[0], &clear->index[1], &clear->index[2], &clear->index[3]);
+    unpack_rgba(rgba, &clear->index[0], &clear->index[1], &clear->index[2], &clear->index[3]);
     clear->flags   = flags;
     clear->depth   = depth;
     clear->stencil = stencil;
