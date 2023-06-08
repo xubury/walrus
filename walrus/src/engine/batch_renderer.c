@@ -1,4 +1,5 @@
 #include <engine/batch_renderer.h>
+#include <engine/shader_library.h>
 #include <core/memory.h>
 #include <core/log.h>
 #include <core/math.h>
@@ -9,116 +10,6 @@
 
 #define LITTLE_ENDIAN_COLOR(color) \
     (((color)&0xff000000) >> 24 | ((color)&0x00ff0000) >> 8 | ((color)&0x0000ff00) << 8 | ((color)&0xff) << 24)
-
-char const *vs_quad_src =
-    "layout (location = 0) in vec2 a_pos;"
-    "layout (location = 1) in vec2 a_texcoord;"
-    "layout (location = 2) in vec2 a_uv0;"
-    "layout (location = 3) in vec2 a_uv1;"
-    "layout (location = 4) in float a_thickness;"
-    "layout (location = 5) in float a_fade;"
-    "layout (location = 6) in vec4 a_color;"
-    "layout (location = 7) in vec4 a_border_color;"
-    "layout (location = 8) in float a_tex_id;"
-    "layout (location = 9) in mat4 a_model;"
-    "uniform mat4 u_viewproj;"
-    "out vec2 v_local_pos;"
-    "out vec4 v_color;"
-    "out float v_thickness;"
-    "out float v_fade;"
-    "out vec4 v_border_color;"
-    "out vec2 v_texcoord;"
-    "out float v_tex_id;"
-    "void main()"
-    "{"
-    "    gl_Position = u_viewproj * a_model * vec4(a_pos, 0, 1.0);"
-    "    v_local_pos = a_pos;"
-    "    v_texcoord = a_texcoord * (a_uv1 - a_uv0) + a_uv0;"
-    "    v_color = a_color;"
-    "    v_thickness = a_thickness;"
-    "    v_fade = a_fade;"
-    "    v_border_color = a_border_color;"
-    "    v_tex_id = a_tex_id;"
-    "}";
-
-char const *fs_quad =
-    "out vec4 fragcolor;"
-    "in vec2 v_local_pos;"
-    "in vec4 v_color;"
-    "in float v_thickness;"
-    "in float v_fade;"
-    "in vec4 v_border_color;"
-    "in vec2 v_texcoord;"
-    "in float v_tex_id;"
-    "uniform sampler2D u_textures[16];"
-    "void main()"
-    "{"
-    "    float boader = max(abs(v_local_pos.x), abs(v_local_pos.y)) - (0.5 - v_thickness / 2.f);"
-    "    boader = smoothstep(0.0, v_fade, boader);"
-    "    vec4 color = vec4(0);"
-    "    switch(int(v_tex_id))"
-    "	{"
-    "		case  0: color = texture(u_textures[ 0], v_texcoord); break;"
-    "		case  1: color = texture(u_textures[ 1], v_texcoord); break;"
-    "		case  2: color = texture(u_textures[ 2], v_texcoord); break;"
-    "		case  3: color = texture(u_textures[ 3], v_texcoord); break;"
-    "		case  4: color = texture(u_textures[ 4], v_texcoord); break;"
-    "		case  5: color = texture(u_textures[ 5], v_texcoord); break;"
-    "		case  6: color = texture(u_textures[ 6], v_texcoord); break;"
-    "		case  7: color = texture(u_textures[ 7], v_texcoord); break;"
-    "		case  8: color = texture(u_textures[ 8], v_texcoord); break;"
-    "		case  9: color = texture(u_textures[ 9], v_texcoord); break;"
-    "		case 10: color = texture(u_textures[10], v_texcoord); break;"
-    "		case 11: color = texture(u_textures[11], v_texcoord); break;"
-    "		case 12: color = texture(u_textures[12], v_texcoord); break;"
-    "		case 13: color = texture(u_textures[13], v_texcoord); break;"
-    "		case 14: color = texture(u_textures[14], v_texcoord); break;"
-    "		case 15: color = texture(u_textures[15], v_texcoord); break;"
-    "	}"
-    "    fragcolor = mix(v_color, v_border_color, boader) * color;"
-    "}";
-
-char const *vs_circle_src =
-    "layout (location = 0) in vec2 a_pos;"
-    "layout (location = 1) in float a_thickness;"
-    "layout (location = 2) in float a_fade;"
-    "layout (location = 3) in vec4 a_color;"
-    "layout (location = 4) in vec4 a_boarder_color;"
-    "layout (location = 5) in mat4 a_model;"
-    "out vec2 v_localpos;"
-    "out float v_thickness;"
-    "out float v_fade;"
-    "out vec4 v_color;"
-    "out vec4 v_boarder_color;"
-    "uniform mat4 u_viewproj;"
-    "void main()"
-    "{"
-    "    gl_Position = u_viewproj * a_model * vec4(a_pos, 0, 1.0);"
-    "    v_localpos = a_pos;"
-    "    v_thickness = a_thickness;"
-    "    v_fade = a_fade;"
-    "    v_color = a_color;"
-    "    v_boarder_color = a_boarder_color;"
-    "}";
-
-char const *fs_circle_src =
-    "out vec4 fragcolor;"
-    "in vec2 v_localpos;"
-    "in float v_thickness;"
-    "in float v_fade;"
-    "in vec4 v_color;"
-    "in vec4 v_boarder_color;"
-    "void main()"
-    "{"
-    "    float dist = 1 - length(v_localpos);"
-    "    float circle = smoothstep(0.0, v_fade, dist);"
-    "    if (circle == 0.0) {"
-    "        discard;"
-    "    }"
-    "    float boarder = 1 - smoothstep(v_thickness, v_thickness + v_fade, dist);"
-    "    fragcolor = mix(v_color, v_boarder_color, boarder);"
-    "    fragcolor.a *= circle;"
-    "}";
 
 #define MAX_QUADS    65535
 #define MAX_TEXTURES 16
@@ -184,16 +75,12 @@ void walrus_batch_render_init(void)
     s_renderer->white_texture = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 1, 0, &data);
     s_renderer->u_textures    = walrus_rhi_create_uniform("u_textures", WR_RHI_UNIFORM_SAMPLER, 16);
 
-    Walrus_ShaderHandle vs        = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, vs_quad_src);
-    Walrus_ShaderHandle fs        = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_quad);
-    s_renderer->quad_shader       = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs, fs}, 2, true);
-    Walrus_ShaderHandle vs_circle = walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, vs_circle_src);
-    Walrus_ShaderHandle fs_circle = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, fs_circle_src);
+    Walrus_ShaderHandle vs_quad   = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_quad_batch.glsl");
+    Walrus_ShaderHandle fs_quad   = walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_quad_batch.glsl");
+    s_renderer->quad_shader       = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_quad, fs_quad}, 2, true);
+    Walrus_ShaderHandle vs_circle = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_circle_batch.glsl");
+    Walrus_ShaderHandle fs_circle = walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_circle_batch.glsl");
     s_renderer->circle_shader     = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_circle, fs_circle}, 2, true);
-    walrus_rhi_destroy_shader(vs);
-    walrus_rhi_destroy_shader(fs);
-    walrus_rhi_destroy_shader(vs_circle);
-    walrus_rhi_destroy_shader(fs_circle);
 
     Walrus_VertexLayout layout;
     walrus_vertex_layout_begin(&layout);
