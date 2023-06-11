@@ -363,6 +363,16 @@ static void mousebtn_callback(GLFWwindow *window, i32 btn, i32 action, i32 mods)
     walrus_event_push(&e);
 }
 
+static void text_callback(GLFWwindow *window, u32 unicode)
+{
+    walrus_unused(window);
+
+    Walrus_Event e;
+    e.type         = WR_EVENT_TYPE_TEXT;
+    e.text.unicode = unicode;
+    walrus_event_push(&e);
+}
+
 void glfw_create_window(Walrus_Window *window, char const *title, u32 width, u32 height, u32 flags)
 {
     walrus_assert_msg(glfwInit(), "Cannot initialize glfw!");
@@ -382,6 +392,7 @@ void glfw_create_window(Walrus_Window *window, char const *title, u32 width, u32
         glfwSetCursorPosCallback(window->handle, cursor_callback);
         glfwSetScrollCallback(window->handle, scroll_callback);
         glfwSetMouseButtonCallback(window->handle, mousebtn_callback);
+        glfwSetCharCallback(window->handle, text_callback);
     }
 }
 

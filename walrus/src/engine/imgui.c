@@ -157,11 +157,11 @@ static void render(ImDrawData *data)
 
         u32 offset = 0;
 
-        Walrus_ProgramHandle prog = s_ctx->texture_shader;
-        Walrus_TextureHandle th   = s_ctx->font_atlas;
         u64 const alpha_flags = WR_RHI_STATE_BLEND_FUNC(WR_RHI_STATE_BLEND_SRC_ALPHA, WR_RHI_STATE_BLEND_INV_SRC_ALPHA);
         for (i32 j = 0; j < list->CmdBuffer.Size; ++j) {
-            ImDrawCmd *cmd = &list->CmdBuffer.Data[j];
+            Walrus_ProgramHandle prog = s_ctx->texture_shader;
+            Walrus_TextureHandle th   = s_ctx->font_atlas;
+            ImDrawCmd           *cmd  = &list->CmdBuffer.Data[j];
             if (cmd->UserCallback) {
                 cmd->UserCallback(list, cmd);
             }
@@ -449,6 +449,9 @@ void walrus_imgui_process_event(Walrus_Event *event)
 {
     ImGuiIO *io = igGetIO();
     switch (event->type) {
+        case WR_EVENT_TYPE_TEXT:
+            ImGuiIO_AddInputCharacter(io, event->text.unicode);
+            break;
         case WR_EVENT_TYPE_AXIS:
             if (event->axis.device == WR_INPUT_MOUSE) {
                 if (event->axis.axis == WR_MOUSE_AXIS_CURSOR) {

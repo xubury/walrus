@@ -31,10 +31,15 @@ typedef struct {
     u32 height;
 } Walrus_ResolutionEvent;
 
+typedef struct {
+    u32 unicode;
+} Walrus_TextEvent;
+
 typedef enum {
     WR_EVENT_TYPE_AXIS,
     WR_EVENT_TYPE_BUTTON,
     WR_EVENT_TYPE_RESOLUTION,
+    WR_EVENT_TYPE_TEXT,
     WR_EVENT_TYPE_EXIT,
 } Walrus_EventType;
 
@@ -44,6 +49,7 @@ typedef struct {
         Walrus_AxisEvent       axis;
         Walrus_ButtonEvent     button;
         Walrus_ResolutionEvent resolution;
+        Walrus_TextEvent       text;
     };
 } Walrus_Event;
 
