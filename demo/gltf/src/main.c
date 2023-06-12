@@ -9,6 +9,7 @@
 #include <engine/batch_renderer.h>
 #include <engine/shader_library.h>
 #include <engine/thread_pool.h>
+#include <engine/animator.h>
 #include <core/sys.h>
 #include <core/array.h>
 
@@ -17,7 +18,9 @@
 
 typedef struct {
     Walrus_Model         model;
+    Walrus_Animator      animator;
     Walrus_ProgramHandle shader;
+    Walrus_ProgramHandle skin_shader;
     mat4                 world;
     Walrus_UniformHandle u_albedo;
     Walrus_UniformHandle u_albedo_factor;
@@ -52,10 +55,12 @@ Walrus_AppError on_init(Walrus_App *app)
     data->u_normal_scale    = walrus_rhi_create_uniform("u_normal_scale", WR_RHI_UNIFORM_FLOAT, 1);
     data->u_has_normal      = walrus_rhi_create_uniform("u_has_normal", WR_RHI_UNIFORM_BOOL, 1);
 
-    Walrus_ShaderHandle vs = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_mesh.glsl");
-    Walrus_ShaderHandle fs = walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_mesh.glsl");
+    Walrus_ShaderHandle vs      = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_mesh.glsl");
+    Walrus_ShaderHandle vs_skin = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_skinned_mesh.glsl");
+    Walrus_ShaderHandle fs      = walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_mesh.glsl");
 
-    data->shader = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs, fs}, 2, true);
+    data->shader      = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs, fs}, 2, true);
+    data->skin_shader = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_skin, fs}, 2, true);
 
     u32 rgba            = 0;
     data->black_texture = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 0, 0, &rgba);
@@ -82,7 +87,28 @@ Walrus_AppError on_init(Walrus_App *app)
 
     walrus_rhi_touch(0);
 
+    walrus_animator_init(&data->animator);
+    walrus_animator_bind(&data->animator, &data->model);
+    walrus_animator_play(&data->animator, 0);
+
     return WR_APP_SUCCESS;
+}
+
+static void node_callback(Walrus_ModelNode *node, void *userdata)
+{
+    AppData *data = userdata;
+
+    if (node->skin) {
+        Walrus_TransientBuffer buffer;
+        if (walrus_rhi_alloc_transient_buffer(&buffer, node->skin->num_joints, sizeof(mat4))) {
+            mat4 *m = (mat4 *)buffer.data;
+            for (u32 i = 0; i < node->skin->num_joints; ++i) {
+                walrus_animator_transform(&data->animator, node->skin->joints[i].node, m[i]);
+                glm_mat4_mul(m[i], node->skin->joints[i].inverse_bind_matrix, m[i]);
+            }
+        }
+        walrus_rhi_set_transient_buffer(0, &buffer);
+    }
 }
 
 static void submit_callback(Walrus_MeshPrimitive *prim, void *userdata)
@@ -143,13 +169,15 @@ void on_render(Walrus_App *app)
     igEnd();
     walrus_imgui_end_frame();
 
-    walrus_model_submit(0, &data->model, data->world, data->shader, 0, submit_callback, data);
+    walrus_model_submit(0, &data->model, data->world, data->shader, data->skin_shader, 0, node_callback,
+                        submit_callback, data);
 }
 
 void on_tick(Walrus_App *app, f32 dt)
 {
     AppData *data = walrus_app_userdata(app);
     glm_rotate(data->world, glm_rad(20.0) * dt, (vec3){0, 1, 0});
+    walrus_animator_tick(&data->animator, dt);
 }
 
 void on_shutdown(Walrus_App *app)

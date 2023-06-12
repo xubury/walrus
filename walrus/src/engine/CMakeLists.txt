@@ -4,9 +4,10 @@ find_package(mikktspace REQUIRED)
 
 add_library(
   walrus_engine STATIC
-  engine.c
+  animator.c
   app.c
   batch_renderer.c
+  engine.c
   event.c
   font.c
   imgui.c

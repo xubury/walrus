@@ -195,7 +195,7 @@ static void render(ImDrawData *data)
                     u16 const height = walrus_min(clip_rect.w, 65535.f);
                     walrus_rhi_set_scissor(x, y, width - x, height - y);
                     walrus_rhi_set_state(state, 0);
-                    walrus_rhi_set_transient_buffer(0, &tvb, s_ctx->layout, 0, num_vertices);
+                    walrus_rhi_set_transient_vertex_buffer(0, &tvb, s_ctx->layout, 0, num_vertices);
                     walrus_rhi_set_transient_index_buffer(&tib, offset, cmd->ElemCount);
                     u32 unit = 0;
                     walrus_rhi_set_uniform(s_ctx->u_texture, 0, sizeof(u32), &unit);

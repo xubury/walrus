@@ -414,6 +414,7 @@ static void gl_buffer_create(Walrus_BufferHandle handle, void const *data, u64 s
     gl_ctx->buffers[handle.id].id     = vbo;
     gl_ctx->buffers[handle.id].size   = size;
     gl_ctx->buffers[handle.id].target = target;
+    gl_ctx->buffers[handle.id].flags = flags;
 }
 
 static void gl_buffer_destroy(Walrus_BufferHandle handle)
@@ -779,6 +780,19 @@ static void submit(RenderFrame *frame)
                         }
                     }
                     *current = *bind;
+                }
+            }
+            for (uint32_t binding = 0; binding < WR_RHI_MAX_UNIFORM_BINDINGS; ++binding) {
+                BlockBinding const *bind = &render_bind->block_bindings[binding];
+                if (bind->handle.id != WR_INVALID_HANDLE) {
+                    GlBuffer *buffer = &gl_ctx->buffers[bind->handle.id];
+                    if (buffer->flags & WR_RHI_BUFFER_UNIFORM_BLOCK) {
+                        glBindBufferRange(GL_UNIFORM_BUFFER, binding, buffer->id, bind->offset, bind->size);
+                    }
+                    else {
+                        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, binding, buffer->id, bind->offset, bind->size);
+                        barrier |= GL_SHADER_STORAGE_BARRIER_BIT;
+                    }
                 }
             }
             walrus_unused(barrier);

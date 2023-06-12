@@ -1326,8 +1326,8 @@ void walrus_rhi_set_vertex_buffer(u8 stream_id, Walrus_BufferHandle handle, Walr
     }
 }
 
-void walrus_rhi_set_transient_buffer(u8 stream_id, Walrus_TransientBuffer* buffer, Walrus_LayoutHandle layout_handle,
-                                     u32 offset, u32 num_vertices)
+void walrus_rhi_set_transient_vertex_buffer(u8 stream_id, Walrus_TransientBuffer* buffer,
+                                            Walrus_LayoutHandle layout_handle, u32 offset, u32 num_vertices)
 {
     walrus_assert(buffer->handle.id != WR_INVALID_HANDLE);
     if (set_stream_bit(&s_ctx->draw, stream_id, buffer->handle)) {
@@ -1389,6 +1389,14 @@ void walrus_rhi_set_transient_index_buffer(Walrus_TransientBuffer* buffer, u32 o
     s_ctx->draw.index_size   = buffer->stride;
     s_ctx->draw.index_offset = offset + buffer->offset;
     s_ctx->draw.num_indices  = walrus_clamp(0, (buffer->size - offset) / buffer->stride, num_indices);
+}
+
+void walrus_rhi_set_transient_buffer(u8 binding, Walrus_TransientBuffer* buffer)
+{
+    BlockBinding* block = &s_ctx->bind.block_bindings[binding];
+    block->handle       = buffer->handle;
+    block->offset       = buffer->offset;
+    block->size         = buffer->size;
 }
 
 Walrus_TextureHandle walrus_rhi_create_texture(Walrus_TextureCreateInfo const* info, void const* data)

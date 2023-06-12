@@ -93,7 +93,14 @@ typedef struct {
 } Binding;
 
 typedef struct {
-    Binding bindings[WR_RHI_MAX_TEXTURE_SAMPLERS];
+    Walrus_BufferHandle handle;
+    u32                 offset;
+    u32                 size;
+} BlockBinding;
+
+typedef struct {
+    Binding      bindings[WR_RHI_MAX_TEXTURE_SAMPLERS];
+    BlockBinding block_bindings[WR_RHI_MAX_UNIFORM_BINDINGS];
 } RenderBind;
 
 typedef struct {

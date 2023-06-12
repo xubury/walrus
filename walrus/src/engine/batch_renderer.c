@@ -181,7 +181,7 @@ static void flush_quads(void)
     memcpy(vertex_buffer.data, quad_vertices, 4 * vertex_size);
     memcpy(index_buffer.data, quad_indices, 6 * index_size);
     memcpy(instance_buffer.data, s_renderer->quads, num_instances * ins_size);
-    walrus_rhi_set_transient_buffer(0, &vertex_buffer, s_renderer->quad_layout, 0, 4);
+    walrus_rhi_set_transient_vertex_buffer(0, &vertex_buffer, s_renderer->quad_layout, 0, 4);
     walrus_rhi_set_transient_index_buffer(&index_buffer, 0, 6);
     walrus_rhi_set_transient_instance_buffer(&instance_buffer, s_renderer->quad_ins_layout, 0, num_instances);
     walrus_rhi_set_state(s_renderer->state, 0);
@@ -212,7 +212,7 @@ static void flush_circles(void)
     memcpy(vertex_buffer.data, circle_vertices, 4 * vertex_size);
     memcpy(index_buffer.data, quad_indices, 6 * index_size);
     memcpy(instance_buffer.data, s_renderer->circles, num_instances * ins_size);
-    walrus_rhi_set_transient_buffer(0, &vertex_buffer, s_renderer->circle_layout, 0, 4);
+    walrus_rhi_set_transient_vertex_buffer(0, &vertex_buffer, s_renderer->circle_layout, 0, 4);
     walrus_rhi_set_transient_index_buffer(&index_buffer, 0, 6);
     walrus_rhi_set_transient_instance_buffer(&instance_buffer, s_renderer->circle_ins_layout, 0, num_instances);
     walrus_rhi_set_state(s_renderer->state, 0);

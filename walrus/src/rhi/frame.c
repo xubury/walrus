@@ -360,5 +360,11 @@ void bind_clear(RenderBind *bind, u8 flags)
             binding->type          = WR_RHI_BIND_IMAGE;
             binding->sampler_flags = 0;
         }
+        for (u32 i = 0; i < WR_RHI_MAX_UNIFORM_BINDINGS; ++i) {
+            BlockBinding *binding = &bind->block_bindings[i];
+            binding->handle.id    = WR_INVALID_HANDLE;
+            binding->offset       = 0;
+            binding->size         = 0;
+        }
     }
 }

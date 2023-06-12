@@ -214,6 +214,11 @@ static uint64_t convert_mag_filter(cgltf_int mag)
             return WR_RHI_SAMPLER_MAG_LINEAR;
     }
 }
+static Walrus_LayoutComponent s_components[cgltf_component_type_max_enum] = {
+    WR_RHI_COMPONENT_COUNT,  WR_RHI_COMPONENT_INT8,  WR_RHI_COMPONENT_UINT8, WR_RHI_COMPONENT_INT16,
+    WR_RHI_COMPONENT_UINT16, WR_RHI_COMPONENT_INT32, WR_RHI_COMPONENT_FLOAT};
+
+static u32 s_component_num[cgltf_type_max_enum] = {0, 1, 2, 3, 4, 4, 1, 1};
 
 static void model_reset(Walrus_Model *model)
 {
@@ -302,6 +307,7 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
         }
         model->nodes[i].parent = NULL;
         model->nodes[i].mesh   = NULL;
+        model->nodes[i].skin   = NULL;
         walrus_transform_decompose(&model->nodes[i].local_transform, GLM_MAT4_IDENTITY);
         walrus_transform_decompose(&model->nodes[i].world_transform, GLM_MAT4_IDENTITY);
     }
@@ -315,10 +321,47 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
         model->textures[i].handle.id = WR_INVALID_HANDLE;
         model->textures[i].srgb      = true;
     }
+
+    model->num_animations = gltf->animations_count;
+    model->animations     = resource_new(Walrus_Animation, model->num_animations);
+    for (u32 i = 0; i < model->num_animations; ++i) {
+        cgltf_animation *animation        = &gltf->animations[i];
+        model->animations[i].num_channels = animation->channels_count;
+        model->animations[i].channels     = resource_new(Walrus_AnimationChannel, animation->channels_count);
+
+        model->animations[i].num_samplers = animation->samplers_count;
+        model->animations[i].samplers     = resource_new(Walrus_AnimationSampler, animation->samplers_count);
+
+        for (u32 j = 0; j < animation->samplers_count; ++j) {
+            cgltf_animation_sampler *sampler = &animation->samplers[j];
+
+            model->animations[i].samplers[j].num_frames = sampler->input->count;
+            model->animations[i].samplers[j].frames     = resource_new(Walrus_AnimationFrame, sampler->input->count);
+        }
+    }
+
+    model->num_skins = gltf->skins_count;
+    model->skins     = resource_new(Walrus_ModelSkin, gltf->skins_count);
+    for (u32 i = 0; i < gltf->skins_count; ++i) {
+        cgltf_skin *skin = &gltf->skins[i];
+
+        model->skins[i].num_joints = skin->joints_count;
+        model->skins[i].joints     = resource_new(Walrus_SkinJoint, skin->joints_count);
+    }
 }
 
 static void model_deallocate(Walrus_Model *model)
 {
+    for (u32 i = 0; i < model->num_animations; ++i) {
+        Walrus_Animation *animation = &model->animations[i];
+        walrus_free(animation->channels);
+        for (u32 j = 0; j < animation->num_samplers; ++j) {
+            walrus_free(animation->samplers[j].frames);
+        }
+        walrus_free(animation->samplers);
+    }
+    walrus_free(model->animations);
+
     for (u32 i = 0; i < model->num_meshes; ++i) {
         Walrus_Mesh *mesh = &model->meshes[i];
 
@@ -361,11 +404,6 @@ static i32 tangent_create_task(void *userdata)
 
 static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
 {
-    static Walrus_LayoutComponent components[cgltf_component_type_max_enum] = {
-        WR_RHI_COMPONENT_COUNT,  WR_RHI_COMPONENT_INT8,  WR_RHI_COMPONENT_UINT8, WR_RHI_COMPONENT_INT16,
-        WR_RHI_COMPONENT_UINT16, WR_RHI_COMPONENT_INT32, WR_RHI_COMPONENT_FLOAT};
-    static u32 component_num[cgltf_type_max_enum] = {0, 1, 2, 3, 4, 4, 1, 1};
-
     Walrus_Array *task_list = walrus_array_create_full(TangentTask, 0, NULL);
 
     u64 tangent_buffer_size = 0;
@@ -415,8 +453,8 @@ static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
                     walrus_vertex_layout_add_mat3_override(&layout, loc, 0, buffer_view->stride);
                 }
                 else {
-                    walrus_vertex_layout_add_override(&layout, loc, component_num[accessor->type],
-                                                      components[accessor->component_type], accessor->normalized, 0,
+                    walrus_vertex_layout_add_override(&layout, loc, s_component_num[accessor->type],
+                                                      s_components[accessor->component_type], accessor->normalized, 0,
                                                       buffer_view->stride);
                 }
                 walrus_vertex_layout_end(&layout);
@@ -513,7 +551,12 @@ static void node_traverse(Walrus_ModelNode *root)
 static void nodes_init(Walrus_Model *model, cgltf_data *gltf)
 {
     for (u32 i = 0; i < model->num_nodes; ++i) {
-        cgltf_node       *node  = &gltf->nodes[i];
+        cgltf_node *node = &gltf->nodes[i];
+
+        if (node->skin) {
+            model->nodes[i].skin = &model->skins[node->skin - &gltf->skins[0]];
+        }
+
         Walrus_Transform *local = &model->nodes[i].local_transform;
         Walrus_Transform *world = &model->nodes[i].world_transform;
 
@@ -555,6 +598,91 @@ static void nodes_init(Walrus_Model *model, cgltf_data *gltf)
 
     for (u32 i = 0; i < gltf->scene->nodes_count; ++i) {
         model->roots[i] = &model->nodes[gltf->scene->nodes[i] - &gltf->nodes[0]];
+    }
+}
+
+static Walrus_AnimationPath translate_animation_path(cgltf_animation_path_type type)
+{
+    switch (type) {
+        case cgltf_animation_path_type_translation:
+            return WR_ANIMATION_PATH_TRANSLATION;
+        case cgltf_animation_path_type_rotation:
+            return WR_ANIMATION_PATH_ROTATION;
+        case cgltf_animation_path_type_scale:
+            return WR_ANIMATION_PATH_SCALE;
+        case cgltf_animation_path_type_weights:
+            return WR_ANIMATION_PATH_WEIGHTS;
+        default:
+            break;
+    }
+    return WR_ANIMATION_PATH_COUNT;
+}
+
+static Walrus_AnimationInterpolation translate_interpolation(cgltf_interpolation_type type)
+{
+    switch (type) {
+        case cgltf_interpolation_type_linear:
+            return WR_ANIMATION_INTERPOLATION_LINEAR;
+        case cgltf_interpolation_type_step:
+            return WR_ANIMATION_INTERPOLATION_STEP;
+        case cgltf_interpolation_type_cubic_spline:
+            return WR_ANIMATION_INTERPOLATION_CUBIC_SPLINE;
+        default:
+            break;
+    }
+    return WR_ANIMATION_INTERPOLATION_LINEAR;
+}
+
+static void animations_init(Walrus_Model *model, cgltf_data *gltf)
+{
+    for (u32 i = 0; i < gltf->animations_count; ++i) {
+        cgltf_animation *animation = &gltf->animations[i];
+
+        f32 duration = 0;
+        for (u32 j = 0; j < animation->channels_count; ++j) {
+            cgltf_animation_channel *channel = &animation->channels[j];
+
+            model->animations[i].channels[j].path = translate_animation_path(channel->target_path);
+            model->animations[i].channels[j].node = &model->nodes[channel->target_node - &gltf->nodes[0]];
+            model->animations[i].channels[j].sampler =
+                &model->animations[i].samplers[channel->sampler - &animation->samplers[0]];
+        }
+        for (u32 j = 0; j < animation->samplers_count; ++j) {
+            cgltf_animation_sampler *sampler = &animation->samplers[j];
+
+            model->animations[i].samplers[j].interpolation = translate_interpolation(sampler->interpolation);
+            for (u32 k = 0; k < sampler->input->count; ++k) {
+                cgltf_accessor_read_float(sampler->input, k, &model->animations[i].samplers[j].frames[k].timestamp,
+                                          sizeof(f32));
+                cgltf_accessor_read_float(sampler->output, k, model->animations[i].samplers[j].frames[k].data,
+                                          s_component_num[sampler->output->type] * sizeof(f32));
+                duration = walrus_max(model->animations[i].samplers[j].frames[k].timestamp, duration);
+            }
+        }
+        model->animations[i].duration = duration;
+    }
+}
+
+static void animations_shutdown(Walrus_Model *model)
+{
+    walrus_unused(model);
+}
+
+static void skins_init(Walrus_Model *model, cgltf_data *gltf)
+{
+    for (u32 i = 0; i < model->num_skins; ++i) {
+        cgltf_skin *skin         = &gltf->skins[i];
+        model->skins[i].skeleton = &model->nodes[skin->skeleton - &gltf->nodes[0]];
+        for (u32 j = 0; j < skin->joints_count; ++j) {
+            float m[4][4];
+            cgltf_accessor_read_float(skin->inverse_bind_matrices, j, &m[0][0], sizeof(m));
+            model->skins[i].joints[j].node = &model->nodes[skin->joints[j] - &gltf->nodes[0]];
+            for (u32 c = 0; c < 4; ++c) {
+                for (u32 r = 0; r < 4; ++r) {
+                    model->skins[i].joints[j].inverse_bind_matrix[c][r] = m[c][r];
+                }
+            }
+        }
     }
 }
 
@@ -721,15 +849,21 @@ static void model_init(Walrus_Model *model, Walrus_Image *images, cgltf_data *gl
     meshes_init(model, gltf);
 
     nodes_init(model, gltf);
+
+    animations_init(model, gltf);
+
+    skins_init(model, gltf);
 }
 
 void walrus_model_shutdown(Walrus_Model *model)
 {
-    buffers_shutdown(model);
+    animations_shutdown(model);
+
+    mesh_shutdown(model);
 
     textures_shutdown(model);
 
-    mesh_shutdown(model);
+    buffers_shutdown(model);
 
     model_deallocate(model);
 }
@@ -767,8 +901,9 @@ Walrus_ModelResult walrus_model_load_from_file(Walrus_Model *model, char const *
     return WR_MODEL_SUCCESS;
 }
 
-static void model_node_submit(u16 view_id, Walrus_ModelNode *node, mat4 world, Walrus_ProgramHandle shader, u32 depth,
-                              ModelSubmitCallback cb, void *userdata)
+static void model_node_submit(u16 view_id, Walrus_ModelNode *node, mat4 world, Walrus_ProgramHandle shader,
+                              Walrus_ProgramHandle skin_shader, u32 depth, NodeSubmitCallback cb1,
+                              PrimitiveSubmitCallback cb2, void *userdata)
 {
     Walrus_Mesh *mesh = node->mesh;
 
@@ -776,14 +911,18 @@ static void model_node_submit(u16 view_id, Walrus_ModelNode *node, mat4 world, W
     walrus_transform_compose(&node->world_transform, node_world);
     glm_mat4_mul(world, node_world, node_world);
 
+    if (cb1) {
+        cb1(node, userdata);
+    }
+
     if (mesh) {
         for (u32 i = 0; i < mesh->num_primitives; ++i) {
             walrus_rhi_set_transform(node_world);
 
             Walrus_MeshPrimitive *prim = &mesh->primitives[i];
 
-            if (cb) {
-                cb(prim, userdata);
+            if (cb2) {
+                cb2(prim, userdata);
             }
 
             if (prim->indices.buffer.id != WR_INVALID_HANDLE) {
@@ -800,19 +939,20 @@ static void model_node_submit(u16 view_id, Walrus_ModelNode *node, mat4 world, W
                 walrus_rhi_set_vertex_buffer(j, stream->buffer, stream->layout_handle, stream->offset,
                                              stream->num_vertices);
             }
-            walrus_rhi_submit(view_id, shader, depth, WR_RHI_DISCARD_ALL);
+            walrus_rhi_submit(view_id, node->skin ? skin_shader : shader, depth, ~WR_RHI_DISCARD_BINDINGS);
         }
     }
 
     for (u32 i = 0; i < node->num_children; ++i) {
-        model_node_submit(view_id, node->children[i], world, shader, depth, cb, userdata);
+        model_node_submit(view_id, node->children[i], world, shader, skin_shader, depth, cb1, cb2, userdata);
     }
 }
 
-void walrus_model_submit(u16 view_id, Walrus_Model *model, mat4 world, Walrus_ProgramHandle shader, u32 depth,
-                         ModelSubmitCallback cb, void *userdata)
+void walrus_model_submit(u16 view_id, Walrus_Model *model, mat4 world, Walrus_ProgramHandle shader,
+                         Walrus_ProgramHandle skin_shader, u32 depth, NodeSubmitCallback cb1,
+                         PrimitiveSubmitCallback cb2, void *userdata)
 {
     for (u32 i = 0; i < model->num_roots; ++i) {
-        model_node_submit(view_id, model->roots[i], world, shader, depth, cb, userdata);
+        model_node_submit(view_id, model->roots[i], world, shader, skin_shader, depth, cb1, cb2, userdata);
     }
 }

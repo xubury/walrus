@@ -62,14 +62,69 @@ typedef struct {
 
 typedef struct Walrus_ModelNode Walrus_ModelNode;
 
+typedef struct {
+    Walrus_ModelNode *node;
+    mat4              inverse_bind_matrix;
+} Walrus_SkinJoint;
+
+typedef struct {
+    Walrus_SkinJoint *joints;
+    Walrus_ModelNode *skeleton;
+    u32               num_joints;
+} Walrus_ModelSkin;
+
 struct Walrus_ModelNode {
     Walrus_Mesh       *mesh;
     Walrus_ModelNode  *parent;
     Walrus_ModelNode **children;
+    Walrus_ModelSkin  *skin;
     u32                num_children;
     Walrus_Transform   world_transform;
     Walrus_Transform   local_transform;
 };
+
+typedef enum {
+    WR_ANIMATION_PATH_TRANSLATION,
+    WR_ANIMATION_PATH_ROTATION,
+    WR_ANIMATION_PATH_SCALE,
+    WR_ANIMATION_PATH_WEIGHTS,
+
+    WR_ANIMATION_PATH_COUNT
+} Walrus_AnimationPath;
+
+typedef enum {
+    WR_ANIMATION_INTERPOLATION_LINEAR,
+    WR_ANIMATION_INTERPOLATION_STEP,
+    WR_ANIMATION_INTERPOLATION_CUBIC_SPLINE,
+} Walrus_AnimationInterpolation;
+
+typedef struct {
+    f32  timestamp;
+    vec4 data;
+} Walrus_AnimationFrame;
+
+typedef struct {
+    Walrus_AnimationInterpolation interpolation;
+
+    Walrus_AnimationFrame *frames;
+    u32                    num_frames;
+} Walrus_AnimationSampler;
+
+typedef struct {
+    Walrus_AnimationSampler *sampler;
+    Walrus_ModelNode        *node;
+    Walrus_AnimationPath     path;
+} Walrus_AnimationChannel;
+
+typedef struct {
+    Walrus_AnimationChannel *channels;
+    u32                      num_channels;
+
+    Walrus_AnimationSampler *samplers;
+    u32                      num_samplers;
+
+    f32 duration;
+} Walrus_Animation;
 
 typedef struct {
     Walrus_BufferHandle *buffers;
@@ -91,6 +146,12 @@ typedef struct {
 
     Walrus_ModelNode **roots;
     u32                num_roots;
+
+    Walrus_Animation *animations;
+    u32               num_animations;
+
+    Walrus_ModelSkin *skins;
+    u32               num_skins;
 } Walrus_Model;
 
 typedef enum {
@@ -102,11 +163,13 @@ typedef enum {
     WR_MODEL_UNKNOWN_ERROR = -1
 } Walrus_ModelResult;
 
-typedef void (*ModelSubmitCallback)(Walrus_MeshPrimitive *primitive, void *userdata);
+typedef void (*PrimitiveSubmitCallback)(Walrus_MeshPrimitive *primitive, void *userdata);
+typedef void (*NodeSubmitCallback)(Walrus_ModelNode *node, void *userdata);
 
 Walrus_ModelResult walrus_model_load_from_file(Walrus_Model *model, char const *filename);
 
 void walrus_model_shutdown(Walrus_Model *model);
 
-void walrus_model_submit(u16 view_id, Walrus_Model *model, mat4 world, Walrus_ProgramHandle shader, u32 depth,
-                         ModelSubmitCallback cb, void *userdata);
+void walrus_model_submit(u16 view_id, Walrus_Model *model, mat4 world, Walrus_ProgramHandle shader,
+                         Walrus_ProgramHandle skin_shader, u32 depth, NodeSubmitCallback cb1,
+                         PrimitiveSubmitCallback cb2, void *userdata);

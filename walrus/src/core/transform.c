@@ -56,3 +56,10 @@ void walrus_transform_mul(Walrus_Transform *t1, Walrus_Transform *t2, Walrus_Tra
     glm_mat4_mul(m1, m2, m1);
     walrus_transform_decompose(dst, m1);
 }
+
+void walrus_transform_indenity(Walrus_Transform *transform)
+{
+    glm_vec3_zero(transform->trans);
+    glm_quat_identity(transform->rot);
+    glm_vec3_one(transform->scale);
+}

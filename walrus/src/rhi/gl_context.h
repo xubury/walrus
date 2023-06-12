@@ -17,6 +17,7 @@ typedef struct {
     GLuint id;
     u64    size;
     GLenum target;
+    u16    flags;
 } GlBuffer;
 
 typedef struct {

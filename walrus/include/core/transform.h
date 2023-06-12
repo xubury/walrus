@@ -20,3 +20,7 @@ void walrus_transfrom_rotate(Walrus_Transform *transform, versor rot);
 void walrus_transfrom_scale(Walrus_Transform *transform, vec3 scale);
 
 void walrus_transform_mul(Walrus_Transform *t1, Walrus_Transform *t2, Walrus_Transform *dst);
+
+void walrus_transform_indenity(Walrus_Transform *transform);
+
+void walrus_transform_indenity(Walrus_Transform *transform);
