@@ -294,6 +294,7 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
 
         material->double_sided = true;
         material->alpha_mode   = WR_ALPHA_MODE_OPAQUE;
+        material->alpha_cutoff = 0;
     }
 
     model->num_nodes = gltf->nodes_count;
@@ -747,6 +748,7 @@ static void materials_init(Walrus_Model *model, cgltf_data *gltf)
         cgltf_material *material         = &gltf->materials[i];
         model->materials[i].double_sided = material->double_sided;
         model->materials[i].alpha_mode   = mode[material->alpha_mode];
+        model->materials[i].alpha_cutoff = material->alpha_cutoff;
         if (material->normal_texture.texture) {
             model->materials[i].normal       = &model->textures[material->normal_texture.texture - &gltf->textures[0]];
             model->materials[i].normal_scale = material->normal_texture.scale;
@@ -902,8 +904,8 @@ Walrus_ModelResult walrus_model_load_from_file(Walrus_Model *model, char const *
 }
 
 static void model_node_submit(u16 view_id, Walrus_ModelNode *node, mat4 world, Walrus_ProgramHandle shader,
-                              Walrus_ProgramHandle skin_shader, u32 depth, NodeSubmitCallback cb1,
-                              PrimitiveSubmitCallback cb2, void *userdata)
+                              Walrus_ProgramHandle skin_shader, u32 depth, NodeSubmitCallback node_cb,
+                              PrimitiveSubmitCallback prim_cb, void *userdata)
 {
     Walrus_Mesh *mesh = node->mesh;
 
@@ -911,18 +913,18 @@ static void model_node_submit(u16 view_id, Walrus_ModelNode *node, mat4 world, W
     walrus_transform_compose(&node->world_transform, node_world);
     glm_mat4_mul(world, node_world, node_world);
 
-    if (cb1) {
-        cb1(node, userdata);
+    walrus_rhi_set_transform(node_world);
+
+    if (node_cb) {
+        node_cb(node, userdata);
     }
 
     if (mesh) {
         for (u32 i = 0; i < mesh->num_primitives; ++i) {
-            walrus_rhi_set_transform(node_world);
-
             Walrus_MeshPrimitive *prim = &mesh->primitives[i];
 
-            if (cb2) {
-                cb2(prim, userdata);
+            if (prim_cb) {
+                prim_cb(prim, userdata);
             }
 
             if (prim->indices.buffer.id != WR_INVALID_HANDLE) {
@@ -939,20 +941,20 @@ static void model_node_submit(u16 view_id, Walrus_ModelNode *node, mat4 world, W
                 walrus_rhi_set_vertex_buffer(j, stream->buffer, stream->layout_handle, stream->offset,
                                              stream->num_vertices);
             }
-            walrus_rhi_submit(view_id, node->skin ? skin_shader : shader, depth, ~WR_RHI_DISCARD_BINDINGS);
+            walrus_rhi_submit(view_id, node->skin ? skin_shader : shader, depth, WR_RHI_DISCARD_ALL);
         }
     }
 
     for (u32 i = 0; i < node->num_children; ++i) {
-        model_node_submit(view_id, node->children[i], world, shader, skin_shader, depth, cb1, cb2, userdata);
+        model_node_submit(view_id, node->children[i], world, shader, skin_shader, depth, node_cb, prim_cb, userdata);
     }
 }
 
 void walrus_model_submit(u16 view_id, Walrus_Model *model, mat4 world, Walrus_ProgramHandle shader,
-                         Walrus_ProgramHandle skin_shader, u32 depth, NodeSubmitCallback cb1,
-                         PrimitiveSubmitCallback cb2, void *userdata)
+                         Walrus_ProgramHandle skin_shader, u32 depth, NodeSubmitCallback node_cb,
+                         PrimitiveSubmitCallback prim_cb, void *userdata)
 {
     for (u32 i = 0; i < model->num_roots; ++i) {
-        model_node_submit(view_id, model->roots[i], world, shader, skin_shader, depth, cb1, cb2, userdata);
+        model_node_submit(view_id, model->roots[i], world, shader, skin_shader, depth, node_cb, prim_cb, userdata);
     }
 }

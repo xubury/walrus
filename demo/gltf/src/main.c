@@ -28,6 +28,7 @@ typedef struct {
     Walrus_UniformHandle u_emissive_factor;
     Walrus_UniformHandle u_normal;
     Walrus_UniformHandle u_normal_scale;
+    Walrus_UniformHandle u_alpha_cutoff;
     Walrus_UniformHandle u_has_normal;
     Walrus_TextureHandle black_texture;
     Walrus_TextureHandle white_texture;
@@ -53,6 +54,7 @@ Walrus_AppError on_init(Walrus_App *app)
     data->u_emissive_factor = walrus_rhi_create_uniform("u_emissive_factor", WR_RHI_UNIFORM_VEC3, 1);
     data->u_normal          = walrus_rhi_create_uniform("u_normal", WR_RHI_UNIFORM_SAMPLER, 1);
     data->u_normal_scale    = walrus_rhi_create_uniform("u_normal_scale", WR_RHI_UNIFORM_FLOAT, 1);
+    data->u_alpha_cutoff    = walrus_rhi_create_uniform("u_alpha_cutoff", WR_RHI_UNIFORM_FLOAT, 1);
     data->u_has_normal      = walrus_rhi_create_uniform("u_has_normal", WR_RHI_UNIFORM_BOOL, 1);
 
     Walrus_ShaderHandle vs      = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_mesh.glsl");
@@ -111,7 +113,7 @@ static void node_callback(Walrus_ModelNode *node, void *userdata)
     }
 }
 
-static void submit_callback(Walrus_MeshPrimitive *prim, void *userdata)
+static void primitive_callback(Walrus_MeshPrimitive *prim, void *userdata)
 {
     AppData             *data     = userdata;
     Walrus_MeshMaterial *material = prim->material;
@@ -120,10 +122,16 @@ static void submit_callback(Walrus_MeshPrimitive *prim, void *userdata)
         if (!material->double_sided) {
             flags |= WR_RHI_STATE_CULL_CW;
         }
+        u32 alpha_cutoff = 0.f;
         if (material->alpha_mode == WR_ALPHA_MODE_BLEND) {
             flags |= WR_RHI_STATE_BLEND_ALPHA;
         }
+        else if (material->alpha_mode == WR_ALPHA_MODE_MASK) {
+            alpha_cutoff = material->alpha_cutoff;
+        }
         walrus_rhi_set_state(flags, 0);
+
+        walrus_rhi_set_uniform(data->u_alpha_cutoff, 0, sizeof(f32), &alpha_cutoff);
 
         if (material->albedo) {
             walrus_rhi_set_texture(0, material->albedo->handle);
@@ -170,7 +178,7 @@ void on_render(Walrus_App *app)
     walrus_imgui_end_frame();
 
     walrus_model_submit(0, &data->model, data->world, data->shader, data->skin_shader, 0, node_callback,
-                        submit_callback, data);
+                        primitive_callback, data);
 }
 
 void on_tick(Walrus_App *app, f32 dt)

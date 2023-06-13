@@ -43,6 +43,7 @@ typedef struct {
     vec3             emissive_factor;
     Walrus_Texture  *occlusion;
     Walrus_AlphaMode alpha_mode;
+    f32              alpha_cutoff;
     bool             double_sided;
 } Walrus_MeshMaterial;
 
@@ -171,5 +172,5 @@ Walrus_ModelResult walrus_model_load_from_file(Walrus_Model *model, char const *
 void walrus_model_shutdown(Walrus_Model *model);
 
 void walrus_model_submit(u16 view_id, Walrus_Model *model, mat4 world, Walrus_ProgramHandle shader,
-                         Walrus_ProgramHandle skin_shader, u32 depth, NodeSubmitCallback cb1,
-                         PrimitiveSubmitCallback cb2, void *userdata);
+                         Walrus_ProgramHandle skin_shader, u32 depth, NodeSubmitCallback node_cb,
+                         PrimitiveSubmitCallback prim_cb, void *userdata);

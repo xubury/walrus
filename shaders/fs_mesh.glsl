@@ -14,6 +14,7 @@ uniform vec3 u_emissive_factor;
 uniform sampler2D u_normal;
 uniform float u_normal_scale;
 uniform bool u_has_normal;
+uniform float u_alpha_cutoff;
 
 void main() {
     vec3 light_dir = normalize(vec3(0, 0, 1));
@@ -26,6 +27,9 @@ void main() {
     float diff = max(dot(normal, light_dir), 0.0);
     vec3 emissive = texture(u_emissive, v_uv).rgb * u_emissive_factor;
     vec4 albedo = texture(u_albedo, v_uv) * u_albedo_factor;
+    if (albedo.a <= u_alpha_cutoff) {
+        discard;
+    }
     vec3 color = linear_to_srgb(diff * albedo.rgb + emissive, 2.2);
     fragcolor = vec4(color, albedo.a);
 };
