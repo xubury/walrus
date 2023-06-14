@@ -21,7 +21,7 @@ void main() {
                  a_weights.y * ssbo_joints[int(a_joints.y)] +
                  a_weights.z * ssbo_joints[int(a_joints.z)] +
                  a_weights.w * ssbo_joints[int(a_joints.w)];
-    world = world;
+    world = u_model * world;
     gl_Position = u_viewproj * world * vec4(a_pos, 1);
     mat3 nmat = transpose(inverse(mat3(world)));
     v_normal = nmat * a_normal;

@@ -32,6 +32,76 @@ static void apply_to_transform(Walrus_AnimationPath path, vec4 data, Walrus_Tran
             break;
     }
 }
+static void interpolate_frame_rot(Walrus_AnimationInterpolation mode, versor prev, versor next, f32 factor, versor out)
+{
+    switch (mode) {
+        case WR_ANIMATION_INTERPOLATION_STEP:
+            if (factor < 1.0) {
+                glm_quat_copy(prev, out);
+            }
+            else {
+                glm_quat_copy(next, out);
+            }
+            break;
+        case WR_ANIMATION_INTERPOLATION_LINEAR: {
+#if 0
+            if (factor < 1.0) {
+                glm_quat_copy(prev, out);
+            }
+            else {
+                glm_quat_copy(next, out);
+            }
+#else
+            versor a, b;
+            glm_quat_copy(prev, a);
+            glm_quat_copy(next, b);
+            f32 dot = glm_quat_dot(a, b);
+            if (dot < 0.0f) {
+                glm_vec4_scale(b, -1, b);
+                dot = -dot;
+            }
+            if (dot > 0.9995f) {
+                glm_quat_lerp(a, b, factor, out);
+                glm_quat_normalize(out);
+            }
+            else {
+                f32 theta0     = acos(dot);
+                f32 theta      = factor * theta0;
+                f32 sin_theta  = sin(theta);
+                f32 sin_theat0 = sin(theta0);
+                f32 scale_a    = cos(theta) - dot * sin_theta / sin_theat0;
+                f32 scale_b    = sin_theta / sin_theat0;
+                glm_vec4_scale(a, scale_a, a);
+                glm_vec4_scale(b, scale_b, b);
+                glm_quat_add(a, b, out);
+            }
+#endif
+        } break;
+        case WR_ANIMATION_INTERPOLATION_CUBIC_SPLINE:
+            walrus_assert(false);
+            break;
+    }
+}
+
+static void interpolate_frame(Walrus_AnimationInterpolation mode, vec3 prev, vec3 next, f32 factor, vec4 out)
+{
+    switch (mode) {
+        case WR_ANIMATION_INTERPOLATION_STEP:
+            if (factor < 1.0) {
+                glm_vec3_copy(prev, out);
+            }
+            else {
+                glm_vec3_copy(next, out);
+            }
+            break;
+        case WR_ANIMATION_INTERPOLATION_LINEAR:
+            glm_vec3_lerp(prev, next, factor, out);
+            break;
+        case WR_ANIMATION_INTERPOLATION_CUBIC_SPLINE:
+            walrus_assert(false);
+            break;
+    }
+}
 
 static void animator_apply(Walrus_Animator *animator)
 {
@@ -134,14 +204,24 @@ static bool animator_update_animation(Walrus_Animator *animator)
                 break;
             }
         }
-        if (next_frame > 0) {
+        if (next_frame > 0 && next_frame < sampler->num_frames) {
             u32 prev_frame = next_frame - 1;
             if (keys[i].prev != prev_frame) {
                 keys[i].prev = prev_frame;
-                update       = true;
+            }
 
-                Walrus_AnimationFrame *frame = &sampler->frames[prev_frame];
-                glm_vec4_copy(frame->data, keys[i].data);
+            Walrus_AnimationFrame *prev = &sampler->frames[prev_frame];
+            Walrus_AnimationFrame *next = &sampler->frames[next_frame];
+
+            f32 factor = (animator->timestamp - prev->timestamp) / (next->timestamp - prev->timestamp);
+            if (factor > 0) {
+                if (channel->path == WR_ANIMATION_PATH_ROTATION) {
+                    interpolate_frame_rot(sampler->interpolation, prev->data, next->data, factor, keys[i].data);
+                }
+                else {
+                    interpolate_frame(sampler->interpolation, prev->data, next->data, factor, keys[i].data);
+                }
+                update = true;
             }
         }
     }

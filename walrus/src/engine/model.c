@@ -239,6 +239,12 @@ static void model_reset(Walrus_Model *model)
 
     model->meshes     = NULL;
     model->num_meshes = 0;
+
+    model->animations     = NULL;
+    model->num_animations = 0;
+
+    model->skins     = NULL;
+    model->num_skins = 0;
 }
 
 static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
@@ -909,11 +915,16 @@ static void model_node_submit(u16 view_id, Walrus_ModelNode *node, mat4 world, W
 {
     Walrus_Mesh *mesh = node->mesh;
 
-    mat4 node_world;
-    walrus_transform_compose(&node->world_transform, node_world);
-    glm_mat4_mul(world, node_world, node_world);
+    if (node->skin) {
+        walrus_rhi_set_transform(world);
+    }
+    else {
+        mat4 node_world;
+        walrus_transform_compose(&node->world_transform, node_world);
+        glm_mat4_mul(world, node_world, node_world);
 
-    walrus_rhi_set_transform(node_world);
+        walrus_rhi_set_transform(node_world);
+    }
 
     if (node_cb) {
         node_cb(node, userdata);
