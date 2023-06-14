@@ -109,7 +109,7 @@ void walrus_imgui_new_frame(u32 width, u32 height, u16 view_id)
     s_ctx->view_id    = view_id;
     ImGuiIO *io       = igGetIO();
     u64      ts       = walrus_sysclock(WR_SYS_CLOCK_UNIT_MICROSEC);
-    io->DeltaTime     = walrus_max((f32)(ts - s_ctx->timestamp) / 1e6, 1.0 / 1000.f);
+    io->DeltaTime     = (f32)(ts - s_ctx->timestamp) / 1e6;
     s_ctx->timestamp  = ts;
     io->DisplaySize.x = width;
     io->DisplaySize.y = height;
