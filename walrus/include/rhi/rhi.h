@@ -8,8 +8,6 @@
 Walrus_RhiError walrus_rhi_init(Walrus_RhiCreateInfo* info);
 void            walrus_rhi_shutdown(void);
 
-char const* walrus_rhi_error_msg(void);
-
 void walrus_rhi_set_resolution(u32 width, u32 height);
 void walrus_rhi_get_resolution(u32* width, u32* height);
 

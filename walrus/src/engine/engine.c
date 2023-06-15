@@ -252,7 +252,7 @@ char const *walrus_engine_error_msg(Walrus_EngineError err)
         case WR_ENGINE_INIT_WINDOW_ERROR:
             return "Fail to create window";
         case WR_ENGINE_INIT_RHI_ERROR:
-            return walrus_rhi_error_msg();
+            return "Fail to create rhi";
         case WR_ENGINE_INIT_INPUT_ERROR:
             return "Fail to create input";
         case WR_ENGINE_RUN_APP_ERROR:

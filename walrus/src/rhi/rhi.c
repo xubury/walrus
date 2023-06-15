@@ -720,16 +720,6 @@ void walrus_rhi_shutdown(void)
     s_ctx = NULL;
 }
 
-char const* walrus_rhi_error_msg(void)
-{
-    if (s_ctx == NULL) {
-        return WR_RHI_ALLOC_FAIL_STR;
-    }
-    else {
-        return s_ctx->err_msg;
-    }
-}
-
 void walrus_rhi_set_resolution(u32 width, u32 height)
 {
     if (s_ctx->resolution.width != width || s_ctx->resolution.height != height) {

@@ -136,7 +136,6 @@ typedef struct {
     Walrus_HashTable *vertex_layout_table;
 
     Walrus_RhiError err;
-    char const     *err_msg;
 } RhiContext;
 
 typedef struct {
@@ -151,9 +150,6 @@ typedef struct {
 
     u16 loc;
 } PredefinedUniform;
-
-#define WR_RHI_ALLOC_FAIL_STR    "Rhi fail to allocate context"
-#define WR_RHI_GL_ALLOC_FAIL_STR "Rhi fail to alloacte opengl renderer"
 
 void renderer_uniform_updates(UniformBuffer *uniform, u32 begin, u32 end);
 
