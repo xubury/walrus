@@ -66,7 +66,7 @@ void walrus_array_fit(Walrus_Array* array)
 
 void walrus_array_resize(Walrus_Array* array, u32 len)
 {
-    array_maybe_expand(array, len);
+    array_maybe_expand(array, walrus_max(array->len, len) - array->len);
     array->len = len;
 }
 

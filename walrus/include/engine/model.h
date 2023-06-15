@@ -59,6 +59,9 @@ typedef struct {
 typedef struct {
     Walrus_MeshPrimitive *primitives;
     u32                   num_primitives;
+
+    f32 *weights;
+    u32  num_weights;
 } Walrus_Mesh;
 
 typedef struct Walrus_ModelNode Walrus_ModelNode;
@@ -107,8 +110,10 @@ typedef struct {
 typedef struct {
     Walrus_AnimationInterpolation interpolation;
 
-    Walrus_AnimationFrame *frames;
-    u32                    num_frames;
+    f32 *timestamps;
+    f32 *data;
+    u32  num_components;
+    u32  num_frames;
 } Walrus_AnimationSampler;
 
 typedef struct {

@@ -265,6 +265,9 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
         model->meshes[i].num_primitives = mesh->primitives_count;
         model->meshes[i].primitives     = resource_new(Walrus_MeshPrimitive, mesh->primitives_count);
 
+        model->meshes[i].num_weights = mesh->weights_count;
+        model->meshes[i].weights     = resource_new(f32, mesh->weights_count);
+
         for (u32 j = 0; j < mesh->primitives_count; ++j) {
             model->meshes[i].primitives[j].num_streams         = 0;
             model->meshes[i].primitives[j].indices.buffer.id   = WR_INVALID_HANDLE;
@@ -343,7 +346,11 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
             cgltf_animation_sampler *sampler = &animation->samplers[j];
 
             model->animations[i].samplers[j].num_frames = sampler->input->count;
-            model->animations[i].samplers[j].frames     = resource_new(Walrus_AnimationFrame, sampler->input->count);
+            model->animations[i].samplers[j].timestamps = resource_new(f32, sampler->input->count);
+
+            u64 data_size = sampler->output->count * sampler->output->stride;
+
+            model->animations[i].samplers[j].data = walrus_malloc(data_size);
         }
     }
 
@@ -363,7 +370,8 @@ static void model_deallocate(Walrus_Model *model)
         Walrus_Animation *animation = &model->animations[i];
         walrus_free(animation->channels);
         for (u32 j = 0; j < animation->num_samplers; ++j) {
-            walrus_free(animation->samplers[j].frames);
+            walrus_free(animation->samplers[j].timestamps);
+            walrus_free(animation->samplers[j].data);
         }
         walrus_free(animation->samplers);
     }
@@ -372,6 +380,7 @@ static void model_deallocate(Walrus_Model *model)
     for (u32 i = 0; i < model->num_meshes; ++i) {
         Walrus_Mesh *mesh = &model->meshes[i];
 
+        walrus_free(mesh->weights);
         walrus_free(mesh->primitives);
     }
 
@@ -411,11 +420,13 @@ static i32 tangent_create_task(void *userdata)
 
 static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
 {
-    Walrus_Array *task_list = walrus_array_create_full(TangentTask, 0, NULL);
+    Walrus_Array *task_list = walrus_array_create(sizeof(TangentTask), 0);
 
     u64 tangent_buffer_size = 0;
     for (u32 i = 0; i < gltf->meshes_count; ++i) {
         cgltf_mesh *mesh = &gltf->meshes[i];
+        memcpy(model->meshes[i].weights, mesh->weights, sizeof(f32) * mesh->weights_count);
+
         for (u32 j = 0; j < mesh->primitives_count; ++j) {
             bool has_tangent = false;
 
@@ -502,7 +513,7 @@ static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
         u32                  num_task = walrus_array_len(task_list);
         Walrus_ThreadResult *threads  = walrus_new(Walrus_ThreadResult, num_task);
         for (u32 i = 0; i < num_task; ++i) {
-            TangentTask *task = walrus_array_get_ptr(task_list, TangentTask, i);
+            TangentTask *task = walrus_array_get(task_list, i);
             task->buffer      = tangent_buffer;
             walrus_thread_pool_queue(tangent_create_task, task, &threads[i]);
         }
@@ -658,12 +669,16 @@ static void animations_init(Walrus_Model *model, cgltf_data *gltf)
             cgltf_animation_sampler *sampler = &animation->samplers[j];
 
             model->animations[i].samplers[j].interpolation = translate_interpolation(sampler->interpolation);
+
+            u8 const num_components                         = sampler->output->stride / sizeof(f32);
+            model->animations[i].samplers[j].num_components = num_components;
             for (u32 k = 0; k < sampler->input->count; ++k) {
-                cgltf_accessor_read_float(sampler->input, k, &model->animations[i].samplers[j].frames[k].timestamp,
+                cgltf_accessor_read_float(sampler->input, k, &model->animations[i].samplers[j].timestamps[k],
                                           sizeof(f32));
-                cgltf_accessor_read_float(sampler->output, k, model->animations[i].samplers[j].frames[k].data,
-                                          s_component_num[sampler->output->type] * sizeof(f32));
-                duration = walrus_max(model->animations[i].samplers[j].frames[k].timestamp, duration);
+                cgltf_accessor_read_float(sampler->output, k,
+                                          &model->animations[i].samplers[j].data[k * num_components],
+                                          num_components * sizeof(f32));
+                duration = walrus_max(model->animations[i].samplers[j].timestamps[k], duration);
             }
         }
         model->animations[i].duration = duration;

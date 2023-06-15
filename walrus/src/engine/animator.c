@@ -3,6 +3,7 @@
 #include <core/assert.h>
 
 #include <cglm/cglm.h>
+#include <string.h>
 
 static void node_traverse(Walrus_Animator *animator, Walrus_ModelNode *root, Walrus_Transform *worlds,
                           Walrus_Transform *locals)
@@ -16,22 +17,6 @@ static void node_traverse(Walrus_Animator *animator, Walrus_ModelNode *root, Wal
     }
 }
 
-static void apply_to_transform(Walrus_AnimationPath path, vec4 data, Walrus_Transform *t)
-{
-    switch (path) {
-        case WR_ANIMATION_PATH_TRANSLATION:
-            glm_vec3_copy(data, t->trans);
-            break;
-        case WR_ANIMATION_PATH_ROTATION:
-            glm_quat_init(t->rot, data[0], data[1], data[2], data[3]);
-            break;
-        case WR_ANIMATION_PATH_SCALE:
-            glm_vec3_copy(data, t->scale);
-            break;
-        default:
-            break;
-    }
-}
 static void interpolate_frame_rot(Walrus_AnimationInterpolation mode, versor prev, versor next, f32 factor, versor out)
 {
     switch (mode) {
@@ -83,19 +68,25 @@ static void interpolate_frame_rot(Walrus_AnimationInterpolation mode, versor pre
     }
 }
 
-static void interpolate_frame(Walrus_AnimationInterpolation mode, vec3 prev, vec3 next, f32 factor, vec4 out)
+static void interpolate_frame(Walrus_AnimationInterpolation mode, f32 *prev, f32 *next, f32 factor, f32 *out, u32 cnt)
 {
     switch (mode) {
         case WR_ANIMATION_INTERPOLATION_STEP:
             if (factor < 1.0) {
-                glm_vec3_copy(prev, out);
+                for (u32 i = 0; i < cnt; ++i) {
+                    out[i] = prev[i];
+                }
             }
             else {
-                glm_vec3_copy(next, out);
+                for (u32 i = 0; i < cnt; ++i) {
+                    out[i] = next[i];
+                }
             }
             break;
         case WR_ANIMATION_INTERPOLATION_LINEAR:
-            glm_vec3_lerp(prev, next, factor, out);
+            for (u32 i = 0; i < cnt; ++i) {
+                out[i] = prev[i] * (1.0 - factor) + next[i] * factor;
+            }
             break;
         case WR_ANIMATION_INTERPOLATION_CUBIC_SPLINE:
             walrus_assert(false);
@@ -105,18 +96,8 @@ static void interpolate_frame(Walrus_AnimationInterpolation mode, vec3 prev, vec
 
 static void animator_apply(Walrus_Animator *animator)
 {
-    Walrus_Transform *worlds = walrus_array_get_ptr(animator->worlds, Walrus_Transform, 0);
-    Walrus_Transform *locals = walrus_array_get_ptr(animator->locals, Walrus_Transform, 0);
-
-    Walrus_Animation const *animation = animator->animation;
-    Walrus_AnimatorKey     *keys      = walrus_array_get_ptr(animator->keys, Walrus_AnimatorKey, 0);
-
-    for (u32 i = 0; i < animation->num_channels; ++i) {
-        Walrus_AnimationChannel *channel = &animation->channels[i];
-
-        u32 node_index = channel->node - &animator->model->nodes[0];
-        apply_to_transform(channel->path, keys[i].data, &locals[node_index]);
-    }
+    Walrus_Transform *worlds = walrus_array_get(animator->worlds, 0);
+    Walrus_Transform *locals = walrus_array_get(animator->locals, 0);
 
     for (u32 i = 0; i < animator->model->num_nodes; ++i) {
         Walrus_ModelNode *node = &animator->model->nodes[i];
@@ -128,9 +109,11 @@ static void animator_apply(Walrus_Animator *animator)
 
 void walrus_animator_init(Walrus_Animator *animator)
 {
-    animator->keys   = walrus_array_create(sizeof(Walrus_AnimatorKey), 0);
-    animator->worlds = walrus_array_create(sizeof(Walrus_Transform), 0);
-    animator->locals = walrus_array_create(sizeof(Walrus_Transform), 0);
+    animator->keys           = walrus_array_create(sizeof(u32), 0);
+    animator->worlds         = walrus_array_create(sizeof(Walrus_Transform), 0);
+    animator->locals         = walrus_array_create(sizeof(Walrus_Transform), 0);
+    animator->weights        = walrus_array_create(sizeof(f32), 0);
+    animator->weight_offsets = walrus_array_create(sizeof(u32), 0);
 }
 
 void walrus_animator_shutdown(Walrus_Animator *animator)
@@ -138,6 +121,8 @@ void walrus_animator_shutdown(Walrus_Animator *animator)
     walrus_array_destroy(animator->keys);
     walrus_array_destroy(animator->worlds);
     walrus_array_destroy(animator->locals);
+    walrus_array_destroy(animator->weights);
+    walrus_array_destroy(animator->weight_offsets);
 }
 
 void walrus_animator_bind(Walrus_Animator *animator, Walrus_Model const *model)
@@ -145,8 +130,28 @@ void walrus_animator_bind(Walrus_Animator *animator, Walrus_Model const *model)
     if (model->num_animations > 0) {
         animator->model     = model;
         animator->animation = &model->animations[0];
-        walrus_array_resize(animator->worlds, animator->model->num_nodes);
-        walrus_array_resize(animator->locals, animator->model->num_nodes);
+        walrus_array_resize(animator->worlds, model->num_nodes);
+        walrus_array_resize(animator->locals, model->num_nodes);
+        walrus_array_resize(animator->weight_offsets, model->num_nodes);
+
+        u32 *offsets     = walrus_array_get(animator->weight_offsets, 0);
+        u32  num_weights = 0;
+        for (u32 i = 0; i < model->num_nodes; ++i) {
+            offsets[i] = num_weights;
+            if (model->nodes[i].mesh) {
+                num_weights += model->nodes[i].mesh->num_weights;
+            }
+        }
+
+        walrus_array_resize(animator->weights, num_weights);
+
+        f32 *weights = walrus_array_get(animator->weights, 0);
+        for (u32 i = 0; i < model->num_nodes; ++i) {
+            if (model->nodes[i].mesh) {
+                memcpy(weights + offsets[i], model->nodes[i].mesh->weights,
+                       model->nodes[i].mesh->num_weights * sizeof(f32));
+            }
+        }
     }
 }
 
@@ -155,16 +160,11 @@ static void animator_reset(Walrus_Animator *animator)
     animator->timestamp = 0;
 
     for (u32 i = 0; i < animator->animation->num_channels; ++i) {
-        Walrus_AnimatorKey      *key     = walrus_array_get_ptr(animator->keys, Walrus_AnimatorKey, i);
-        Walrus_AnimationChannel *channel = &animator->animation->channels[i];
-        Walrus_AnimationSampler *sampler = channel->sampler;
-
-        key->prev = 0;
-        glm_vec4_copy(sampler->frames[0].data, key->data);
+        *(u32 *)walrus_array_get(animator->keys, i) = 0;
     }
 
-    Walrus_Transform *locals = walrus_array_get_ptr(animator->locals, Walrus_Transform, 0);
-    Walrus_Transform *worlds = walrus_array_get_ptr(animator->worlds, Walrus_Transform, 0);
+    Walrus_Transform *locals = walrus_array_get(animator->locals, 0);
+    Walrus_Transform *worlds = walrus_array_get(animator->worlds, 0);
     for (u32 i = 0; i < animator->model->num_nodes; ++i) {
         Walrus_ModelNode *node = &animator->model->nodes[i];
         locals[i]              = node->local_transform;
@@ -192,34 +192,55 @@ static bool animator_update_animation(Walrus_Animator *animator)
 {
     Walrus_Animation const *animation = animator->animation;
     bool                    update    = false;
-    Walrus_AnimatorKey     *keys      = walrus_array_get_ptr(animator->keys, Walrus_AnimatorKey, 0);
+    u32                    *keys      = walrus_array_get(animator->keys, 0);
     for (u32 i = 0; i < animation->num_channels; ++i) {
         Walrus_AnimationChannel *channel = &animation->channels[i];
         Walrus_AnimationSampler *sampler = channel->sampler;
 
-        u32 next_frame = keys[i].prev + 1;
+        u32 const node_index = channel->node - &animator->model->nodes[0];
+
+        Walrus_Transform *t = walrus_array_get(animator->locals, node_index);
+
+        u32  offset  = *(u32 *)walrus_array_get(animator->weight_offsets, node_index);
+        f32 *weights = walrus_array_get(animator->weights, offset);
+
+        u32 next_frame = keys[i] + 1;
         for (; next_frame < sampler->num_frames; ++next_frame) {
-            Walrus_AnimationFrame *frame = &sampler->frames[next_frame];
-            if (frame->timestamp > animator->timestamp) {
+            f32 timestamp = sampler->timestamps[next_frame];
+            if (timestamp > animator->timestamp) {
                 break;
             }
         }
         if (next_frame > 0 && next_frame < sampler->num_frames) {
             u32 prev_frame = next_frame - 1;
-            if (keys[i].prev != prev_frame) {
-                keys[i].prev = prev_frame;
+            if (keys[i] != prev_frame) {
+                keys[i] = prev_frame;
             }
 
-            Walrus_AnimationFrame *prev = &sampler->frames[prev_frame];
-            Walrus_AnimationFrame *next = &sampler->frames[next_frame];
+            f32  prev_timestamp = sampler->timestamps[prev_frame];
+            f32  next_timestamp = sampler->timestamps[next_frame];
+            f32 *prev_data      = &sampler->data[prev_frame * sampler->num_components];
+            f32 *next_data      = &sampler->data[next_frame * sampler->num_components];
 
-            f32 factor = (animator->timestamp - prev->timestamp) / (next->timestamp - prev->timestamp);
+            f32 factor = (animator->timestamp - prev_timestamp) / (next_timestamp - prev_timestamp);
             if (factor > 0) {
-                if (channel->path == WR_ANIMATION_PATH_ROTATION) {
-                    interpolate_frame_rot(sampler->interpolation, prev->data, next->data, factor, keys[i].data);
-                }
-                else {
-                    interpolate_frame(sampler->interpolation, prev->data, next->data, factor, keys[i].data);
+                switch (channel->path) {
+                    case WR_ANIMATION_PATH_TRANSLATION:
+                        interpolate_frame(sampler->interpolation, prev_data, next_data, factor, t->trans,
+                                          sampler->num_components);
+                        break;
+                    case WR_ANIMATION_PATH_ROTATION:
+                        interpolate_frame_rot(sampler->interpolation, prev_data, next_data, factor, t->rot);
+                        break;
+                    case WR_ANIMATION_PATH_SCALE:
+                        interpolate_frame(sampler->interpolation, prev_data, next_data, factor, t->scale,
+                                          sampler->num_components);
+                        break;
+                    case WR_ANIMATION_PATH_WEIGHTS:
+                        interpolate_frame(sampler->interpolation, prev_data, next_data, factor, weights,
+                                          sampler->num_components);
+                    default:
+                        break;
                 }
                 update = true;
             }
@@ -257,4 +278,16 @@ void walrus_animator_transform(Walrus_Animator *animator, Walrus_ModelNode *node
     walrus_assert(index < animator->model->num_nodes);
 
     walrus_transform_compose(walrus_array_get(animator->worlds, index), transform);
+}
+
+void walrus_animator_weights(Walrus_Animator *animator, Walrus_ModelNode *node, f32 *out_weights)
+{
+    u32 index = node - &animator->model->nodes[0];
+    walrus_assert(index < animator->model->num_nodes);
+
+    if (node->mesh) {
+        u32  offset  = *(u32 *)walrus_array_get(animator->weight_offsets, index);
+        f32 *weights = walrus_array_get(animator->weights, offset);
+        memcpy(out_weights, weights, node->mesh->num_weights);
+    }
 }
