@@ -228,21 +228,24 @@ static bool animator_update_animation(Walrus_Animator *animator)
                     case WR_ANIMATION_PATH_TRANSLATION:
                         interpolate_frame(sampler->interpolation, prev_data, next_data, factor, t->trans,
                                           sampler->num_components);
+                        update = true;
                         break;
                     case WR_ANIMATION_PATH_ROTATION:
                         interpolate_frame_rot(sampler->interpolation, prev_data, next_data, factor, t->rot);
+                        update = true;
                         break;
                     case WR_ANIMATION_PATH_SCALE:
                         interpolate_frame(sampler->interpolation, prev_data, next_data, factor, t->scale,
                                           sampler->num_components);
+                        update = true;
                         break;
                     case WR_ANIMATION_PATH_WEIGHTS:
                         interpolate_frame(sampler->interpolation, prev_data, next_data, factor, weights,
                                           sampler->num_components);
+                        break;
                     default:
                         break;
                 }
-                update = true;
             }
         }
     }
