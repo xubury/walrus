@@ -28,40 +28,9 @@ static void interpolate_frame_rot(Walrus_AnimationInterpolation mode, versor pre
                 glm_quat_copy(next, out);
             }
             break;
-        case WR_ANIMATION_INTERPOLATION_LINEAR: {
-#if 0
-            if (factor < 1.0) {
-                glm_quat_copy(prev, out);
-            }
-            else {
-                glm_quat_copy(next, out);
-            }
-#else
-            versor a, b;
-            glm_quat_copy(prev, a);
-            glm_quat_copy(next, b);
-            f32 dot = glm_quat_dot(a, b);
-            if (dot < 0.0f) {
-                glm_vec4_scale(b, -1, b);
-                dot = -dot;
-            }
-            if (dot > 0.9995f) {
-                glm_quat_lerp(a, b, factor, out);
-                glm_quat_normalize(out);
-            }
-            else {
-                f32 theta0     = acos(dot);
-                f32 theta      = factor * theta0;
-                f32 sin_theta  = sin(theta);
-                f32 sin_theat0 = sin(theta0);
-                f32 scale_a    = cos(theta) - dot * sin_theta / sin_theat0;
-                f32 scale_b    = sin_theta / sin_theat0;
-                glm_vec4_scale(a, scale_a, a);
-                glm_vec4_scale(b, scale_b, b);
-                glm_quat_add(a, b, out);
-            }
-#endif
-        } break;
+        case WR_ANIMATION_INTERPOLATION_LINEAR:
+            glm_quat_slerp(prev, next, factor, out);
+            break;
         case WR_ANIMATION_INTERPOLATION_CUBIC_SPLINE:
             walrus_assert(false);
             break;
@@ -134,8 +103,8 @@ void walrus_animator_bind(Walrus_Animator *animator, Walrus_Model const *model)
         walrus_array_resize(animator->locals, model->num_nodes);
         walrus_array_resize(animator->weight_offsets, model->num_nodes);
 
-        u32 *offsets     = walrus_array_get(animator->weight_offsets, 0);
         u32  num_weights = 0;
+        u32 *offsets     = walrus_array_get(animator->weight_offsets, 0);
         for (u32 i = 0; i < model->num_nodes; ++i) {
             offsets[i] = num_weights;
             if (model->nodes[i].mesh) {
@@ -144,14 +113,6 @@ void walrus_animator_bind(Walrus_Animator *animator, Walrus_Model const *model)
         }
 
         walrus_array_resize(animator->weights, num_weights);
-
-        f32 *weights = walrus_array_get(animator->weights, 0);
-        for (u32 i = 0; i < model->num_nodes; ++i) {
-            if (model->nodes[i].mesh) {
-                memcpy(weights + offsets[i], model->nodes[i].mesh->weights,
-                       model->nodes[i].mesh->num_weights * sizeof(f32));
-            }
-        }
     }
 }
 
@@ -165,10 +126,16 @@ static void animator_reset(Walrus_Animator *animator)
 
     Walrus_Transform *locals = walrus_array_get(animator->locals, 0);
     Walrus_Transform *worlds = walrus_array_get(animator->worlds, 0);
+
+    f32 *weights = walrus_array_get(animator->weights, 0);
+    u32 *offsets = walrus_array_get(animator->weight_offsets, 0);
     for (u32 i = 0; i < animator->model->num_nodes; ++i) {
         Walrus_ModelNode *node = &animator->model->nodes[i];
         locals[i]              = node->local_transform;
         worlds[i]              = node->world_transform;
+        if (node->mesh) {
+            memcpy(weights + offsets[i], node->mesh->weights, node->mesh->num_weights * sizeof(f32));
+        }
     }
     animator_apply(animator);
 }
@@ -288,9 +255,7 @@ void walrus_animator_weights(Walrus_Animator *animator, Walrus_ModelNode *node, 
     u32 index = node - &animator->model->nodes[0];
     walrus_assert(index < animator->model->num_nodes);
 
-    if (node->mesh) {
-        u32  offset  = *(u32 *)walrus_array_get(animator->weight_offsets, index);
-        f32 *weights = walrus_array_get(animator->weights, offset);
-        memcpy(out_weights, weights, node->mesh->num_weights);
-    }
+    u32  offset  = *(u32 *)walrus_array_get(animator->weight_offsets, index);
+    f32 *weights = walrus_array_get(animator->weights, offset);
+    memcpy(out_weights, weights, node->mesh->num_weights * sizeof(f32));
 }

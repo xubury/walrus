@@ -30,6 +30,8 @@ typedef struct {
     Walrus_UniformHandle u_normal_scale;
     Walrus_UniformHandle u_alpha_cutoff;
     Walrus_UniformHandle u_has_normal;
+    Walrus_UniformHandle u_has_morph;
+    Walrus_UniformHandle u_morph_texture;
     Walrus_TextureHandle black_texture;
     Walrus_TextureHandle white_texture;
 } AppData;
@@ -42,6 +44,8 @@ static void setup_texture_uniforms(AppData *data)
     walrus_rhi_set_uniform(data->u_emissive, 0, sizeof(u32), &unit);
     unit = 2;
     walrus_rhi_set_uniform(data->u_normal, 0, sizeof(u32), &unit);
+    unit = 3;
+    walrus_rhi_set_uniform(data->u_morph_texture, 0, sizeof(u32), &unit);
 }
 
 Walrus_AppError on_init(Walrus_App *app)
@@ -56,6 +60,8 @@ Walrus_AppError on_init(Walrus_App *app)
     data->u_normal_scale    = walrus_rhi_create_uniform("u_normal_scale", WR_RHI_UNIFORM_FLOAT, 1);
     data->u_alpha_cutoff    = walrus_rhi_create_uniform("u_alpha_cutoff", WR_RHI_UNIFORM_FLOAT, 1);
     data->u_has_normal      = walrus_rhi_create_uniform("u_has_normal", WR_RHI_UNIFORM_BOOL, 1);
+    data->u_morph_texture   = walrus_rhi_create_uniform("u_morph_texture", WR_RHI_UNIFORM_SAMPLER, 1);
+    data->u_has_morph       = walrus_rhi_create_uniform("u_has_morph", WR_RHI_UNIFORM_BOOL, 1);
 
     Walrus_ShaderHandle vs      = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_mesh.glsl");
     Walrus_ShaderHandle vs_skin = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_skinned_mesh.glsl");
@@ -111,6 +117,14 @@ static void node_callback(Walrus_ModelNode *node, void *userdata)
         }
         walrus_rhi_set_transient_buffer(0, &buffer);
     }
+
+    if (node->mesh && node->mesh->num_weights > 0) {
+        Walrus_TransientBuffer buffer;
+        if (walrus_rhi_alloc_transient_buffer(&buffer, node->mesh->num_weights, sizeof(f32))) {
+            walrus_animator_weights(&data->animator, node, (f32 *)buffer.data);
+        }
+        walrus_rhi_set_transient_buffer(1, &buffer);
+    }
 }
 
 static void primitive_callback(Walrus_MeshPrimitive *prim, void *userdata)
@@ -158,6 +172,12 @@ static void primitive_callback(Walrus_MeshPrimitive *prim, void *userdata)
             walrus_rhi_set_texture(2, data->black_texture);
         }
         walrus_rhi_set_uniform(data->u_emissive_factor, 0, sizeof(vec3), material->emissive_factor);
+
+        bool has_morph = prim->morph_target.id != WR_INVALID_HANDLE;
+        walrus_rhi_set_uniform(data->u_has_morph, 0, sizeof(bool), &has_morph);
+        if (has_morph) {
+            walrus_rhi_set_texture(3, prim->morph_target);
+        }
     }
 }
 

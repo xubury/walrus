@@ -275,7 +275,8 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
             model->meshes[i].primitives[j].indices.num_indices = 0;
             model->meshes[i].primitives[j].indices.index32     = false;
 
-            model->meshes[i].primitives[j].material = NULL;
+            model->meshes[i].primitives[j].material        = NULL;
+            model->meshes[i].primitives[j].morph_target.id = WR_INVALID_HANDLE;
         }
     }
 
@@ -418,6 +419,40 @@ static i32 tangent_create_task(void *userdata)
     return 0;
 }
 
+static Walrus_TextureHandle create_morph_texture(cgltf_primitive *primitive, u32 num_vertices)
+{
+    Walrus_TextureHandle handle = {WR_INVALID_HANDLE};
+    if (primitive->targets_count > 0) {
+        u32 const num_attributes = 4;
+
+        f32 *buffer = walrus_malloc0(num_attributes * num_vertices * primitive->targets_count * sizeof(vec3));
+        for (u32 i = 0; i < primitive->targets_count; ++i) {
+            cgltf_morph_target *target = &primitive->targets[i];
+            for (u32 j = 0; j < target->attributes_count; ++j) {
+                cgltf_attribute *attribute = &target->attributes[j];
+                for (u32 k = 0; k < num_vertices; ++k) {
+                    u64 offset = (i + (attribute->type - 1) * primitive->targets_count) * num_vertices + k;
+                    cgltf_accessor_read_float(attribute->data, k, buffer + offset * 3, sizeof(vec3));
+                }
+            }
+        }
+        Walrus_TextureCreateInfo info;
+        info.width       = num_vertices;
+        info.height      = primitive->targets_count;
+        info.depth       = 1;
+        info.ratio       = WR_RHI_RATIO_COUNT;
+        info.num_layers  = num_attributes;
+        info.num_mipmaps = 1;
+        info.format      = WR_RHI_FORMAT_RGB32F;
+        info.flags       = 0;
+        info.cube_map    = false;
+        handle           = walrus_rhi_create_texture(&info, buffer);
+
+        walrus_free(buffer);
+    }
+    return handle;
+}
+
 static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
 {
     Walrus_Array *task_list = walrus_array_create(sizeof(TangentTask), 0);
@@ -445,6 +480,7 @@ static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
                 model->meshes[i].primitives[j].material = &model->materials[prim->material - &gltf->materials[0]];
             }
 
+            u32 num_verticies                          = 0;
             model->meshes[i].primitives[j].num_streams = 0;
             for (u32 k = 0; k < prim->attributes_count; ++k) {
                 cgltf_attribute *attribute = &prim->attributes[k];
@@ -463,6 +499,7 @@ static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
                 stream->offset                      = buffer_view->offset + accessor->offset;
                 stream->buffer                      = model->buffers[buffer_view->buffer - &gltf->buffers[0]];
                 stream->num_vertices                = accessor->count;
+                num_verticies                       = accessor->count;
                 walrus_vertex_layout_begin(&layout);
                 if (accessor->type == cgltf_type_mat4) {
                     walrus_vertex_layout_add_mat4_override(&layout, loc, 0, buffer_view->stride);
@@ -504,6 +541,8 @@ static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
                 model->meshes[i].primitives[j].num_streams++;
                 tangent_buffer_size += size;
             }
+
+            model->meshes[i].primitives[j].morph_target = create_morph_texture(prim, num_verticies);
         }
     }
     // Allocate the buffer, push task to thread pool
@@ -550,6 +589,9 @@ static void mesh_shutdown(Walrus_Model *model)
     for (u32 i = 0; i < model->num_meshes; ++i) {
         Walrus_Mesh *mesh = &model->meshes[i];
         for (u32 j = 0; j < mesh->num_primitives; ++j) {
+            if (mesh->primitives[j].morph_target.id != WR_INVALID_HANDLE) {
+                walrus_rhi_destroy_texture(mesh->primitives[j].morph_target);
+            }
             for (u32 k = 0; k < mesh->primitives[j].num_streams; ++k) {
                 walrus_rhi_destroy_vertex_layout(mesh->primitives[j].streams[k].layout_handle);
             }
@@ -670,15 +712,19 @@ static void animations_init(Walrus_Model *model, cgltf_data *gltf)
 
             model->animations[i].samplers[j].interpolation = translate_interpolation(sampler->interpolation);
 
-            u8 const num_components                         = sampler->output->stride / sizeof(f32);
+            u8 const num_components =
+                sampler->output->stride * sampler->output->count / sampler->input->count / sizeof(f32);
             model->animations[i].samplers[j].num_components = num_components;
             for (u32 k = 0; k < sampler->input->count; ++k) {
                 cgltf_accessor_read_float(sampler->input, k, &model->animations[i].samplers[j].timestamps[k],
                                           sizeof(f32));
-                cgltf_accessor_read_float(sampler->output, k,
-                                          &model->animations[i].samplers[j].data[k * num_components],
-                                          num_components * sizeof(f32));
                 duration = walrus_max(model->animations[i].samplers[j].timestamps[k], duration);
+            }
+            for (u32 k = 0; k < sampler->output->count; ++k) {
+                cgltf_accessor_read_float(
+                    sampler->output, k,
+                    &model->animations[i].samplers[j].data[k * sampler->output->stride / sizeof(f32)],
+                    sampler->output->stride);
             }
         }
         model->animations[i].duration = duration;

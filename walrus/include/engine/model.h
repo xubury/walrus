@@ -54,6 +54,7 @@ typedef struct {
     Walrus_MeshIndices indices;
 
     Walrus_MeshMaterial *material;
+    Walrus_TextureHandle morph_target;
 } Walrus_MeshPrimitive;
 
 typedef struct {
