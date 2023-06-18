@@ -9,6 +9,7 @@
 #include <core/math.h>
 
 #include <cglm/cglm.h>
+
 #include <string.h>
 
 typedef struct {
@@ -114,6 +115,7 @@ void walrus_imgui_new_frame(u32 width, u32 height, u16 view_id)
     io->DisplaySize.x = width;
     io->DisplaySize.y = height;
     igNewFrame();
+    ImGuizmo_BeginFrame();
 }
 
 static void render(ImDrawData *data)

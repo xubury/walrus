@@ -1,3 +1,6 @@
 [submodule "libs/cimgui"]
 	path = libs/cimgui
 	url = git@github.com:cimgui/cimgui.git
+[submodule "libs/cimguizmo"]
+	path = libs/cimguizmo
+	url = git@github.com:cimgui/cimguizmo.git

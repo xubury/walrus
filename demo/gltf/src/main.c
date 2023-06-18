@@ -21,6 +21,8 @@ typedef struct {
     Walrus_Animator      animator;
     Walrus_ProgramHandle shader;
     Walrus_ProgramHandle skin_shader;
+    mat4                 view;
+    mat4                 projection;
     mat4                 world;
     Walrus_UniformHandle u_albedo;
     Walrus_UniformHandle u_albedo_factor;
@@ -78,11 +80,9 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_rhi_set_view_rect(0, 0, 0, 1440, 900);
     walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_COLOR | WR_RHI_CLEAR_DEPTH, 0, 1.0, 0);
 
-    mat4 view;
-    mat4 projection;
-    glm_lookat((vec3){0, 2, 5}, (vec3){0, 0, 0}, (vec3){0, 1, 0}, view);
-    glm_perspective(glm_rad(45), 1440.0 / 900.0, 0.1, 1000.0, projection);
-    walrus_rhi_set_view_transform(0, view, projection);
+    glm_lookat((vec3){0, 2, 5}, (vec3){0, 0, 0}, (vec3){0, 1, 0}, data->view);
+    glm_perspective(glm_rad(45), 1440.0 / 900.0, 0.1, 1000.0, data->projection);
+    walrus_rhi_set_view_transform(0, data->view, data->projection);
 
     u64         ts       = walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC);
     char const *filename = "assets/gltf/shibahu/scene.gltf";
@@ -187,6 +187,11 @@ void on_render(Walrus_App *app)
     u32      width, height;
     walrus_rhi_get_resolution(&width, &height);
     walrus_imgui_new_frame(width, height, 255);
+
+    ImGuizmo_SetRect(0, 0, width, height);
+    ImGuizmo_SetOrthographic(false);
+    ImGuizmo_Manipulate(data->view[0], data->projection[0], TRANSLATE, WORLD, data->world[0], NULL, NULL, NULL, NULL);
+
     igBegin("Hello, world!", NULL, 0);
     igText("This is some useful text");
     igText("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO()->Framerate, igGetIO()->Framerate);

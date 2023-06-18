@@ -38,7 +38,8 @@ endif()
 
 include(${cnoan_cmake})
 
-set(conan_packages stb/cci.20210910 cglm/0.8.5 cgltf/1.13 mikktspace/cci.20200325)
+set(conan_packages stb/cci.20210910 cglm/0.8.5 cgltf/1.13
+                   mikktspace/cci.20200325)
 
 if(NOT WASM)
   list(APPEND conan_packages glew/2.2.0 glfw/3.3.8)
@@ -76,6 +77,6 @@ endif()
 # ##############################################################################
 
 set(walrus_root_dir ${CMAKE_CURRENT_SOURCE_DIR}/walrus)
-add_subdirectory(libs/cimgui)  
+add_subdirectory(libs)
 add_subdirectory(walrus/src)
 add_subdirectory(demo)

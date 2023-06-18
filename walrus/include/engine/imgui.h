@@ -4,6 +4,7 @@
 #include <engine/event.h>
 #include <rhi/type.h>
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include <cimguizmo.h>
 #include <cimgui.h>
 
 void walrus_imgui_init(void);
