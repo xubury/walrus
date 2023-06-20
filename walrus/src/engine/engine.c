@@ -15,7 +15,8 @@
 #include <core/thread.h>
 #include <core/mutex.h>
 
-#include "app_impl.h"
+#include "app_p.h"
+#include "window_p.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -25,9 +26,10 @@ struct Walrus_Engine {
     Walrus_EngineOption opt;
     Walrus_Mutex       *log_mutex;
     Walrus_Thread      *render;
-    Walrus_Window      *window;
     Walrus_App         *app;
-    Walrus_Input       *input;
+    Walrus_Window       window;
+    Walrus_Input        input;
+    Walrus_ControlMap   control;
     bool                quit;
 };
 
@@ -57,8 +59,8 @@ static void log_lock_fn(bool lock, void *userdata)
 
 static void setup_window(void)
 {
-    walrus_window_make_current(s_engine->window);
-    walrus_window_set_vsync(s_engine->window, s_engine->opt.window_flags & WR_WINDOW_FLAG_VSYNC);
+    walrus_window_make_current(&s_engine->window);
+    walrus_window_set_vsync(&s_engine->window, s_engine->opt.window_flags & WR_WINDOW_FLAG_VSYNC);
 }
 
 static i32 render_thread_fn(Walrus_Thread *thread, void *userdata)
@@ -69,7 +71,7 @@ static i32 render_thread_fn(Walrus_Thread *thread, void *userdata)
     setup_window();
 
     while (walrus_rhi_render_frame(-1) != WR_RHI_RENDER_EXITING) {
-        walrus_window_swap_buffers(s_engine->window);
+        walrus_window_swap_buffers(&s_engine->window);
     }
 
     return 0;
@@ -87,13 +89,14 @@ static Walrus_EngineError register_service(void)
 
     walrus_event_init();
 
-    s_engine->input = walrus_inputs_create();
-    if (s_engine->input == NULL) {
+    if (!walrus_inputs_init(&s_engine->input)) {
         return WR_ENGINE_INIT_INPUT_ERROR;
     }
-    s_engine->window =
-        walrus_window_create(opt->window_title, opt->resolution.width, opt->resolution.height, opt->window_flags);
-    if (s_engine->window == NULL) {
+
+    walrus_control_map_init(&s_engine->control);
+
+    if (!walrus_window_init(&s_engine->window, opt->window_title, opt->resolution.width, opt->resolution.height,
+                            opt->window_flags)) {
         return WR_ENGINE_INIT_WINDOW_ERROR;
     }
 
@@ -141,9 +144,11 @@ static void release_service(void)
         walrus_thread_destroy(s_engine->render);
     }
 
-    walrus_inputs_destroy(s_engine->input);
+    walrus_control_map_shutdown(&s_engine->control);
 
-    walrus_window_destroy(s_engine->window);
+    walrus_inputs_shutdown(&s_engine->input);
+
+    walrus_window_shutdown(&s_engine->window);
 
     walrus_event_shutdown();
 
@@ -158,8 +163,8 @@ static void event_process(void)
 {
     static Walrus_Event e;
     Walrus_App         *app    = s_engine->app;
-    Walrus_Input       *input  = s_engine->input;
-    Walrus_Window      *window = s_engine->window;
+    Walrus_Input       *input  = &s_engine->input;
+    Walrus_Window      *window = &s_engine->window;
 
     walrus_window_poll_events(window);
     while (walrus_event_poll(&e) == WR_EVENT_SUCCESS) {
@@ -195,10 +200,11 @@ static void event_process(void)
 
 static void engine_frame(void)
 {
-    Walrus_App          *app    = s_engine->app;
-    Walrus_Window       *window = s_engine->window;
-    Walrus_Input        *input  = s_engine->input;
-    Walrus_EngineOption *opt    = &s_engine->opt;
+    Walrus_App          *app     = s_engine->app;
+    Walrus_Window       *window  = &s_engine->window;
+    Walrus_Input        *input   = &s_engine->input;
+    Walrus_ControlMap   *control = &s_engine->control;
+    Walrus_EngineOption *opt     = &s_engine->opt;
     walrus_assert_msg(opt->minfps > 0, "Invalid min fps");
     walrus_assert_msg(app->tick != NULL, "Invalid tick function");
     walrus_assert_msg(app->render != NULL, "Invalid render function");
@@ -231,6 +237,7 @@ static void engine_frame(void)
     app->render(app);
 
     if (input_timer > 1.0 / 60.0) {
+        walrus_control_map_tick(control, input);
         walrus_inputs_tick(input);
         input_timer = 0.f;
     }
@@ -305,8 +312,6 @@ Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
     opt->resolution.height = walrus_max(opt->resolution.height, 1);
 
     s_engine->app    = NULL;
-    s_engine->window = NULL;
-    s_engine->input  = NULL;
     s_engine->render = NULL;
     s_engine->quit   = true;
 
@@ -391,10 +396,15 @@ Walrus_App *walrus_engine_exit(void)
 
 Walrus_Window *walrus_engine_window(void)
 {
-    return s_engine->window;
+    return &s_engine->window;
 }
 
 Walrus_Input *walrus_engine_input(void)
 {
-    return s_engine->input;
+    return &s_engine->input;
+}
+
+Walrus_ControlMap *walrus_engine_control(void)
+{
+    return &s_engine->control;
 }

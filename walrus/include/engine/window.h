@@ -12,9 +12,9 @@ typedef enum {
     WR_WINDOW_FLAG_RESIZABLE = 1 << 2
 } WindowFlag;
 
-Walrus_Window *walrus_window_create(char const *title, u32 width, u32 height, u32 flags);
+bool walrus_window_init(Walrus_Window *win, char const *title, u32 width, u32 height, u32 flags);
 
-void walrus_window_destroy(Walrus_Window *win);
+void walrus_window_shutdown(Walrus_Window *win);
 
 u32 walrus_window_width(Walrus_Window *win);
 

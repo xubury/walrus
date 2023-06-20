@@ -50,6 +50,16 @@ static void setup_texture_uniforms(AppData *data)
     walrus_rhi_set_uniform(data->u_morph_texture, 0, sizeof(u32), &unit);
 }
 
+void walk(f32 value, void *userdata)
+{
+    walrus_trace("walk: %f", value);
+}
+
+void interact(void *userdata)
+{
+    walrus_trace("interact");
+}
+
 Walrus_AppError on_init(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
@@ -98,6 +108,14 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_animator_init(&data->animator);
     walrus_animator_bind(&data->animator, &data->model);
     walrus_animator_play(&data->animator, 0);
+
+    Walrus_ControlMap *control = walrus_engine_control();
+    walrus_control_bind_axis(control, "Walk", walk, NULL);
+    walrus_control_bind_action(control, "Interact", interact, NULL);
+    walrus_control_add_axis_button(control, "Walk", WR_INPUT_KEYBOARD, WR_KEY_W, 1, true);
+    walrus_control_add_axis_button(control, "Walk", WR_INPUT_KEYBOARD, WR_KEY_S, -1, true);
+    walrus_control_add_action_button(control, "Interact", WR_INPUT_KEYBOARD, WR_KEY_SPACE);
+    walrus_control_add_action_button(control, "Interact", WR_INPUT_MOUSE, WR_MOUSE_BTN_LEFT);
 
     return WR_APP_SUCCESS;
 }

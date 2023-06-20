@@ -670,7 +670,7 @@ bool walrus_hash_table_insert(Walrus_HashTable* table, void* key, void* value)
     return hash_table_insert_internal(table, key, value, false);
 }
 
-static bool hash_table_remove_internal(Walrus_HashTable* table, void* key, bool notify)
+static bool hash_table_remove_internal(Walrus_HashTable* table, void const* key, bool notify)
 {
     u32 node_id;
 
@@ -686,7 +686,7 @@ static bool hash_table_remove_internal(Walrus_HashTable* table, void* key, bool 
     return true;
 }
 
-bool walrus_hash_table_remove(Walrus_HashTable* table, void* key)
+bool walrus_hash_table_remove(Walrus_HashTable* table, void const* key)
 {
     return hash_table_remove_internal(table, key, true);
 }

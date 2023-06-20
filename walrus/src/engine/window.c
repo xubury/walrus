@@ -12,12 +12,11 @@ void wajs_create_window(char const *title, u32 width, u32 height);
 #include <GLFW/glfw3.h>
 #endif
 
-Walrus_Window *walrus_window_create(char const *title, u32 width, u32 height, u32 flags)
+bool walrus_window_init(Walrus_Window *win, char const *title, u32 width, u32 height, u32 flags)
 {
-    Walrus_Window *win = walrus_malloc(sizeof(Walrus_Window));
-    win->width         = width;
-    win->height        = height;
-    win->flags         = flags;
+    win->width  = width;
+    win->height = height;
+    win->flags  = flags;
 
 #if WR_PLATFORM == WR_PLATFORM_WASM
     win->handle = NULL;
@@ -25,23 +24,20 @@ Walrus_Window *walrus_window_create(char const *title, u32 width, u32 height, u3
 #else
     glfw_create_window(win, title, width, height, flags);
     if (win->handle == NULL) {
-        walrus_window_destroy(win);
-        win = NULL;
+        walrus_window_shutdown(win);
+        return false;
     }
 #endif
-    return win;
+    return true;
 }
 
-void walrus_window_destroy(Walrus_Window *win)
+void walrus_window_shutdown(Walrus_Window *win)
 {
-    if (win) {
 #if WR_PLATFORM != WR_PLATFORM_WASM
-        if (win->handle != NULL) {
-            glfw_destroy_window(win->handle);
-        }
-#endif
-        walrus_free(win);
+    if (win->handle != NULL) {
+        glfw_destroy_window(win->handle);
     }
+#endif
 }
 
 u32 walrus_window_width(Walrus_Window *win)

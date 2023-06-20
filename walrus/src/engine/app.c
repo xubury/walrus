@@ -1,7 +1,8 @@
 #include <engine/app.h>
 #include <core/macro.h>
 #include <core/memory.h>
-#include "app_impl.h"
+
+#include "app_p.h"
 
 static void dummy(Walrus_App *app)
 {

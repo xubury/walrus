@@ -7,6 +7,7 @@ add_library(
   animator.c
   app.c
   batch_renderer.c
+  control_map.c
   engine.c
   event.c
   font.c

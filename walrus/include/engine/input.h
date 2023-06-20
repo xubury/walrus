@@ -12,7 +12,7 @@ typedef enum {
 
 typedef enum {
     WR_MOUSE_AXIS_CURSOR = 0,
-    WR_MOUSE_AXIS_WHEEL = 1,
+    WR_MOUSE_AXIS_WHEEL  = 1,
 
     WR_MOUSE_AXIS_COUNT,
 } Walrus_MouseAxis;
@@ -167,8 +167,8 @@ typedef struct {
     Walrus_InputDevice *keyboard;
 } Walrus_Input;
 
-Walrus_Input *walrus_inputs_create(void);
+bool walrus_inputs_init(Walrus_Input *input);
 
-void walrus_inputs_destroy(Walrus_Input *input);
+void walrus_inputs_shutdown(Walrus_Input *input);
 
 void walrus_inputs_tick(Walrus_Input *input);

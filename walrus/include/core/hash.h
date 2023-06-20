@@ -26,7 +26,7 @@ bool walrus_hash_table_add(Walrus_HashTable *table, void *key);
 bool walrus_hash_table_insert(Walrus_HashTable *table, void *key, void *value);
 
 // Remove a key value pair from hash table
-bool walrus_hash_table_remove(Walrus_HashTable *table, void *key);
+bool walrus_hash_table_remove(Walrus_HashTable *table, void const *key);
 void walrus_hash_table_remove_all(Walrus_HashTable *table);
 
 void walrus_hash_table_foreach(Walrus_HashTable *table, Walrus_ForeachFunc func, void *userdata);
