@@ -7,10 +7,12 @@ add_library(
   animator.c
   app.c
   batch_renderer.c
+  camera.c
   control_map.c
   engine.c
   event.c
   font.c
+  fps_controller.c
   imgui.c
   input_device.c
   input.c

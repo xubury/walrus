@@ -76,6 +76,10 @@ else()
 endif()
 # ##############################################################################
 
+if(WASM)
+  set(IMGUI_STATIC on)
+endif()
+
 set(walrus_root_dir ${CMAKE_CURRENT_SOURCE_DIR}/walrus)
 add_subdirectory(libs)
 add_subdirectory(walrus/src)

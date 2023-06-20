@@ -1,9 +1,11 @@
 #include <engine/control_map.h>
+#include <engine/event.h>
 #include <core/memory.h>
 #include <core/string.h>
 #include <core/macro.h>
 #include <core/array.h>
 #include <core/log.h>
+#include <core/math.h>
 
 typedef struct {
     u8   device;
@@ -16,6 +18,7 @@ typedef struct {
 
 typedef struct {
     Walrus_Array *btns;
+    Walrus_Array *axes;
 
     Walrus_AxisCallback   axis_func;
     Walrus_ActionCallback action_func;
@@ -122,22 +125,31 @@ void walrus_control_bind_action(Walrus_ControlMap *control, char const *name, Wa
 
 void walrus_control_unbind(Walrus_ControlMap *control, char const *name)
 {
+    if (walrus_hash_table_contains(control->mapping, name)) {
+        Mappings *mapping    = walrus_hash_table_lookup(control->mapping, name);
+        mapping->action_func = NULL;
+        mapping->axis_func   = NULL;
+    }
+}
+
+void walrus_control_clear(Walrus_ControlMap *control, char const *name)
+{
     walrus_hash_table_remove(control->mapping, name);
 }
 
 void foreach_axis_control(void const *key, void const *value, void *userdata)
 {
     walrus_unused(key);
-    Mappings const     *mapping = value;
-    Walrus_Input       *input   = userdata;
-    Walrus_InputDevice *device  = NULL;
+    Mappings const *mapping = value;
+    Walrus_Input   *input   = userdata;
     if (mapping->axis_func == NULL) {
         return;
     }
 
-    u32 size = walrus_array_len(mapping->btns);
-    for (u32 i = 0; i < size; ++i) {
-        bool trigger = false;
+    u32 num_btns = walrus_array_len(mapping->btns);
+    for (u32 i = 0; i < num_btns; ++i) {
+        bool                trigger = false;
+        Walrus_InputDevice *device  = NULL;
 
         ButtonMapping *btn = walrus_array_get(mapping->btns, i);
 
@@ -169,16 +181,16 @@ void foreach_axis_control(void const *key, void const *value, void *userdata)
 void foreach_action_control(void const *key, void const *value, void *userdata)
 {
     walrus_unused(key);
-    Mappings const     *mapping = value;
-    Walrus_Input       *input   = userdata;
-    Walrus_InputDevice *device  = NULL;
+    Mappings const *mapping = value;
+    Walrus_Input   *input   = userdata;
     if (mapping->action_func == NULL) {
         return;
     }
 
     u32 size = walrus_array_len(mapping->btns);
     for (u32 i = 0; i < size; ++i) {
-        bool trigger = false;
+        bool                trigger = false;
+        Walrus_InputDevice *device  = NULL;
 
         ButtonMapping *btn = walrus_array_get(mapping->btns, i);
 

@@ -10,6 +10,8 @@
 #include <engine/shader_library.h>
 #include <engine/thread_pool.h>
 #include <engine/animator.h>
+#include <engine/camera.h>
+#include <engine/fps_controller.h>
 #include <core/sys.h>
 #include <core/array.h>
 
@@ -21,8 +23,8 @@ typedef struct {
     Walrus_Animator      animator;
     Walrus_ProgramHandle shader;
     Walrus_ProgramHandle skin_shader;
-    mat4                 view;
-    mat4                 projection;
+    Walrus_FpsController fps_controller;
+    Walrus_Camera        camera;
     mat4                 world;
     Walrus_UniformHandle u_albedo;
     Walrus_UniformHandle u_albedo_factor;
@@ -50,19 +52,10 @@ static void setup_texture_uniforms(AppData *data)
     walrus_rhi_set_uniform(data->u_morph_texture, 0, sizeof(u32), &unit);
 }
 
-void walk(f32 value, void *userdata)
-{
-    walrus_trace("walk: %f", value);
-}
-
-void interact(void *userdata)
-{
-    walrus_trace("interact");
-}
-
 Walrus_AppError on_init(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
+
     glm_mat4_identity(data->world);
     data->u_albedo          = walrus_rhi_create_uniform("u_albedo", WR_RHI_UNIFORM_SAMPLER, 1);
     data->u_albedo_factor   = walrus_rhi_create_uniform("u_albedo_factor", WR_RHI_UNIFORM_VEC4, 1);
@@ -87,12 +80,10 @@ Walrus_AppError on_init(Walrus_App *app)
     rgba                = 0xffffffff;
     data->white_texture = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 0, 0, &rgba);
 
+    walrus_camera_init(&data->camera, (vec3){0, 2, 5}, (versor){0, 0, 0, 1}, glm_rad(45.0), 1440.0 / 900.0, 0.01,
+                       1000.0);
     walrus_rhi_set_view_rect(0, 0, 0, 1440, 900);
     walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_COLOR | WR_RHI_CLEAR_DEPTH, 0, 1.0, 0);
-
-    glm_lookat((vec3){0, 2, 5}, (vec3){0, 0, 0}, (vec3){0, 1, 0}, data->view);
-    glm_perspective(glm_rad(45), 1440.0 / 900.0, 0.1, 1000.0, data->projection);
-    walrus_rhi_set_view_transform(0, data->view, data->projection);
 
     u64         ts       = walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC);
     char const *filename = "assets/gltf/shibahu/scene.gltf";
@@ -109,13 +100,7 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_animator_bind(&data->animator, &data->model);
     walrus_animator_play(&data->animator, 0);
 
-    Walrus_ControlMap *control = walrus_engine_control();
-    walrus_control_bind_axis(control, "Walk", walk, NULL);
-    walrus_control_bind_action(control, "Interact", interact, NULL);
-    walrus_control_add_axis_button(control, "Walk", WR_INPUT_KEYBOARD, WR_KEY_W, 1, true);
-    walrus_control_add_axis_button(control, "Walk", WR_INPUT_KEYBOARD, WR_KEY_S, -1, true);
-    walrus_control_add_action_button(control, "Interact", WR_INPUT_KEYBOARD, WR_KEY_SPACE);
-    walrus_control_add_action_button(control, "Interact", WR_INPUT_MOUSE, WR_MOUSE_BTN_LEFT);
+    walrus_fps_controller_init(&data->fps_controller, 5.0);
 
     return WR_APP_SUCCESS;
 }
@@ -202,13 +187,17 @@ static void primitive_callback(Walrus_MeshPrimitive *prim, void *userdata)
 void on_render(Walrus_App *app)
 {
     AppData *data = walrus_app_userdata(app);
-    u32      width, height;
+
+    walrus_rhi_set_view_transform(0, data->camera.view, data->camera.projection);
+
+    u32 width, height;
     walrus_rhi_get_resolution(&width, &height);
     walrus_imgui_new_frame(width, height, 255);
 
     ImGuizmo_SetRect(0, 0, width, height);
     ImGuizmo_SetOrthographic(false);
-    ImGuizmo_Manipulate(data->view[0], data->projection[0], TRANSLATE, WORLD, data->world[0], NULL, NULL, NULL, NULL);
+    ImGuizmo_Manipulate(data->camera.view[0], data->camera.projection[0], TRANSLATE, WORLD, data->world[0], NULL, NULL,
+                        NULL, NULL);
 
     igBegin("Hello, world!", NULL, 0);
     igText("This is some useful text");
@@ -229,6 +218,9 @@ void on_tick(Walrus_App *app, f32 dt)
     AppData *data = walrus_app_userdata(app);
     glm_rotate(data->world, glm_rad(20.0) * dt, (vec3){0, 1, 0});
     walrus_animator_tick(&data->animator, dt);
+    walrus_fps_controller_tick(&data->fps_controller, &data->camera.transform, dt);
+    walrus_camera_mark_dirty(&data->camera);
+    walrus_camera_update(&data->camera);
 }
 
 void on_shutdown(Walrus_App *app)

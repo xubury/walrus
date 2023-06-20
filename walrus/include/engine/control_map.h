@@ -2,7 +2,6 @@
 
 #include <core/type.h>
 #include <core/hash.h>
-#include <engine/event.h>
 #include <engine/input.h>
 
 typedef void (*Walrus_AxisCallback)(f32 value, void *userdata);
@@ -22,6 +21,8 @@ void walrus_control_add_action_button(Walrus_ControlMap *control, char const *na
 void walrus_control_bind_axis(Walrus_ControlMap *control, char const *name, Walrus_AxisCallback func, void *userdata);
 void walrus_control_bind_action(Walrus_ControlMap *control, char const *name, Walrus_ActionCallback func,
                                 void *userdata);
+
 void walrus_control_unbind(Walrus_ControlMap *control, char const *name);
+void walrus_control_clear(Walrus_ControlMap *control, char const *name);
 
 void walrus_control_map_tick(Walrus_ControlMap *control, Walrus_Input *input);
