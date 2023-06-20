@@ -3,7 +3,6 @@
 #include <engine/app.h>
 #include <engine/window.h>
 #include <engine/input.h>
-#include <engine/control_map.h>
 #include <rhi/rhi.h>
 
 typedef struct {
@@ -50,6 +49,3 @@ Walrus_Window *walrus_engine_window(void);
 
 // Get engine input
 Walrus_Input *walrus_engine_input(void);
-
-// Get engine control map
-Walrus_ControlMap *walrus_engine_control(void);

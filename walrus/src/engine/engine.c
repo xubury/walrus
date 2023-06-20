@@ -29,7 +29,6 @@ struct Walrus_Engine {
     Walrus_App         *app;
     Walrus_Window       window;
     Walrus_Input        input;
-    Walrus_ControlMap   control;
     bool                quit;
 };
 
@@ -93,8 +92,6 @@ static Walrus_EngineError register_service(void)
         return WR_ENGINE_INIT_INPUT_ERROR;
     }
 
-    walrus_control_map_init(&s_engine->control);
-
     if (!walrus_window_init(&s_engine->window, opt->window_title, opt->resolution.width, opt->resolution.height,
                             opt->window_flags)) {
         return WR_ENGINE_INIT_WINDOW_ERROR;
@@ -143,8 +140,6 @@ static void release_service(void)
     if (s_engine->render != NULL) {
         walrus_thread_destroy(s_engine->render);
     }
-
-    walrus_control_map_shutdown(&s_engine->control);
 
     walrus_inputs_shutdown(&s_engine->input);
 
@@ -203,7 +198,6 @@ static void engine_frame(void)
     Walrus_App          *app     = s_engine->app;
     Walrus_Window       *window  = &s_engine->window;
     Walrus_Input        *input   = &s_engine->input;
-    Walrus_ControlMap   *control = &s_engine->control;
     Walrus_EngineOption *opt     = &s_engine->opt;
     walrus_assert_msg(opt->minfps > 0, "Invalid min fps");
     walrus_assert_msg(app->tick != NULL, "Invalid tick function");
@@ -237,7 +231,6 @@ static void engine_frame(void)
     app->render(app);
 
     if (input_timer > 1.0 / 60.0) {
-        walrus_control_map_tick(control, input);
         walrus_inputs_tick(input);
         input_timer = 0.f;
     }
@@ -402,9 +395,4 @@ Walrus_Window *walrus_engine_window(void)
 Walrus_Input *walrus_engine_input(void)
 {
     return &s_engine->input;
-}
-
-Walrus_ControlMap *walrus_engine_control(void)
-{
-    return &s_engine->control;
 }

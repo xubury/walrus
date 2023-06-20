@@ -2,11 +2,13 @@
 
 #include <core/type.h>
 #include <core/transform.h>
+#include <engine/control_map.h>
 
 typedef struct {
-    vec3 smooth_translation;
-    vec3 translation;
-    f32  smoothness;
+    vec3              smooth_translation;
+    vec3              translation;
+    f32               smoothness;
+    Walrus_ControlMap map;
 } Walrus_FpsController;
 
 void walrus_fps_controller_init(Walrus_FpsController *controller, f32 smoothness);
