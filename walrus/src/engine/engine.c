@@ -27,6 +27,7 @@ struct Walrus_Engine {
     Walrus_Mutex       *log_mutex;
     Walrus_Thread      *render;
     Walrus_App         *app;
+    FILE               *log_file;
     Walrus_Window       window;
     Walrus_Input        input;
     bool                quit;
@@ -83,6 +84,10 @@ static Walrus_EngineError register_service(void)
     s_engine->log_mutex = walrus_mutex_create();
 
     walrus_log_set_lock(log_lock_fn, s_engine->log_mutex);
+    if (opt->log_file != NULL) {
+        s_engine->log_file = fopen(opt->log_file, "wb");
+        walrus_log_add_fp(s_engine->log_file, opt->log_file_level);
+    }
 
     walrus_thread_pool_init(opt->thread_pool_size);
 
@@ -152,6 +157,8 @@ static void release_service(void)
     walrus_mutex_destroy(s_engine->log_mutex);
 
     walrus_log_set_lock(NULL, NULL);
+
+    fclose(s_engine->log_file);
 }
 
 static void event_process(void)
@@ -195,10 +202,10 @@ static void event_process(void)
 
 static void engine_frame(void)
 {
-    Walrus_App          *app     = s_engine->app;
-    Walrus_Window       *window  = &s_engine->window;
-    Walrus_Input        *input   = &s_engine->input;
-    Walrus_EngineOption *opt     = &s_engine->opt;
+    Walrus_App          *app    = s_engine->app;
+    Walrus_Window       *window = &s_engine->window;
+    Walrus_Input        *input  = &s_engine->input;
+    Walrus_EngineOption *opt    = &s_engine->opt;
     walrus_assert_msg(opt->minfps > 0, "Invalid min fps");
     walrus_assert_msg(app->tick != NULL, "Invalid tick function");
     walrus_assert_msg(app->render != NULL, "Invalid render function");
@@ -270,6 +277,8 @@ Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height,
     opt.window_flags      = WR_WINDOW_FLAG_VSYNC | WR_WINDOW_FLAG_OPENGL;
     opt.minfps            = 30.f;
     opt.shader_folder     = "shaders";
+    opt.log_file          = "walrus.log";
+    opt.log_file_level    = 0;
     opt.single_thread     = false;
     opt.thread_pool_size  = 8;
 

@@ -12,10 +12,16 @@ typedef struct {
     u8   device;
     u32  button;
     u8   mods;
-    f32  scale;
+    vec3 scale;
     bool action;
     bool down;
 } ButtonMapping;
+
+typedef struct {
+    u8   device;
+    u8   axis;
+    vec3 scale;
+} AxisMapping;
 
 typedef struct {
     Walrus_Array *btns;
@@ -30,6 +36,7 @@ static Mappings *mapping_create(void)
 {
     Mappings *mapping    = walrus_new(Mappings, 1);
     mapping->btns        = walrus_array_create(sizeof(ButtonMapping), 0);
+    mapping->axes        = walrus_array_create(sizeof(AxisMapping), 0);
     mapping->axis_func   = NULL;
     mapping->action_func = NULL;
     mapping->userdata    = NULL;
@@ -40,6 +47,7 @@ static void mapping_free(void *ptr)
 {
     Mappings *mapping = ptr;
     walrus_array_destroy(mapping->btns);
+    walrus_array_destroy(mapping->axes);
     walrus_free(mapping);
 }
 
@@ -54,7 +62,24 @@ void walrus_control_map_shutdown(Walrus_ControlMap *map)
     walrus_hash_table_destroy(map->mapping);
 }
 
-void walrus_control_add_axis_button(Walrus_ControlMap *map, char const *name, u8 device, u32 button, f32 scale,
+void walrus_control_add_axis_axis(Walrus_ControlMap *map, char const *name, u8 device, u8 axis, vec3 scale)
+{
+    Mappings *mapping = NULL;
+    if (walrus_hash_table_contains(map->mapping, name)) {
+        mapping = walrus_hash_table_lookup(map->mapping, name);
+    }
+    else {
+        mapping = mapping_create();
+        walrus_hash_table_insert(map->mapping, walrus_str_dup(name), mapping);
+    }
+    AxisMapping am;
+    am.device = device;
+    am.axis   = axis;
+    glm_vec3_copy(scale, am.scale);
+    walrus_array_append(mapping->axes, &am);
+}
+
+void walrus_control_add_axis_button(Walrus_ControlMap *map, char const *name, u8 device, u32 button, vec3 scale,
                                     bool down)
 {
     Mappings *mapping = NULL;
@@ -69,7 +94,7 @@ void walrus_control_add_axis_button(Walrus_ControlMap *map, char const *name, u8
     btn.device = device;
     btn.button = button;
     btn.mods   = 0;
-    btn.scale  = scale;
+    glm_vec3_copy(scale, btn.scale);
     btn.down   = down;
     btn.action = false;
     walrus_array_append(mapping->btns, &btn);
@@ -89,7 +114,7 @@ void walrus_control_add_action_button(Walrus_ControlMap *map, char const *name, 
     btn.device = device;
     btn.button = button;
     btn.mods   = 0;
-    btn.scale  = 0;
+    glm_vec3_zero(btn.scale);
     btn.down   = false;
     btn.action = true;
     walrus_array_append(mapping->btns, &btn);
@@ -174,6 +199,27 @@ void foreach_axis_control(void const *key, void const *value, void *userdata)
         }
         if (trigger) {
             mapping->axis_func(btn->scale, mapping->userdata);
+        }
+    }
+    u32 num_axes = walrus_array_len(mapping->axes);
+    for (u32 i = 0; i < num_axes; ++i) {
+        bool                trigger = false;
+        Walrus_InputDevice *device  = NULL;
+
+        AxisMapping *axis = walrus_array_get(mapping->axes, i);
+
+        if (axis->device == WR_INPUT_MOUSE) {
+            device = input->mouse;
+        }
+
+        vec3 rel;
+        if (device) {
+            walrus_input_relaxis(device, axis->axis, &rel[0], &rel[1], &rel[2]);
+            trigger = glm_vec3_norm2(rel) > 0;
+        }
+        if (trigger) {
+            glm_vec3_mul(rel, axis->scale, rel);
+            mapping->axis_func(rel, mapping->userdata);
         }
     }
 }

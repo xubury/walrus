@@ -100,7 +100,7 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_animator_bind(&data->animator, &data->model);
     walrus_animator_play(&data->animator, 0);
 
-    walrus_fps_controller_init(&data->fps_controller, 5.0);
+    walrus_fps_controller_init(&data->fps_controller, 10.0, (vec2){3.0, 3.0}, 20.0);
 
     return WR_APP_SUCCESS;
 }
@@ -229,6 +229,17 @@ void on_shutdown(Walrus_App *app)
     walrus_model_shutdown(&data->model);
 }
 
+void on_event(Walrus_App *app, Walrus_Event *e)
+{
+    walrus_unused(app);
+
+    if (e->type == WR_EVENT_TYPE_BUTTON) {
+        if (e->button.device == WR_INPUT_KEYBOARD && e->button.button == WR_KEY_ESCAPE) {
+            walrus_engine_exit();
+        }
+    }
+}
+
 int main(void)
 {
     Walrus_App *app = walrus_app_create(walrus_new(AppData, 1));
@@ -236,6 +247,7 @@ int main(void)
     walrus_app_set_render(app, on_render);
     walrus_app_set_tick(app, on_tick);
     walrus_app_set_shutdown(app, on_shutdown);
+    walrus_app_set_event(app, on_event);
 
     walrus_engine_init_run("gltf", 1440, 900, app);
 

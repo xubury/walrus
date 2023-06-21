@@ -6,6 +6,8 @@
 #include <rhi/rhi.h>
 
 typedef struct {
+    char const       *log_file;
+    u32               log_file_level;
     char const       *window_title;
     u32               window_flags;
     Walrus_Resolution resolution;
