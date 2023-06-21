@@ -2,8 +2,6 @@
 #include <core/macro.h>
 #include <core/memory.h>
 
-#include "app_p.h"
-
 static void dummy(Walrus_App *app)
 {
     walrus_unused(app);
@@ -46,39 +44,4 @@ Walrus_App *walrus_app_create(void *userdata)
 void walrus_app_destroy(Walrus_App *app)
 {
     walrus_free(app);
-}
-
-void walrus_app_set_userdata(Walrus_App *app, void *userdata)
-{
-    app->userdata = userdata;
-}
-
-void *walrus_app_userdata(Walrus_App *app)
-{
-    return app->userdata;
-}
-
-void walrus_app_set_init(Walrus_App *app, Walrus_AppInitCallback init)
-{
-    app->init = init;
-}
-
-void walrus_app_set_shutdown(Walrus_App *app, Walrus_AppShutdownCallback shutdown)
-{
-    app->shutdown = shutdown;
-}
-
-void walrus_app_set_tick(Walrus_App *app, Walrus_AppTickCallback tick)
-{
-    app->tick = tick;
-}
-
-void walrus_app_set_render(Walrus_App *app, Walrus_AppRenderCallback render)
-{
-    app->render = render;
-}
-
-void walrus_app_set_event(Walrus_App *app, Walrus_AppEventCallback event)
-{
-    app->event = event;
 }

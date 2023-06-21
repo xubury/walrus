@@ -12,7 +12,7 @@ typedef struct {
 
 Walrus_AppError on_init(Walrus_App *app)
 {
-    AppData *data = walrus_app_userdata(app);
+    AppData *data = app->userdata;
 
     u32 width  = 1440;
     u32 height = 900;
@@ -30,7 +30,7 @@ Walrus_AppError on_init(Walrus_App *app)
 
 void on_render(Walrus_App *app)
 {
-    AppData *data = walrus_app_userdata(app);
+    AppData *data = app->userdata;
 
     walrus_batch_render_begin(0, WR_RHI_STATE_DEFAULT | WR_RHI_STATE_BLEND_ALPHA);
     mat4 m = GLM_MAT4_IDENTITY_INIT;
@@ -59,11 +59,7 @@ void on_render(Walrus_App *app)
 
 int main(void)
 {
-    Walrus_App *app = walrus_app_create(malloc(sizeof(AppData)));
-    walrus_app_set_init(app, on_init);
-    walrus_app_set_render(app, on_render);
-
-    walrus_engine_init_run("ttf", 1440, 900, app);
-
+    Walrus_App app = {.init = on_init, .render = on_render, .userdata = walrus_malloc(sizeof(AppData))};
+    walrus_engine_init_run("ttf", 1440, 900, &app);
     return 0;
 }

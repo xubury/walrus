@@ -262,7 +262,7 @@ void foreach_action_control(void const *key, void const *value, void *userdata)
 
 void walrus_control_map_tick(Walrus_ControlMap *map)
 {
-    Walrus_Input *input = walrus_engine_input();
+    Walrus_Input *input = walrus_engine_vars()->input;
     walrus_hash_table_foreach(map->mapping, foreach_axis_control, input);
     walrus_hash_table_foreach(map->mapping, foreach_action_control, input);
 }

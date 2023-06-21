@@ -237,7 +237,7 @@ static void place_grid(Romantik_GameState *state, i32 q, i32 r)
 void game_state_tick(Romantik_GameState *state, f32 dt)
 {
     camera_tick(&state->cam, dt);
-    Walrus_Input  *input = walrus_engine_input();
+    Walrus_Input  *input = walrus_engine_vars()->input;
     Romantik_Game *game  = &state->game;
     HexMap        *map   = &game->map;
     state->hide_picker   = true;

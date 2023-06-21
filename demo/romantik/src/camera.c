@@ -28,9 +28,10 @@ static void camera_update_view(CameraData *cam)
 
 void camera_tick(CameraData *cam, f32 dt)
 {
-    Walrus_Input *input = walrus_engine_input();
-    bool          move  = false;
-    vec3          step  = {0, 0, 0};
+    Walrus_Input *input = walrus_engine_vars()->input;
+
+    bool move = false;
+    vec3 step = {0, 0, 0};
     if (walrus_input_down(input->keyboard, WR_KEY_W)) {
         move = true;
         glm_vec3_add(step, (vec3){0, 0, -1}, step);

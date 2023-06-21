@@ -51,3 +51,13 @@ void walrus_camera_update(Walrus_Camera *camera)
     update_view(camera);
     update_projection(camera);
 }
+
+bool walrus_camera_cull_test(Walrus_Camera *camera, Walrus_BoundingBox *box)
+{
+    walrus_unused(camera);
+    walrus_unused(box);
+
+    // TODO:
+
+    return true;
+}

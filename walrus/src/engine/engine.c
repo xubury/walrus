@@ -15,12 +15,7 @@
 #include <core/thread.h>
 #include <core/mutex.h>
 
-#include "app_p.h"
-#include "window_p.h"
-
-#include <string.h>
-#include <stdio.h>
-#include <math.h>
+#include "window_private.h"
 
 struct Walrus_Engine {
     Walrus_EngineOption opt;
@@ -30,10 +25,12 @@ struct Walrus_Engine {
     FILE               *log_file;
     Walrus_Window       window;
     Walrus_Input        input;
+    ecs_world_t        *ecs;
     bool                quit;
 };
 
-static Walrus_Engine *s_engine = NULL;
+static Walrus_Engine    *s_engine = NULL;
+static Walrus_EngineVars s_vars;
 
 #if WR_PLATFORM == WR_PLATFORM_WASM
 
@@ -129,11 +126,15 @@ static Walrus_EngineError register_service(void)
 
     walrus_imgui_init();
 
+    s_engine->ecs = ecs_init();
+
     return WR_ENGINE_SUCCESS;
 }
 
 static void release_service(void)
 {
+    ecs_fini(s_engine->ecs);
+
     walrus_imgui_shutdown();
 
     walrus_batch_render_shutdown();
@@ -319,7 +320,8 @@ Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
 
     Walrus_EngineError error = WR_ENGINE_SUCCESS;
 
-    error = register_service();
+    error  = register_service();
+    s_vars = (Walrus_EngineVars){.input = &s_engine->input, .window = &s_engine->window, .ecs = s_engine->ecs};
 
     return error;
 }
@@ -331,6 +333,8 @@ void walrus_engine_shutdown(void)
     }
 
     walrus_engine_exit();
+
+    s_vars = (Walrus_EngineVars){0};
 
     release_service();
 
@@ -396,12 +400,7 @@ Walrus_App *walrus_engine_exit(void)
     return s_engine->app;
 }
 
-Walrus_Window *walrus_engine_window(void)
+Walrus_EngineVars *walrus_engine_vars(void)
 {
-    return &s_engine->window;
-}
-
-Walrus_Input *walrus_engine_input(void)
-{
-    return &s_engine->input;
+    return &s_vars;
 }

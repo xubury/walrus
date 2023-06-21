@@ -3,7 +3,7 @@
 #include <core/platform.h>
 #include <core/memory.h>
 
-#include "window_p.h"
+#include "window_private.h"
 
 #if WR_PLATFORM == WR_PLATFORM_WASM
 void wajs_create_window(char const *title, u32 width, u32 height);

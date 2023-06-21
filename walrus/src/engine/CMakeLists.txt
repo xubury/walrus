@@ -1,6 +1,7 @@
 find_package(stb REQUIRED)
 find_package(cgltf REQUIRED)
 find_package(mikktspace REQUIRED)
+find_package(flecs REQUIRED)
 
 add_library(
   walrus_engine STATIC
@@ -27,7 +28,7 @@ target_include_directories(walrus_engine PUBLIC ${walrus_root_dir}/include)
 
 target_link_libraries(
   walrus_engine
-  PUBLIC walrus_core walrus_rhi cimgui
+  PUBLIC walrus_core walrus_rhi cimgui flecs::flecs
   PRIVATE stb::stb cgltf::cgltf mikktspace::mikktspace)
 
 if(WASM)

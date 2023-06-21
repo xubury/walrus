@@ -5,6 +5,8 @@
 #include <engine/input.h>
 #include <rhi/rhi.h>
 
+#include <flecs.h>
+
 typedef struct {
     char const       *log_file;
     u32               log_file_level;
@@ -16,6 +18,12 @@ typedef struct {
     char const       *shader_folder;
     u8                thread_pool_size;
 } Walrus_EngineOption;
+
+typedef struct {
+    Walrus_Window *window;
+    Walrus_Input  *input;
+    ecs_world_t   *ecs;
+} Walrus_EngineVars;
 
 typedef struct Walrus_Engine Walrus_Engine;
 
@@ -46,8 +54,4 @@ Walrus_AppError walrus_engine_run(Walrus_App *app);
 // Exit current app, return exited app
 Walrus_App *walrus_engine_exit(void);
 
-// Get engine main window
-Walrus_Window *walrus_engine_window(void);
-
-// Get engine input
-Walrus_Input *walrus_engine_input(void);
+Walrus_EngineVars *walrus_engine_vars(void);

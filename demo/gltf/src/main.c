@@ -54,7 +54,7 @@ static void setup_texture_uniforms(AppData *data)
 
 Walrus_AppError on_init(Walrus_App *app)
 {
-    AppData *data = walrus_app_userdata(app);
+    AppData *data = app->userdata;
 
     glm_mat4_identity(data->world);
     data->u_albedo          = walrus_rhi_create_uniform("u_albedo", WR_RHI_UNIFORM_SAMPLER, 1);
@@ -186,7 +186,7 @@ static void primitive_callback(Walrus_MeshPrimitive *prim, void *userdata)
 
 void on_render(Walrus_App *app)
 {
-    AppData *data = walrus_app_userdata(app);
+    AppData *data = app->userdata;
 
     walrus_rhi_set_view_transform(0, data->camera.view, data->camera.projection);
 
@@ -215,7 +215,8 @@ void on_render(Walrus_App *app)
 
 void on_tick(Walrus_App *app, f32 dt)
 {
-    AppData *data = walrus_app_userdata(app);
+    AppData *data = app->userdata;
+
     glm_rotate(data->world, glm_rad(20.0) * dt, (vec3){0, 1, 0});
     walrus_animator_tick(&data->animator, dt);
     walrus_fps_controller_tick(&data->fps_controller, &data->camera.transform, dt);
@@ -225,7 +226,7 @@ void on_tick(Walrus_App *app, f32 dt)
 
 void on_shutdown(Walrus_App *app)
 {
-    AppData *data = walrus_app_userdata(app);
+    AppData *data = app->userdata;
     walrus_model_shutdown(&data->model);
 }
 
@@ -242,14 +243,14 @@ void on_event(Walrus_App *app, Walrus_Event *e)
 
 int main(void)
 {
-    Walrus_App *app = walrus_app_create(walrus_new(AppData, 1));
-    walrus_app_set_init(app, on_init);
-    walrus_app_set_render(app, on_render);
-    walrus_app_set_tick(app, on_tick);
-    walrus_app_set_shutdown(app, on_shutdown);
-    walrus_app_set_event(app, on_event);
+    Walrus_App app = {.init     = on_init,
+                      .shutdown = on_shutdown,
+                      .tick     = on_tick,
+                      .render   = on_render,
+                      .event    = on_event,
+                      .userdata = walrus_malloc(sizeof(AppData))};
 
-    walrus_engine_init_run("gltf", 1440, 900, app);
+    walrus_engine_init_run("gltf", 1440, 900, &app);
 
     return 0;
 }

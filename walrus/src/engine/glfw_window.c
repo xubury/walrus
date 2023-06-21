@@ -1,4 +1,5 @@
 #include "glfw_window.h"
+#include "window_private.h"
 
 #include <engine/window.h>
 #include <engine/event.h>

@@ -8,13 +8,13 @@
 
 void on_render(Walrus_App *app)
 {
-    Romantik_GameState *state = walrus_app_userdata(app);
+    Romantik_GameState *state = app->userdata;
     game_state_render(state);
 }
 
 void on_tick(Walrus_App *app, float dt)
 {
-    Romantik_GameState *state = walrus_app_userdata(app);
+    Romantik_GameState *state = app->userdata;
     game_state_tick(state, dt);
 }
 
@@ -41,7 +41,7 @@ void on_event(Walrus_App *app, Walrus_Event *e)
 
 Walrus_AppError on_init(Walrus_App *app)
 {
-    Romantik_GameState *state = walrus_app_userdata(app);
+    Romantik_GameState *state = app->userdata;
 
     game_state_init(state);
     return WR_APP_SUCCESS;
@@ -49,13 +49,13 @@ Walrus_AppError on_init(Walrus_App *app)
 
 int main(void)
 {
-    Walrus_App *app = walrus_app_create(walrus_malloc(sizeof(Romantik_GameState)));
-    walrus_app_set_init(app, on_init);
-    walrus_app_set_tick(app, on_tick);
-    walrus_app_set_render(app, on_render);
-    walrus_app_set_event(app, on_event);
+    Walrus_App app = {.init     = on_init,
+                      .tick     = on_tick,
+                      .render   = on_render,
+                      .event    = on_event,
+                      .userdata = walrus_malloc(sizeof(Romantik_GameState))};
 
-    walrus_engine_init_run("romantik", 1440, 900, app);
+    walrus_engine_init_run("romantik", 1440, 900, &app);
 
     return 0;
 }
