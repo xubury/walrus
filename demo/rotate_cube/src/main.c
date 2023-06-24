@@ -48,7 +48,7 @@ typedef struct {
     Walrus_LayoutHandle  uv_layout;
     Walrus_TextureHandle texture;
 
-    mat4 model;
+    mat4 character;
 
 } AppData;
 
@@ -56,7 +56,7 @@ void on_render(Walrus_App *app)
 {
     AppData *data = app->userdata;
 
-    walrus_rhi_set_transform(data->model);
+    walrus_rhi_set_transform(data->character);
     walrus_rhi_set_vertex_buffer(0, data->buffer, data->layout, 0, UINT32_MAX);
     walrus_rhi_set_vertex_buffer(1, data->uv_buffer, data->uv_layout, 0, UINT32_MAX);
     walrus_rhi_set_index_buffer(data->index_buffer, 0, UINT32_MAX);
@@ -70,7 +70,7 @@ void on_render(Walrus_App *app)
 void on_tick(Walrus_App *app, float dt)
 {
     AppData *data = app->userdata;
-    glm_rotate(data->model, 1.0 * dt, (vec3){0, 1, 0});
+    glm_rotate(data->character, 1.0 * dt, (vec3){0, 1, 0});
 }
 
 void on_event(Walrus_App *app, Walrus_Event *e)
@@ -214,8 +214,8 @@ Walrus_AppError on_init(Walrus_App *app)
     Walrus_ShaderHandle fs = walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, layer_fs_src);
     data->map_shader       = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs, fs}, 2, true);
 
-    glm_mat4_identity(data->model);
-    glm_translate(data->model, (vec3){0, 0, -2});
+    glm_mat4_identity(data->character);
+    glm_translate(data->character, (vec3){0, 0, -2});
 
     u64          ts = walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC);
     Walrus_Image image;

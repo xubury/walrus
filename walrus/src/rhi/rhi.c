@@ -911,14 +911,14 @@ void walrus_rhi_set_view_clear(u16 view_id, u16 flags, u32 rgba, f32 depth, u8 s
     clear->stencil = stencil;
 }
 
-void walrus_rhi_set_view_transform(u16 view_id, mat4 view, mat4 projection)
+void walrus_rhi_set_view_transform(u16 view_id, mat4 const view, mat4 const projection)
 {
     RenderView* v = &s_ctx->views[view_id];
     if (view) {
-        glm_mat4_copy(view, v->view);
+        glm_mat4_copy((vec4*)view, v->view);
     }
     if (projection) {
-        glm_mat4_copy(projection, v->projection);
+        glm_mat4_copy((vec4*)projection, v->projection);
     }
 }
 

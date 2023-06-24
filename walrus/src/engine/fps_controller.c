@@ -15,16 +15,17 @@ static void fps_rotation(vec3 scale, void *userdata)
 {
     Walrus_FpsController *controller = userdata;
 
-    vec3 tmp;
+    vec2 tmp;
     glm_vec2_mul(scale, controller->rotate_speed, tmp);
     glm_vec2_add(controller->rotation, tmp, controller->rotation);
+    glm_vec2_clamp(controller->rotation, -180, 180);
 }
 
 void walrus_fps_controller_init(Walrus_FpsController *controller, f32 speed, vec2 rotation_speed, f32 smoothness)
 {
     walrus_control_map_init(&controller->map);
-    walrus_control_bind_axis(&controller->map, "FpsMovement", fps_movement, controller);
-    walrus_control_bind_axis(&controller->map, "FpsRotation", fps_rotation, controller);
+    walrus_control_bind_axis(&controller->map, "FpsMovement", fps_movement);
+    walrus_control_bind_axis(&controller->map, "FpsRotation", fps_rotation);
     walrus_control_add_axis_button(&controller->map, "FpsMovement", WR_INPUT_KEYBOARD, WR_KEY_W, (vec3){0, 0, -1},
                                    true);
     walrus_control_add_axis_button(&controller->map, "FpsMovement", WR_INPUT_KEYBOARD, WR_KEY_S, (vec3){0, 0, 1}, true);
@@ -36,8 +37,8 @@ void walrus_fps_controller_init(Walrus_FpsController *controller, f32 speed, vec
 
     glm_vec3_zero(controller->translation);
     glm_vec3_zero(controller->smooth_translation);
-    glm_vec3_zero(controller->rotation);
-    glm_vec3_zero(controller->smooth_rotation);
+    glm_vec2_zero(controller->rotation);
+    glm_vec2_zero(controller->smooth_rotation);
 
     controller->speed = speed;
     glm_vec2_copy(rotation_speed, controller->rotate_speed);
@@ -75,7 +76,8 @@ static void to_euler(versor quat, vec3 euler)
 
 void walrus_fps_controller_tick(Walrus_FpsController *controller, Walrus_Transform *transform, f32 dt)
 {
-    walrus_control_map_tick(&controller->map);
+    walrus_control_map_tick(&controller->map, controller);
+
     glm_vec3_scale(controller->translation, dt, controller->translation);
     glm_vec3_lerp(controller->smooth_translation, controller->translation,
                   walrus_clamp(dt * controller->smoothness, 0.f, 1.0f), controller->smooth_translation);
@@ -108,6 +110,6 @@ void walrus_fps_controller_tick(Walrus_FpsController *controller, Walrus_Transfo
     if (glm_vec3_norm2(controller->smooth_translation) > 0) {
         vec3 local;
         glm_mat3_mulv(controller->ground_transform, controller->smooth_translation, local);
-        walrus_transfrom_translate(transform, local);
+        walrus_transform_translate(transform, local);
     }
 }

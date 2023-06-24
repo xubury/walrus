@@ -4,6 +4,10 @@
 #include <engine/shader_library.h>
 #include <engine/thread_pool.h>
 #include <engine/imgui.h>
+#include <engine/systems/controller_system.h>
+#include <engine/systems/camera_system.h>
+#include <engine/systems/animator_system.h>
+#include <engine/systems/render_system.h>
 #include <rhi/rhi.h>
 #include <core/type.h>
 #include <core/sys.h>
@@ -30,7 +34,7 @@ struct Walrus_Engine {
 };
 
 static Walrus_Engine    *s_engine = NULL;
-static Walrus_EngineVars s_vars;
+static Walrus_EngineVars s_vars   = {0};
 
 #if WR_PLATFORM == WR_PLATFORM_WASM
 
@@ -197,7 +201,9 @@ static void event_process(void)
                 break;
         }
         walrus_imgui_process_event(&e);
-        app->event(app, &e);
+        if (app->event) {
+            app->event(app, &e);
+        }
     }
 }
 
@@ -206,11 +212,9 @@ static void engine_frame(void)
     Walrus_App          *app    = s_engine->app;
     Walrus_Window       *window = &s_engine->window;
     Walrus_Input        *input  = &s_engine->input;
+    ecs_world_t         *ecs    = s_engine->ecs;
     Walrus_EngineOption *opt    = &s_engine->opt;
     walrus_assert_msg(opt->minfps > 0, "Invalid min fps");
-    walrus_assert_msg(app->tick != NULL, "Invalid tick function");
-    walrus_assert_msg(app->render != NULL, "Invalid render function");
-    walrus_assert_msg(app->event != NULL, "Invalid event function");
 
     f32 const max_spf = 1.0 / s_engine->opt.minfps;
 
@@ -229,14 +233,23 @@ static void engine_frame(void)
 
     while (sec_elapesd > max_spf) {
         sec_elapesd -= max_spf;
-        app->tick(app, max_spf);
+        if (app->tick) {
+            app->tick(app, max_spf);
+        }
+        ecs_progress(ecs, max_spf);
     }
 
     if (sec_elapesd > 0) {
-        app->tick(app, sec_elapesd);
+        if (app->tick) {
+            app->tick(app, sec_elapesd);
+        }
+        ecs_progress(ecs, sec_elapesd);
     }
 
-    app->render(app);
+    walrus_render_system_render();
+    if (app->render) {
+        app->render(app);
+    }
 
     if (input_timer > 1.0 / 60.0) {
         walrus_inputs_tick(input);
@@ -301,6 +314,18 @@ Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height,
     }
 }
 
+static void systems_init(void)
+{
+    walrus_controller_system_init();
+    walrus_camera_system_init();
+    walrus_animator_system_init();
+    walrus_render_system_init();
+}
+
+static void systems_shutdown(void)
+{
+}
+
 Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
 {
     s_engine = walrus_malloc(sizeof(Walrus_Engine));
@@ -320,8 +345,12 @@ Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
 
     Walrus_EngineError error = WR_ENGINE_SUCCESS;
 
-    error  = register_service();
-    s_vars = (Walrus_EngineVars){.input = &s_engine->input, .window = &s_engine->window, .ecs = s_engine->ecs};
+    error = register_service();
+    if (error == WR_ENGINE_SUCCESS) {
+        s_vars = (Walrus_EngineVars){.input = &s_engine->input, .window = &s_engine->window, .ecs = s_engine->ecs};
+
+        systems_init();
+    }
 
     return error;
 }
@@ -333,6 +362,8 @@ void walrus_engine_shutdown(void)
     }
 
     walrus_engine_exit();
+
+    systems_shutdown();
 
     s_vars = (Walrus_EngineVars){0};
 
@@ -355,7 +386,9 @@ static Walrus_AppError app_init(Walrus_App *app)
 static void app_shutdown(void)
 {
     Walrus_App *app = s_engine->app;
-    app->shutdown(app);
+    if (app->shutdown) {
+        app->shutdown(app);
+    }
     s_engine->app = NULL;
 }
 

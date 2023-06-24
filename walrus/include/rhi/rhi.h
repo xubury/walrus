@@ -25,7 +25,7 @@ void walrus_rhi_set_scissor(i32 x, i32 y, u32 width, u32 height);
 
 void walrus_rhi_set_view_rect(u16 view_id, i32 x, i32 y, u32 width, u32 height);
 void walrus_rhi_set_view_clear(u16 view_id, u16 flags, u32 rgba, f32 depth, u8 stencil);
-void walrus_rhi_set_view_transform(u16 view_id, mat4 view, mat4 projection);
+void walrus_rhi_set_view_transform(u16 view_id, mat4 const view, mat4 const projection);
 void walrus_rhi_set_view_mode(u16 view_id, Walrus_ViewMode mode);
 
 void walrus_rhi_screen_to_clip(u16 view_id, vec2 const screen, vec2 clip);

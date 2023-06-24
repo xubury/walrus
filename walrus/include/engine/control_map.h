@@ -20,10 +20,10 @@ void walrus_control_add_axis_button(Walrus_ControlMap *map, char const *name, u8
                                     bool down);
 void walrus_control_add_action_button(Walrus_ControlMap *map, char const *name, u8 device, u32 button);
 
-void walrus_control_bind_axis(Walrus_ControlMap *map, char const *name, Walrus_AxisCallback func, void *userdata);
-void walrus_control_bind_action(Walrus_ControlMap *map, char const *name, Walrus_ActionCallback func, void *userdata);
+void walrus_control_bind_axis(Walrus_ControlMap *map, char const *name, Walrus_AxisCallback func);
+void walrus_control_bind_action(Walrus_ControlMap *map, char const *name, Walrus_ActionCallback func);
 
 void walrus_control_unbind(Walrus_ControlMap *map, char const *name);
 void walrus_control_clear(Walrus_ControlMap *map, char const *name);
 
-void walrus_control_map_tick(Walrus_ControlMap *map);
+void walrus_control_map_tick(Walrus_ControlMap *map, void *userdata);

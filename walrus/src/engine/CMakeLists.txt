@@ -5,11 +5,16 @@ find_package(flecs REQUIRED)
 
 add_library(
   walrus_engine STATIC
+  systems/animator_system.c
+  systems/camera_system.c
+  systems/controller_system.c
+  systems/render_system.c
   animator.c
   app.c
   batch_renderer.c
   camera.c
   control_map.c
+  deferred_renderer.c
   engine.c
   event.c
   font.c

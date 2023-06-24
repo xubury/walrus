@@ -1,12 +1,13 @@
 #include <core/transform.h>
+#include <core/type.h>
 #include <cglm/cglm.h>
 
-void walrus_transform_compose(Walrus_Transform *transform, mat4 matrix)
+void walrus_transform_compose(Walrus_Transform const *transform, mat4 matrix)
 {
     mat4 t, r, s;
-    glm_quat_mat4(transform->rot, r);
-    glm_translate_to(GLM_MAT4_IDENTITY, transform->trans, t);
-    glm_scale_to(GLM_MAT4_IDENTITY, transform->scale, s);
+    glm_quat_mat4((f32 *)transform->rot, r);
+    glm_translate_to(GLM_MAT4_IDENTITY, (f32 *)transform->trans, t);
+    glm_scale_to(GLM_MAT4_IDENTITY, (f32 *)transform->scale, s);
 
     glm_mat4_mulN((mat4 *[]){&t, &r, &s}, 3, matrix);
 }
@@ -33,17 +34,17 @@ void walrus_transform_front(Walrus_Transform *transform, vec3 front)
     glm_quat_rotatev(transform->rot, (vec3){0, 0, 1}, front);
 }
 
-void walrus_transfrom_translate(Walrus_Transform *transform, vec3 trans)
+void walrus_transform_translate(Walrus_Transform *transform, vec3 trans)
 {
     glm_vec3_add(transform->trans, trans, transform->trans);
 }
 
-void walrus_transfrom_rotate(Walrus_Transform *transform, versor rot)
+void walrus_transform_rotate(Walrus_Transform *transform, versor rot)
 {
     glm_quat_mul(transform->rot, rot, transform->rot);
 }
 
-void walrus_transfrom_scale(Walrus_Transform *transform, vec3 scale)
+void walrus_transform_scale(Walrus_Transform *transform, vec3 scale)
 {
     glm_vec3_mul(transform->scale, scale, transform->scale);
 }

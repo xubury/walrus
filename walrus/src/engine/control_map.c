@@ -29,7 +29,6 @@ typedef struct {
 
     Walrus_AxisCallback   axis_func;
     Walrus_ActionCallback action_func;
-    void                 *userdata;
 } Mappings;
 
 static Mappings *mapping_create(void)
@@ -39,7 +38,6 @@ static Mappings *mapping_create(void)
     mapping->axes        = walrus_array_create(sizeof(AxisMapping), 0);
     mapping->axis_func   = NULL;
     mapping->action_func = NULL;
-    mapping->userdata    = NULL;
     return mapping;
 }
 
@@ -120,7 +118,7 @@ void walrus_control_add_action_button(Walrus_ControlMap *map, char const *name, 
     walrus_array_append(mapping->btns, &btn);
 }
 
-void walrus_control_bind_axis(Walrus_ControlMap *map, char const *name, Walrus_AxisCallback func, void *userdata)
+void walrus_control_bind_axis(Walrus_ControlMap *map, char const *name, Walrus_AxisCallback func)
 {
     Mappings *mapping = NULL;
     if (walrus_hash_table_contains(map->mapping, name)) {
@@ -131,10 +129,9 @@ void walrus_control_bind_axis(Walrus_ControlMap *map, char const *name, Walrus_A
         walrus_hash_table_insert(map->mapping, walrus_str_dup(name), mapping);
     }
     mapping->axis_func = func;
-    mapping->userdata  = userdata;
 }
 
-void walrus_control_bind_action(Walrus_ControlMap *map, char const *name, Walrus_ActionCallback func, void *userdata)
+void walrus_control_bind_action(Walrus_ControlMap *map, char const *name, Walrus_ActionCallback func)
 {
     Mappings *mapping = NULL;
     if (walrus_hash_table_contains(map->mapping, name)) {
@@ -145,7 +142,6 @@ void walrus_control_bind_action(Walrus_ControlMap *map, char const *name, Walrus
         walrus_hash_table_insert(map->mapping, walrus_str_dup(name), mapping);
     }
     mapping->action_func = func;
-    mapping->userdata    = userdata;
 }
 
 void walrus_control_unbind(Walrus_ControlMap *map, char const *name)
@@ -165,8 +161,8 @@ void walrus_control_clear(Walrus_ControlMap *map, char const *name)
 void foreach_axis_control(void const *key, void const *value, void *userdata)
 {
     walrus_unused(key);
+    Walrus_Input   *input   = walrus_engine_vars()->input;
     Mappings const *mapping = value;
-    Walrus_Input   *input   = userdata;
     if (mapping->axis_func == NULL) {
         return;
     }
@@ -198,7 +194,7 @@ void foreach_axis_control(void const *key, void const *value, void *userdata)
             }
         }
         if (trigger) {
-            mapping->axis_func(btn->scale, mapping->userdata);
+            mapping->axis_func(btn->scale, userdata);
         }
     }
     u32 num_axes = walrus_array_len(mapping->axes);
@@ -219,7 +215,7 @@ void foreach_axis_control(void const *key, void const *value, void *userdata)
         }
         if (trigger) {
             glm_vec3_mul(rel, axis->scale, rel);
-            mapping->axis_func(rel, mapping->userdata);
+            mapping->axis_func(rel, userdata);
         }
     }
 }
@@ -227,8 +223,8 @@ void foreach_axis_control(void const *key, void const *value, void *userdata)
 void foreach_action_control(void const *key, void const *value, void *userdata)
 {
     walrus_unused(key);
+    Walrus_Input   *input   = walrus_engine_vars()->input;
     Mappings const *mapping = value;
-    Walrus_Input   *input   = userdata;
     if (mapping->action_func == NULL) {
         return;
     }
@@ -255,14 +251,13 @@ void foreach_action_control(void const *key, void const *value, void *userdata)
             trigger = walrus_input_pressed(device, btn->button);
         }
         if (trigger) {
-            mapping->action_func(mapping->userdata);
+            mapping->action_func(userdata);
         }
     }
 }
 
-void walrus_control_map_tick(Walrus_ControlMap *map)
+void walrus_control_map_tick(Walrus_ControlMap *map, void *userdata)
 {
-    Walrus_Input *input = walrus_engine_vars()->input;
-    walrus_hash_table_foreach(map->mapping, foreach_axis_control, input);
-    walrus_hash_table_foreach(map->mapping, foreach_action_control, input);
+    walrus_hash_table_foreach(map->mapping, foreach_axis_control, userdata);
+    walrus_hash_table_foreach(map->mapping, foreach_action_control, userdata);
 }

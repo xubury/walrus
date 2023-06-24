@@ -4,8 +4,6 @@
 #include <core/transform.h>
 
 typedef struct {
-    Walrus_Transform transform;
-
     f32 fov;
     f32 aspect;
     f32 near_z;
@@ -22,10 +20,11 @@ typedef struct {
     vec3 max;
 } Walrus_BoundingBox;
 
-void walrus_camera_init(Walrus_Camera *camera, vec3 pos, versor rot, f32 fov, f32 aspect, f32 near_z, f32 far_z);
+void walrus_camera_init(Walrus_Camera *camera, vec3 const pos, versor const rot, f32 fov, f32 aspect, f32 near_z,
+                        f32 far_z);
 
 void walrus_camera_mark_dirty(Walrus_Camera *camera);
 
-void walrus_camera_update(Walrus_Camera *camera);
+void walrus_camera_update(Walrus_Camera *camera, Walrus_Transform const *transform);
 
 bool walrus_camera_cull_test(Walrus_Camera *camera, Walrus_BoundingBox *box);

@@ -5,15 +5,15 @@
 #include <cglm/cglm.h>
 #include <string.h>
 
-static void node_traverse(Walrus_Animator *animator, Walrus_ModelNode *root, Walrus_Transform *worlds,
-                          Walrus_Transform *locals)
+static void node_traverse(Walrus_Animator *animator, Walrus_Model const *model, Walrus_ModelNode *root,
+                          Walrus_Transform *worlds, Walrus_Transform *locals)
 {
     for (u32 i = 0; i < root->num_children; ++i) {
         Walrus_ModelNode *child       = root->children[i];
-        u32               root_index  = root - &animator->model->nodes[0];
-        u32               child_index = child - &animator->model->nodes[0];
+        u32               root_index  = root - &model->nodes[0];
+        u32               child_index = child - &model->nodes[0];
         walrus_transform_mul(&worlds[root_index], &locals[child_index], &worlds[child_index]);
-        node_traverse(animator, root->children[i], worlds, locals);
+        node_traverse(animator, model, root->children[i], worlds, locals);
     }
 }
 
@@ -63,15 +63,15 @@ static void interpolate_frame(Walrus_AnimationInterpolation mode, f32 *prev, f32
     }
 }
 
-static void animator_apply(Walrus_Animator *animator)
+static void animator_apply(Walrus_Animator *animator, Walrus_Model const *model)
 {
     Walrus_Transform *worlds = walrus_array_get(animator->worlds, 0);
     Walrus_Transform *locals = walrus_array_get(animator->locals, 0);
 
-    for (u32 i = 0; i < animator->model->num_nodes; ++i) {
-        Walrus_ModelNode *node = &animator->model->nodes[i];
+    for (u32 i = 0; i < model->num_nodes; ++i) {
+        Walrus_ModelNode *node = &model->nodes[i];
         if (node->parent == NULL) {
-            node_traverse(animator, node, worlds, locals);
+            node_traverse(animator, model, node, worlds, locals);
         }
     }
 }
@@ -94,11 +94,37 @@ void walrus_animator_shutdown(Walrus_Animator *animator)
     walrus_array_destroy(animator->weight_offsets);
 }
 
+static void animator_reset(Walrus_Animator *animator, Walrus_Model const *model)
+{
+    animator->timestamp = 0;
+
+    Walrus_Animation const *animation = &model->animations[animator->index];
+    for (u32 i = 0; i < animation->num_channels; ++i) {
+        *(u32 *)walrus_array_get(animator->keys, i) = 0;
+    }
+
+    Walrus_Transform *locals = walrus_array_get(animator->locals, 0);
+    Walrus_Transform *worlds = walrus_array_get(animator->worlds, 0);
+
+    f32 *weights = walrus_array_get(animator->weights, 0);
+    u32 *offsets = walrus_array_get(animator->weight_offsets, 0);
+    for (u32 i = 0; i < model->num_nodes; ++i) {
+        Walrus_ModelNode *node = &model->nodes[i];
+        locals[i]              = node->local_transform;
+        worlds[i]              = node->world_transform;
+        if (node->mesh) {
+            memcpy(weights + offsets[i], node->mesh->weights, node->mesh->num_weights * sizeof(f32));
+        }
+    }
+    animator_apply(animator, model);
+}
+
 void walrus_animator_bind(Walrus_Animator *animator, Walrus_Model const *model)
 {
-    if (model->num_animations > 0) {
-        animator->model     = model;
-        animator->animation = &model->animations[0];
+    if (animator->index < model->num_animations) {
+        Walrus_Animation const *animation = &model->animations[animator->index];
+        walrus_array_resize(animator->keys, animation->num_channels);
+
         walrus_array_resize(animator->worlds, model->num_nodes);
         walrus_array_resize(animator->locals, model->num_nodes);
         walrus_array_resize(animator->weight_offsets, model->num_nodes);
@@ -113,58 +139,28 @@ void walrus_animator_bind(Walrus_Animator *animator, Walrus_Model const *model)
         }
 
         walrus_array_resize(animator->weights, num_weights);
+
+        animator_reset(animator, model);
     }
-}
-
-static void animator_reset(Walrus_Animator *animator)
-{
-    animator->timestamp = 0;
-
-    for (u32 i = 0; i < animator->animation->num_channels; ++i) {
-        *(u32 *)walrus_array_get(animator->keys, i) = 0;
-    }
-
-    Walrus_Transform *locals = walrus_array_get(animator->locals, 0);
-    Walrus_Transform *worlds = walrus_array_get(animator->worlds, 0);
-
-    f32 *weights = walrus_array_get(animator->weights, 0);
-    u32 *offsets = walrus_array_get(animator->weight_offsets, 0);
-    for (u32 i = 0; i < animator->model->num_nodes; ++i) {
-        Walrus_ModelNode *node = &animator->model->nodes[i];
-        locals[i]              = node->local_transform;
-        worlds[i]              = node->world_transform;
-        if (node->mesh) {
-            memcpy(weights + offsets[i], node->mesh->weights, node->mesh->num_weights * sizeof(f32));
-        }
-    }
-    animator_apply(animator);
 }
 
 void walrus_animator_play(Walrus_Animator *animator, u32 index)
 {
-    if (index >= animator->model->num_animations) {
-        return;
-    }
-
-    animator->animation = &animator->model->animations[index];
-    animator->playing   = true;
-    animator->repeat    = true;
-
-    walrus_array_resize(animator->keys, animator->animation->num_channels);
-
-    animator_reset(animator);
+    animator->index   = index;
+    animator->playing = true;
+    animator->repeat  = true;
 }
 
-static bool animator_update_animation(Walrus_Animator *animator)
+static bool animator_update_animation(Walrus_Animator *animator, Walrus_Model const *model)
 {
-    Walrus_Animation const *animation = animator->animation;
+    Walrus_Animation const *animation = &model->animations[animator->index];
     bool                    update    = false;
     u32                    *keys      = walrus_array_get(animator->keys, 0);
     for (u32 i = 0; i < animation->num_channels; ++i) {
         Walrus_AnimationChannel *channel = &animation->channels[i];
         Walrus_AnimationSampler *sampler = channel->sampler;
 
-        u32 const node_index = channel->node - &animator->model->nodes[0];
+        u32 const node_index = channel->node - &model->nodes[0];
 
         Walrus_Transform *t = walrus_array_get(animator->locals, node_index);
 
@@ -219,41 +215,43 @@ static bool animator_update_animation(Walrus_Animator *animator)
     return update;
 }
 
-void walrus_animator_tick(Walrus_Animator *animator, f32 dt)
+void walrus_animator_tick(Walrus_Animator *animator, Walrus_Model const *model, f32 dt)
 {
-    if (animator->animation == NULL) {
+    if (animator->index >= model->num_animations) {
         return;
     }
+    Walrus_Animation const *animation = &model->animations[animator->index];
 
     if (animator->playing) {
-        Walrus_Animation const *animation = animator->animation;
         if (animator->timestamp > animation->duration) {
             if (animator->repeat) {
-                animator_reset(animator);
+                animator_reset(animator, model);
             }
         }
         else {
             animator->timestamp += dt;
         }
 
-        if (animator_update_animation(animator)) {
-            animator_apply(animator);
+        if (animator_update_animation(animator, model)) {
+            animator_apply(animator, model);
         }
     }
 }
 
-void walrus_animator_transform(Walrus_Animator *animator, Walrus_ModelNode *node, mat4 transform)
+void walrus_animator_transform(Walrus_Animator const *animator, Walrus_Model const *model, Walrus_ModelNode const *node,
+                               mat4 transform)
 {
-    u32 index = node - &animator->model->nodes[0];
-    walrus_assert(index < animator->model->num_nodes);
+    u32 index = node - &model->nodes[0];
+    walrus_assert(index < model->num_nodes);
 
     walrus_transform_compose(walrus_array_get(animator->worlds, index), transform);
 }
 
-void walrus_animator_weights(Walrus_Animator *animator, Walrus_ModelNode *node, f32 *out_weights)
+void walrus_animator_weights(Walrus_Animator const *animator, Walrus_Model const *model, Walrus_ModelNode const *node,
+                             f32 *out_weights)
 {
-    u32 index = node - &animator->model->nodes[0];
-    walrus_assert(index < animator->model->num_nodes);
+    u32 index = node - &model->nodes[0];
+    walrus_assert(index < model->num_nodes);
 
     u32  offset  = *(u32 *)walrus_array_get(animator->weight_offsets, index);
     f32 *weights = walrus_array_get(animator->weights, offset);

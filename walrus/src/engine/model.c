@@ -970,9 +970,9 @@ Walrus_ModelResult walrus_model_load_from_file(Walrus_Model *model, char const *
     return WR_MODEL_SUCCESS;
 }
 
-static void model_node_submit(u16 view_id, Walrus_ModelNode *node, mat4 world, Walrus_ProgramHandle shader,
-                              Walrus_ProgramHandle skin_shader, u32 depth, NodeSubmitCallback node_cb,
-                              PrimitiveSubmitCallback prim_cb, void *userdata)
+static void model_node_submit(u16 view_id, Walrus_Model const *model, Walrus_ModelNode *node, mat4 world,
+                              Walrus_ProgramHandle shader, Walrus_ProgramHandle skin_shader, u32 depth,
+                              NodeSubmitCallback node_cb, PrimitiveSubmitCallback prim_cb, void *userdata)
 {
     Walrus_Mesh *mesh = node->mesh;
 
@@ -988,7 +988,7 @@ static void model_node_submit(u16 view_id, Walrus_ModelNode *node, mat4 world, W
     }
 
     if (node_cb) {
-        node_cb(node, userdata);
+        node_cb(model, node, userdata);
     }
 
     if (mesh) {
@@ -1018,15 +1018,17 @@ static void model_node_submit(u16 view_id, Walrus_ModelNode *node, mat4 world, W
     }
 
     for (u32 i = 0; i < node->num_children; ++i) {
-        model_node_submit(view_id, node->children[i], world, shader, skin_shader, depth, node_cb, prim_cb, userdata);
+        model_node_submit(view_id, model, node->children[i], world, shader, skin_shader, depth, node_cb, prim_cb,
+                          userdata);
     }
 }
 
-void walrus_model_submit(u16 view_id, Walrus_Model *model, mat4 world, Walrus_ProgramHandle shader,
+void walrus_model_submit(u16 view_id, Walrus_Model const *model, mat4 world, Walrus_ProgramHandle shader,
                          Walrus_ProgramHandle skin_shader, u32 depth, NodeSubmitCallback node_cb,
                          PrimitiveSubmitCallback prim_cb, void *userdata)
 {
     for (u32 i = 0; i < model->num_roots; ++i) {
-        model_node_submit(view_id, model->roots[i], world, shader, skin_shader, depth, node_cb, prim_cb, userdata);
+        model_node_submit(view_id, model, model->roots[i], world, shader, skin_shader, depth, node_cb, prim_cb,
+                          userdata);
     }
 }
