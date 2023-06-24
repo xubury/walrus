@@ -1,6 +1,8 @@
 #include <engine/systems/animator_system.h>
+#include <engine/systems/model_system.h>
 #include <engine/engine.h>
-#include <engine/animator.h>
+
+ECS_COMPONENT_DECLARE(Walrus_Animator);
 
 static void animator_tick(ecs_iter_t *it)
 {
@@ -31,8 +33,7 @@ static void on_animator_remove(ecs_iter_t *it)
 void walrus_animator_system_init(void)
 {
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
-    ECS_COMPONENT(ecs, Walrus_Animator);
-    ECS_COMPONENT(ecs, Walrus_Model);
+    ECS_COMPONENT_DEFINE(ecs, Walrus_Animator);
 
     ECS_SYSTEM(ecs, animator_tick, EcsOnUpdate, Walrus_Animator, Walrus_Model);
 

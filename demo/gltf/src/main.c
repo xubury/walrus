@@ -5,25 +5,19 @@
 #include <core/assert.h>
 #include <engine/model.h>
 #include <engine/imgui.h>
-#include <rhi/rhi.h>
-#include <engine/batch_renderer.h>
-#include <engine/deferred_renderer.h>
-#include <engine/shader_library.h>
-#include <engine/thread_pool.h>
 #include <engine/animator.h>
-#include <engine/camera.h>
 #include <engine/fps_controller.h>
-#include <core/sys.h>
-#include <core/array.h>
-
-#include <cglm/cglm.h>
-#include <string.h>
+#include <engine/systems/transform_system.h>
+#include <engine/systems/animator_system.h>
+#include <engine/systems/model_system.h>
+#include <engine/systems/render_system.h>
+#include <engine/systems/camera_system.h>
+#include <engine/systems/controller_system.h>
 
 typedef struct {
     ecs_entity_t camera;
     ecs_entity_t character;
 
-    ecs_entity_t model;
 } AppData;
 
 Walrus_AppError on_init(Walrus_App *app)
@@ -31,10 +25,6 @@ Walrus_AppError on_init(Walrus_App *app)
     AppData *data = app->userdata;
 
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
-    ECS_COMPONENT(ecs, Walrus_FpsController);
-    ECS_COMPONENT(ecs, Walrus_Transform);
-    ECS_COMPONENT(ecs, Walrus_Camera);
-    ECS_COMPONENT(ecs, Walrus_DeferredRenderer);
 
     data->camera = ecs_new_id(ecs);
     ecs_set(ecs, data->camera, Walrus_Transform, {.rot = {0, 0, 0, 1}, .trans = {0, 2, 5}, .scale = {1, 1, 1}});
@@ -44,23 +34,12 @@ Walrus_AppError on_init(Walrus_App *app)
     ecs_set(ecs, data->camera, Walrus_DeferredRenderer,
             {.x = 0, .y = 0, .width = 1440, .height = 900, .framebuffer = {WR_INVALID_HANDLE}});
 
-    ECS_COMPONENT(ecs, Walrus_Model);
-    data->model            = ecs_set(ecs, 0, Walrus_Model, {0});
-    Walrus_Model *model    = ecs_get_mut(ecs, data->model, Walrus_Model);
-    u64           ts       = walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC);
-    char const   *filename = "assets/gltf/shibahu/scene.gltf";
-    if (walrus_model_load_from_file(model, filename) != WR_MODEL_SUCCESS) {
-        walrus_error("error loading model from: %s !", filename);
-    }
-    walrus_trace("model load time: %llu ms", walrus_sysclock(WR_SYS_CLOCK_UNIT_MILLSEC) - ts);
+    walrus_model_system_load_from_file("shibahu", "assets/gltf/shibahu/scene.gltf");
 
-    ECS_COMPONENT(ecs, Walrus_Animator);
-    data->character = ecs_new_w_pair(ecs, EcsIsA, data->model);
-    ecs_set(ecs, data->character, Walrus_Transform, {.rot = {0, 0, 0, 1}, .trans = {0, 0, 0}, .scale = {1, 1, 1}});
+    data->character = walrus_model_instantiate("shibahu", (vec3){0, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1});
     ecs_set(ecs, data->character, Walrus_Animator, {0});
 
-    ecs_entity_t e = ecs_new_w_pair(ecs, EcsIsA, data->model);
-    ecs_set(ecs, e, Walrus_Transform, {.rot = {0, 0, 0, 1}, .trans = {2, 0, 0}, .scale = {1, 1, 1}});
+    walrus_model_instantiate("shibahu", (vec3){2, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1});
 
     return WR_APP_SUCCESS;
 }
@@ -69,8 +48,6 @@ void on_render(Walrus_App *app)
 {
     AppData     *data = app->userdata;
     ecs_world_t *ecs  = walrus_engine_vars()->ecs;
-    ECS_COMPONENT(ecs, Walrus_Camera);
-    ECS_COMPONENT(ecs, Walrus_Transform);
     Walrus_Camera const *camera    = ecs_get(ecs, data->camera, Walrus_Camera);
     Walrus_Transform    *transform = ecs_get_mut(ecs, data->character, Walrus_Transform);
 

@@ -38,14 +38,10 @@ void walrus_camera_init(Walrus_Camera *camera, vec3 const pos, versor const rot,
     camera->near_z = near_z;
     camera->far_z  = far_z;
 
-    walrus_camera_mark_dirty(camera);
-    walrus_camera_update(camera, &transform);
-}
-
-void walrus_camera_mark_dirty(Walrus_Camera *camera)
-{
     camera->need_update_view       = true;
     camera->need_update_projection = true;
+
+    walrus_camera_update(camera, &transform);
 }
 
 void walrus_camera_update(Walrus_Camera *camera, Walrus_Transform const *transform)

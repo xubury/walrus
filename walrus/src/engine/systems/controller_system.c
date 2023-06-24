@@ -4,6 +4,8 @@
 #include <core/log.h>
 #include <core/math.h>
 
+ECS_COMPONENT_DECLARE(Walrus_FpsController);
+
 static void controller_tick(ecs_iter_t *it)
 {
     Walrus_FpsController *controllers = ecs_field(it, Walrus_FpsController, 1);
@@ -33,8 +35,7 @@ static void on_fps_controller_remove(ecs_iter_t *it)
 void walrus_controller_system_init(void)
 {
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
-    ECS_COMPONENT(ecs, Walrus_FpsController);
-    ECS_COMPONENT(ecs, Walrus_Transform);
+    ECS_COMPONENT_DEFINE(ecs, Walrus_FpsController);
 
     ECS_SYSTEM(ecs, controller_tick, EcsOnUpdate, Walrus_FpsController, Walrus_Transform);
     ECS_OBSERVER(ecs, on_fps_controller_add, EcsOnSet, Walrus_FpsController, Walrus_Transform);

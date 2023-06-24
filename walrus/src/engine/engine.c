@@ -4,10 +4,12 @@
 #include <engine/shader_library.h>
 #include <engine/thread_pool.h>
 #include <engine/imgui.h>
+#include <engine/systems/transform_system.h>
 #include <engine/systems/controller_system.h>
 #include <engine/systems/camera_system.h>
 #include <engine/systems/animator_system.h>
 #include <engine/systems/render_system.h>
+#include <engine/systems/model_system.h>
 #include <rhi/rhi.h>
 #include <core/type.h>
 #include <core/sys.h>
@@ -316,6 +318,8 @@ Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height,
 
 static void systems_init(void)
 {
+    walrus_transform_system_init();
+    walrus_model_system_init();
     walrus_controller_system_init();
     walrus_camera_system_init();
     walrus_animator_system_init();
@@ -324,6 +328,7 @@ static void systems_init(void)
 
 static void systems_shutdown(void)
 {
+    walrus_model_system_shutdown();
 }
 
 Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
