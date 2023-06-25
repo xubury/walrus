@@ -25,4 +25,5 @@ void walrus_camera_init(Walrus_Camera *camera, vec3 const pos, versor const rot,
 
 void walrus_camera_update(Walrus_Camera *camera, Walrus_Transform const *transform);
 
-bool walrus_camera_cull_test(Walrus_Camera *camera, Walrus_BoundingBox *box);
+bool walrus_camera_cull_test(Walrus_Camera const *camera, Walrus_Transform const *transform,
+                             Walrus_BoundingBox const *box);

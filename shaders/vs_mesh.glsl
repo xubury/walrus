@@ -10,7 +10,7 @@ out vec2 v_uv;
 out vec3 v_tangent;
 out vec3 v_bitangent;
 
-layout(std430, binding = 1) buffer WeightsSSBO
+layout(std430, binding = 0) buffer WeightsSSBO
 {
     float morph_weights[];
 };

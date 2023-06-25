@@ -176,7 +176,3 @@ typedef void (*NodeSubmitCallback)(Walrus_Model const *model, Walrus_ModelNode c
 Walrus_ModelResult walrus_model_load_from_file(Walrus_Model *model, char const *filename);
 
 void walrus_model_shutdown(Walrus_Model *model);
-
-void walrus_model_submit(u16 view_id, Walrus_Model const *model, mat4 world, Walrus_ProgramHandle shader,
-                         Walrus_ProgramHandle skin_shader, u32 depth, NodeSubmitCallback node_cb,
-                         PrimitiveSubmitCallback prim_cb, void *userdata);

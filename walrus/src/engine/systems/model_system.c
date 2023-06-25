@@ -1,5 +1,6 @@
 #include <engine/systems/model_system.h>
 #include <engine/systems/transform_system.h>
+#include <engine/systems/animator_system.h>
 #include <engine/engine.h>
 #include <engine/model.h>
 #include <core/hash.h>
@@ -58,6 +59,8 @@ bool walrus_model_system_unload(char const *name)
 {
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
     if (walrus_hash_table_contains(s_system.model_table, name)) {
+        walrus_hash_table_remove(s_system.model_table, name);
+
         ecs_entity_t e = walrus_ptr_to_val(walrus_hash_table_lookup(s_system.model_table, name));
         ecs_delete(ecs, e);
 
@@ -71,12 +74,13 @@ ecs_entity_t walrus_model_instantiate(char const *name, vec3 const trans, versor
 {
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
     if (walrus_hash_table_contains(s_system.model_table, name)) {
-        ecs_entity_t model = walrus_ptr_to_val(walrus_hash_table_lookup(s_system.model_table, name));
-        ecs_entity_t e     = ecs_new_w_pair(ecs, EcsIsA, model);
+        ecs_entity_t base_model = walrus_ptr_to_val(walrus_hash_table_lookup(s_system.model_table, name));
+        ecs_entity_t e          = ecs_new_w_pair(ecs, EcsIsA, base_model);
         ecs_set(ecs, e, Walrus_Transform,
                 {.trans = {trans[0], trans[1], trans[2]},
                  .rot   = {rot[0], rot[1], rot[2], rot[3]},
                  .scale = {scale[0], scale[1], scale[2]}});
+
         return e;
     }
     return 0;

@@ -4,7 +4,7 @@
 #include <core/transform.h>
 #include <engine/camera.h>
 #include <engine/model.h>
-#include <engine/animator.h>
+#include <engine/renderer_mesh.h>
 
 typedef struct {
     Walrus_FramebufferHandle framebuffer;
@@ -18,4 +18,6 @@ void walrus_deferred_renderer_init_uniforms(void);
 
 void walrus_deferred_renderer_set_camera(Walrus_DeferredRenderer *renderer, Walrus_Camera *camera);
 
-void walrus_deferred_renderer_submit(Walrus_Transform *transform, Walrus_Model *model, Walrus_Animator const *animator);
+void walrus_deferred_renderer_submit_mesh(Walrus_Transform const *transform, Walrus_StaticMesh *mesh);
+
+void walrus_deferred_renderer_submit_skinned_mesh(Walrus_Transform const *transform, Walrus_SkinnedMesh *mesh);

@@ -71,41 +71,6 @@ void walrus_deferred_renderer_init_uniforms(void)
     walrus_rhi_touch(0);
 }
 
-static void node_callback(Walrus_Model const *model, Walrus_ModelNode const *node, void *userdata)
-{
-    Walrus_Animator const *animator = userdata;
-
-    if (node->skin) {
-        Walrus_TransientBuffer buffer;
-        if (walrus_rhi_alloc_transient_buffer(&buffer, node->skin->num_joints, sizeof(mat4))) {
-            mat4 *m = (mat4 *)buffer.data;
-            for (u32 i = 0; i < node->skin->num_joints; ++i) {
-                if (animator) {
-                    walrus_animator_transform(animator, model, node->skin->joints[i].node, m[i]);
-                }
-                else {
-                    walrus_transform_compose(&node->skin->joints[i].node->world_transform, m[i]);
-                }
-                glm_mat4_mul(m[i], node->skin->joints[i].inverse_bind_matrix, m[i]);
-            }
-        }
-        walrus_rhi_set_transient_buffer(0, &buffer);
-    }
-
-    if (node->mesh && node->mesh->num_weights > 0) {
-        Walrus_TransientBuffer buffer;
-        if (walrus_rhi_alloc_transient_buffer(&buffer, node->mesh->num_weights, sizeof(f32))) {
-            if (animator) {
-                walrus_animator_weights(animator, model, node, (f32 *)buffer.data);
-            }
-            else {
-                memcpy(buffer.data, node->mesh->weights, sizeof(f32) * node->mesh->num_weights);
-            }
-        }
-        walrus_rhi_set_transient_buffer(1, &buffer);
-    }
-}
-
 static void primitive_callback(Walrus_MeshPrimitive const *prim, void *userdata)
 {
     walrus_unused(userdata);
@@ -168,10 +133,71 @@ void walrus_deferred_renderer_set_camera(Walrus_DeferredRenderer *renderer, Walr
     walrus_rhi_set_framebuffer(0, renderer->framebuffer);
 }
 
-void walrus_deferred_renderer_submit(Walrus_Transform *transform, Walrus_Model *model, Walrus_Animator const *animator)
+void walrus_deferred_renderer_submit_mesh(Walrus_Transform const *transform, Walrus_StaticMesh *mesh)
+{
+    mat4 world;
+
+    Walrus_Transform t;
+    walrus_transform_mul(transform, &mesh->node->world_transform, &t);
+    walrus_transform_compose(&t, world);
+
+    walrus_rhi_set_transform(world);
+
+    if (mesh->weight_buffer.handle.id != WR_INVALID_HANDLE) {
+        walrus_rhi_set_transient_buffer(0, &mesh->weight_buffer);
+    }
+
+    for (u32 i = 0; i < mesh->mesh->num_primitives; ++i) {
+        Walrus_MeshPrimitive *prim = &mesh->mesh->primitives[i];
+
+        primitive_callback(prim, NULL);
+
+        if (prim->indices.buffer.id != WR_INVALID_HANDLE) {
+            if (prim->indices.index32) {
+                walrus_rhi_set_index32_buffer(prim->indices.buffer, prim->indices.offset, prim->indices.num_indices);
+            }
+            else {
+                walrus_rhi_set_index_buffer(prim->indices.buffer, prim->indices.offset, prim->indices.num_indices);
+            }
+        }
+        for (u32 j = 0; j < prim->num_streams; ++j) {
+            Walrus_PrimitiveStream *stream = &prim->streams[j];
+            walrus_rhi_set_vertex_buffer(j, stream->buffer, stream->layout_handle, stream->offset,
+                                         stream->num_vertices);
+        }
+        walrus_rhi_submit(0, s_data->shader, 0, WR_RHI_DISCARD_ALL);
+    }
+}
+
+void walrus_deferred_renderer_submit_skinned_mesh(Walrus_Transform const *transform, Walrus_SkinnedMesh *mesh)
 {
     mat4 world;
     walrus_transform_compose(transform, world);
-    walrus_model_submit(0, model, world, s_data->shader, s_data->skin_shader, 0, node_callback, primitive_callback,
-                        (void *)animator);
+    walrus_rhi_set_transform(world);
+
+    walrus_rhi_set_transient_buffer(0, &mesh->joint_buffer);
+    if (mesh->weight_buffer.handle.id != WR_INVALID_HANDLE) {
+        walrus_rhi_set_transient_buffer(1, &mesh->weight_buffer);
+    }
+
+    for (u32 i = 0; i < mesh->mesh->num_primitives; ++i) {
+        Walrus_MeshPrimitive *prim = &mesh->mesh->primitives[i];
+
+        primitive_callback(prim, NULL);
+
+        if (prim->indices.buffer.id != WR_INVALID_HANDLE) {
+            if (prim->indices.index32) {
+                walrus_rhi_set_index32_buffer(prim->indices.buffer, prim->indices.offset, prim->indices.num_indices);
+            }
+            else {
+                walrus_rhi_set_index_buffer(prim->indices.buffer, prim->indices.offset, prim->indices.num_indices);
+            }
+        }
+        for (u32 j = 0; j < prim->num_streams; ++j) {
+            Walrus_PrimitiveStream *stream = &prim->streams[j];
+            walrus_rhi_set_vertex_buffer(j, stream->buffer, stream->layout_handle, stream->offset,
+                                         stream->num_vertices);
+        }
+        walrus_rhi_submit(0, s_data->skin_shader, 0, WR_RHI_DISCARD_ALL);
+    }
 }

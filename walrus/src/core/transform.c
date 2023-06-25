@@ -49,7 +49,7 @@ void walrus_transform_scale(Walrus_Transform *transform, vec3 scale)
     glm_vec3_mul(transform->scale, scale, transform->scale);
 }
 
-void walrus_transform_mul(Walrus_Transform *t1, Walrus_Transform *t2, Walrus_Transform *dst)
+void walrus_transform_mul(Walrus_Transform const *t1, Walrus_Transform const *t2, Walrus_Transform *dst)
 {
     mat4 m1, m2;
     walrus_transform_compose(t1, m1);

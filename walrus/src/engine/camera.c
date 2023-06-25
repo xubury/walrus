@@ -50,9 +50,10 @@ void walrus_camera_update(Walrus_Camera *camera, Walrus_Transform const *transfo
     update_projection(camera);
 }
 
-bool walrus_camera_cull_test(Walrus_Camera *camera, Walrus_BoundingBox *box)
+bool walrus_camera_cull_test(Walrus_Camera const *camera, Walrus_Transform const *transform, Walrus_BoundingBox const *box)
 {
     walrus_unused(camera);
+    walrus_unused(transform);
     walrus_unused(box);
 
     // TODO:
