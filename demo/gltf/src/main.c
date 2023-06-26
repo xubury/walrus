@@ -40,6 +40,7 @@ Walrus_AppError on_init(Walrus_App *app)
     ecs_set(ecs, data->character, Walrus_Animator, {0});
 
     walrus_model_instantiate("shibahu", (vec3){2, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1});
+    /* walrus_model_system_unload("shibahu"); */
 
     return WR_APP_SUCCESS;
 }

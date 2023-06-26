@@ -3,11 +3,6 @@
 #include <engine/systems/model_system.h>
 #include <engine/systems/transform_system.h>
 #include <engine/engine.h>
-#include <engine/animator.h>
-#include <engine/model.h>
-#include <engine/shader_library.h>
-#include <engine/camera.h>
-#include <core/memory.h>
 
 ECS_COMPONENT_DECLARE(Walrus_DeferredRenderer);
 ECS_COMPONENT_DECLARE(Walrus_StaticMesh);
@@ -39,6 +34,31 @@ static void on_model_add(ecs_iter_t *it)
                      .scale = {transform->scale[0], transform->scale[1], transform->scale[2]}});
         }
     }
+}
+
+static void on_model_remove(ecs_iter_t *it)
+{
+    ecs_entity_t  entity = it->entities[0];
+    ecs_filter_t *f      = ecs_filter_init(it->world, &(ecs_filter_desc_t){.terms = {{.id = ecs_id(Walrus_SkinnedMesh)},
+                                                                                     {.id = ecs_pair(EcsChildOf, entity)}}});
+    ecs_iter_t    it_f   = ecs_filter_iter(it->world, f);
+    while (ecs_filter_next(&it_f)) {
+        for (i32 i = 0; i < it_f.count; ++i) {
+            ecs_delete(it->world, it_f.entities[i]);
+        }
+    }
+    ecs_filter_fini(f);
+
+    f = ecs_filter_init(it->world, &(ecs_filter_desc_t){.terms = {{.id = ecs_id(Walrus_StaticMesh)},
+                                                                  {.id = ecs_pair(EcsChildOf, entity)}}});
+
+    it_f = ecs_filter_iter(it->world, f);
+    while (ecs_filter_next(&it_f)) {
+        for (i32 i = 0; i < it_f.count; ++i) {
+            ecs_delete(it->world, it_f.entities[i]);
+        }
+    }
+    ecs_filter_fini(f);
 }
 
 static void static_mesh_update(Walrus_StaticMesh *mesh, ecs_world_t *world, ecs_entity_t parent)
@@ -163,6 +183,7 @@ void walrus_render_system_init(void)
     ECS_COMPONENT_DEFINE(ecs, Walrus_SkinnedMesh);
 
     ECS_OBSERVER(ecs, on_model_add, EcsOnSet, Walrus_Transform, Walrus_Model);
+    ECS_OBSERVER(ecs, on_model_remove, EcsOnRemove, Walrus_Model);
 
     ECS_SYSTEM_DEFINE(ecs, deferred_render_static_mesh, 0, Walrus_StaticMesh, Walrus_Transform);
     ECS_SYSTEM_DEFINE(ecs, deferred_render_skinned_mesh, 0, Walrus_SkinnedMesh, Walrus_Transform);
