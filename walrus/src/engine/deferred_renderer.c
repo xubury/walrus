@@ -2,6 +2,7 @@
 #include <engine/shader_library.h>
 #include <core/memory.h>
 #include <core/macro.h>
+#include <core/log.h>
 #include <rhi/rhi.h>
 
 #include <cglm/cglm.h>
@@ -138,13 +139,30 @@ static void setup_primitive(Walrus_MeshPrimitive const *prim)
 
 void walrus_deferred_renderer_set_camera(Walrus_DeferredRenderer *renderer, Walrus_Camera *camera)
 {
+    renderer->camera = camera;
+
     walrus_rhi_set_view_rect(0, renderer->x, renderer->y, renderer->width, renderer->height);
     walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_COLOR | WR_RHI_CLEAR_DEPTH, 0, 1.0, 0);
     walrus_rhi_set_view_transform(0, camera->view, camera->projection);
     walrus_rhi_set_framebuffer(0, renderer->framebuffer);
 }
 
-void walrus_deferred_renderer_submit_mesh(mat4 const world, Walrus_StaticMesh *mesh)
+static void dump_stats(Walrus_DeferredRenderer *renderer, Walrus_Mesh *mesh)
+{
+    if (renderer->stats.record) {
+        renderer->stats.draw_calls += mesh->num_primitives;
+        for (u32 i = 0; i < mesh->num_primitives; ++i) {
+            Walrus_MeshPrimitive *prim = &mesh->primitives[i];
+            renderer->stats.indices += prim->indices.num_indices;
+            for (u32 j = 0; j < prim->num_streams; ++j) {
+                Walrus_PrimitiveStream const *stream = &prim->streams[j];
+                renderer->stats.vertices += stream->num_vertices;
+            }
+        }
+    }
+}
+
+void walrus_deferred_renderer_submit_mesh(Walrus_DeferredRenderer *renderer, mat4 const world, Walrus_StaticMesh *mesh)
 {
     walrus_rhi_set_transform(world);
 
@@ -157,9 +175,11 @@ void walrus_deferred_renderer_submit_mesh(mat4 const world, Walrus_StaticMesh *m
         setup_primitive(prim);
         walrus_rhi_submit(0, s_data->shader, 0, WR_RHI_DISCARD_ALL);
     }
+    dump_stats(renderer, mesh->mesh);
 }
 
-void walrus_deferred_renderer_submit_skinned_mesh(mat4 const world, Walrus_SkinnedMesh *mesh)
+void walrus_deferred_renderer_submit_skinned_mesh(Walrus_DeferredRenderer *renderer, mat4 const world,
+                                                  Walrus_SkinnedMesh *mesh)
 {
     walrus_rhi_set_transform(world);
 
@@ -173,4 +193,24 @@ void walrus_deferred_renderer_submit_skinned_mesh(mat4 const world, Walrus_Skinn
         setup_primitive(prim);
         walrus_rhi_submit(0, s_data->skin_shader, 0, WR_RHI_DISCARD_ALL);
     }
+    dump_stats(renderer, mesh->mesh);
+}
+
+void walrus_deferred_renderer_start_record(Walrus_DeferredRenderer *renderer)
+{
+    renderer->stats.draw_calls = 0;
+    renderer->stats.vertices   = 0;
+    renderer->stats.indices    = 0;
+    renderer->stats.record     = true;
+}
+
+void walrus_deferred_renderer_end_record(Walrus_DeferredRenderer *renderer)
+{
+    renderer->stats.record = false;
+}
+
+void walrus_deferred_renderer_log_stats(Walrus_DeferredRenderer *renderer)
+{
+    walrus_trace("num of draw calls: %d num of indices: %d num of vertices: %d", renderer->stats.draw_calls,
+                 renderer->stats.indices, renderer->stats.vertices);
 }

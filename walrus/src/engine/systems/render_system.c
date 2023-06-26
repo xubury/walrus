@@ -81,21 +81,21 @@ static void static_mesh_update(Walrus_StaticMesh *mesh, ecs_world_t *world, ecs_
 
 static void deferred_render_static_mesh(ecs_iter_t *it)
 {
-    Walrus_StaticMesh *meshes     = ecs_field(it, Walrus_StaticMesh, 1);
-    Walrus_Transform  *transforms = ecs_field(it, Walrus_Transform, 2);
-    Walrus_Camera     *camera     = it->param;
+    Walrus_StaticMesh       *meshes     = ecs_field(it, Walrus_StaticMesh, 1);
+    Walrus_Transform        *transforms = ecs_field(it, Walrus_Transform, 2);
+    Walrus_DeferredRenderer *renderer   = it->param;
 
     for (i32 i = 0; i < it->count; ++i) {
         ecs_entity_t parent = ecs_get_target(it->world, it->entities[i], EcsChildOf, 0);
         mat4         world;
         walrus_transform_compose(&transforms[i], world);
 
-        if (!walrus_camera_frustum_cull_test(camera, world, meshes[i].mesh->min, meshes[i].mesh->max)) {
+        if (!walrus_camera_frustum_cull_test(renderer->camera, world, meshes[i].mesh->min, meshes[i].mesh->max)) {
             continue;
         }
 
         static_mesh_update(&meshes[i], it->world, parent);
-        walrus_deferred_renderer_submit_mesh(world, &meshes[i]);
+        walrus_deferred_renderer_submit_mesh(renderer, world, &meshes[i]);
     }
 }
 
@@ -138,15 +138,15 @@ static void skinned_mesh_update(Walrus_SkinnedMesh *mesh, ecs_world_t *world, ec
 
 static void deferred_render_skinned_mesh(ecs_iter_t *it)
 {
-    Walrus_SkinnedMesh *meshes = ecs_field(it, Walrus_SkinnedMesh, 1);
-    Walrus_Transform   *worlds = ecs_field(it, Walrus_Transform, 2);
-    Walrus_Camera      *camera = it->param;
+    Walrus_SkinnedMesh      *meshes   = ecs_field(it, Walrus_SkinnedMesh, 1);
+    Walrus_Transform        *worlds   = ecs_field(it, Walrus_Transform, 2);
+    Walrus_DeferredRenderer *renderer = it->param;
 
     for (i32 i = 0; i < it->count; ++i) {
         ecs_entity_t parent = ecs_get_target(it->world, it->entities[i], EcsChildOf, 0);
         mat4         world;
         walrus_transform_compose(&worlds[i], world);
-        if (!walrus_camera_frustum_cull_test(camera, world, meshes[i].mesh->min, meshes[i].mesh->max)) {
+        if (!walrus_camera_frustum_cull_test(renderer->camera, world, meshes[i].mesh->min, meshes[i].mesh->max)) {
             continue;
         }
 
@@ -156,7 +156,7 @@ static void deferred_render_skinned_mesh(ecs_iter_t *it)
         walrus_transform_compose(p_trans, p_world);
 
         skinned_mesh_update(&meshes[i], it->world, parent);
-        walrus_deferred_renderer_submit_skinned_mesh(p_world, &meshes[i]);
+        walrus_deferred_renderer_submit_skinned_mesh(renderer, p_world, &meshes[i]);
     }
 }
 
@@ -169,8 +169,11 @@ static void deferred_renderer_run(ecs_iter_t *it)
 
     for (i32 i = 0; i < it->count; ++i) {
         walrus_deferred_renderer_set_camera(&renderers[i], &cameras[i]);
-        ecs_run(ecs, ecs_id(deferred_render_static_mesh), 0, &cameras[i]);
-        ecs_run(ecs, ecs_id(deferred_render_skinned_mesh), 0, &cameras[i]);
+        walrus_deferred_renderer_start_record(&renderers[i]);
+        ecs_run(ecs, ecs_id(deferred_render_static_mesh), 0, &renderers[i]);
+        ecs_run(ecs, ecs_id(deferred_render_skinned_mesh), 0, &renderers[i]);
+        walrus_deferred_renderer_end_record(&renderers[i]);
+        /* walrus_deferred_renderer_log_stats(&renderers[i]); */
     }
     walrus_rhi_touch(0);
 }

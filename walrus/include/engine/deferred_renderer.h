@@ -7,17 +7,35 @@
 #include <engine/renderer_mesh.h>
 
 typedef struct {
+    bool record;
+    u32  draw_calls;
+    u64  vertices;
+    u64  indices;
+} Walrus_RendererSubmitStats;
+
+typedef struct {
     Walrus_FramebufferHandle framebuffer;
-    i16                      x;
-    i16                      y;
-    u16                      width;
-    u16                      height;
+
+    Walrus_Camera *camera;
+
+    i16 x;
+    i16 y;
+    u16 width;
+    u16 height;
+
+    Walrus_RendererSubmitStats stats;
 } Walrus_DeferredRenderer;
 
 void walrus_deferred_renderer_init_uniforms(void);
 
 void walrus_deferred_renderer_set_camera(Walrus_DeferredRenderer *renderer, Walrus_Camera *camera);
 
-void walrus_deferred_renderer_submit_mesh(mat4 const world, Walrus_StaticMesh *mesh);
+void walrus_deferred_renderer_submit_mesh(Walrus_DeferredRenderer *renderer, mat4 const world, Walrus_StaticMesh *mesh);
 
-void walrus_deferred_renderer_submit_skinned_mesh(mat4 const world, Walrus_SkinnedMesh *mesh);
+void walrus_deferred_renderer_submit_skinned_mesh(Walrus_DeferredRenderer *renderer, mat4 const world,
+                                                  Walrus_SkinnedMesh *mesh);
+
+void walrus_deferred_renderer_start_record(Walrus_DeferredRenderer *renderer);
+void walrus_deferred_renderer_end_record(Walrus_DeferredRenderer *renderer);
+
+void walrus_deferred_renderer_log_stats(Walrus_DeferredRenderer *renderer);
