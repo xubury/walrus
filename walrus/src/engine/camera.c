@@ -3,7 +3,7 @@
 
 #include <cglm/cglm.h>
 
-static void update_view(Walrus_Camera *camera, Walrus_Transform const *transform)
+static bool update_view(Walrus_Camera *camera, Walrus_Transform const *transform)
 {
     if (camera->need_update_view) {
         vec3 center;
@@ -14,15 +14,19 @@ static void update_view(Walrus_Camera *camera, Walrus_Transform const *transform
         glm_vec3_sub((f32 *)transform->trans, front, center);
         glm_lookat((f32 *)transform->trans, center, up, camera->view);
         camera->need_update_view = false;
+        return true;
     }
+    return false;
 }
 
-static void update_projection(Walrus_Camera *camera)
+static bool update_projection(Walrus_Camera *camera)
 {
     if (camera->need_update_projection) {
         glm_perspective(camera->fov, camera->aspect, camera->near_z, camera->far_z, camera->projection);
         camera->need_update_projection = false;
+        return true;
     }
+    return false;
 }
 
 void walrus_camera_init(Walrus_Camera *camera, vec3 const pos, versor const rot, f32 fov, f32 aspect, f32 near_z,
@@ -46,17 +50,36 @@ void walrus_camera_init(Walrus_Camera *camera, vec3 const pos, versor const rot,
 
 void walrus_camera_update(Walrus_Camera *camera, Walrus_Transform const *transform)
 {
-    update_view(camera, transform);
-    update_projection(camera);
+    bool change = update_view(camera, transform);
+    change |= update_projection(camera);
+    if (change) {
+        glm_mat4_mul(camera->projection, camera->view, camera->vp);
+    }
 }
 
-bool walrus_camera_cull_test(Walrus_Camera const *camera, Walrus_Transform const *transform, Walrus_BoundingBox const *box)
+bool walrus_camera_frustum_cull_test(Walrus_Camera const *camera, mat4 const world, vec3 const min, vec3 const max)
 {
-    walrus_unused(camera);
-    walrus_unused(transform);
-    walrus_unused(box);
+    vec4 corners[8] = {
+        {min[0], min[1], min[2], 1.0}, {max[0], min[1], min[2], 1.0},
+        {min[0], max[1], min[2], 1.0}, {max[0], max[1], min[2], 1.0},
 
-    // TODO:
+        {min[0], min[1], max[2], 1.0}, {max[0], min[1], max[2], 1.0},
+        {min[0], max[1], max[2], 1.0}, {max[0], max[1], max[2], 1.0},
+    };
+    mat4 mvp;
+    glm_mat4_mul((vec4 *)camera->vp, (vec4 *)world, mvp);
 
-    return true;
+    bool inside = false;
+
+    for (u8 i = 0; i < 8; ++i) {
+        vec4 corner;
+        glm_mat4_mulv(mvp, corners[i], corner);
+        if ((corner[0] <= corner[3] && corner[0] >= -corner[3]) &&
+            (corner[1] <= corner[3] && corner[1] >= -corner[3]) && (corner[2] <= corner[3] && corner[2] >= 0)) {
+            inside = true;
+            break;
+        }
+    }
+
+    return inside;
 }

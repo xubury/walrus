@@ -63,6 +63,9 @@ typedef struct {
 
     f32 *weights;
     u32  num_weights;
+
+    vec3 min;
+    vec3 max;
 } Walrus_Mesh;
 
 typedef struct Walrus_ModelNode Walrus_ModelNode;

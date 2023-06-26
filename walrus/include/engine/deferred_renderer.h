@@ -18,6 +18,6 @@ void walrus_deferred_renderer_init_uniforms(void);
 
 void walrus_deferred_renderer_set_camera(Walrus_DeferredRenderer *renderer, Walrus_Camera *camera);
 
-void walrus_deferred_renderer_submit_mesh(Walrus_Transform const *transform, Walrus_StaticMesh *mesh);
+void walrus_deferred_renderer_submit_mesh(mat4 const world, Walrus_StaticMesh *mesh);
 
-void walrus_deferred_renderer_submit_skinned_mesh(Walrus_Transform const *transform, Walrus_SkinnedMesh *mesh);
+void walrus_deferred_renderer_submit_skinned_mesh(mat4 const world, Walrus_SkinnedMesh *mesh);

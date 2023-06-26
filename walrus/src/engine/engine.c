@@ -320,9 +320,9 @@ static void systems_init(void)
 {
     walrus_transform_system_init();
     walrus_model_system_init();
+    walrus_camera_system_init();
     walrus_render_system_init();
     walrus_controller_system_init();
-    walrus_camera_system_init();
     walrus_animator_system_init();
 }
 

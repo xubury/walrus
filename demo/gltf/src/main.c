@@ -36,7 +36,7 @@ Walrus_AppError on_init(Walrus_App *app)
 
     walrus_model_system_load_from_file("shibahu", "assets/gltf/shibahu/scene.gltf");
 
-    data->character = walrus_model_instantiate("shibahu", (vec3){0, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1});
+    data->character = walrus_model_instantiate("shibahu", (vec3){-2, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1});
     ecs_set(ecs, data->character, Walrus_Animator, {0});
 
     walrus_model_instantiate("shibahu", (vec3){2, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1});

@@ -268,6 +268,9 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
         model->meshes[i].num_weights = mesh->weights_count;
         model->meshes[i].weights     = resource_new(f32, mesh->weights_count);
 
+        glm_vec3_copy((vec3){FLT_MAX, FLT_MAX, FLT_MAX}, model->meshes[i].min);
+        glm_vec3_copy((vec3){-FLT_MAX, -FLT_MAX, -FLT_MAX}, model->meshes[i].max);
+
         for (u32 j = 0; j < mesh->primitives_count; ++j) {
             model->meshes[i].primitives[j].num_streams         = 0;
             model->meshes[i].primitives[j].indices.buffer.id   = WR_INVALID_HANDLE;
@@ -489,6 +492,10 @@ static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
                 }
                 if (attribute->type == cgltf_attribute_type_tangent) {
                     has_tangent = true;
+                }
+                if (attribute->type == cgltf_attribute_type_position) {
+                    glm_vec3_minv(model->meshes[i].min, attribute->data->min, model->meshes[i].min);
+                    glm_vec3_maxv(model->meshes[i].max, attribute->data->max, model->meshes[i].max);
                 }
                 Walrus_VertexLayout     layout;
                 cgltf_accessor         *accessor    = attribute->data;
