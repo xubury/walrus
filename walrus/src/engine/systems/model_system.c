@@ -20,6 +20,7 @@ void model_shutdown(void *ptr)
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
     ecs_entity_t e   = walrus_ptr_to_val(ptr);
     walrus_model_shutdown(ecs_get_mut(ecs, e, Walrus_Model));
+    ecs_delete(ecs, e);
 }
 
 void walrus_model_system_init(void)
@@ -57,12 +58,8 @@ void walrus_model_system_load_from_file(char const *name, char const *filename)
 
 bool walrus_model_system_unload(char const *name)
 {
-    ecs_world_t *ecs = walrus_engine_vars()->ecs;
     if (walrus_hash_table_contains(s_system.model_table, name)) {
         walrus_hash_table_remove(s_system.model_table, name);
-
-        ecs_entity_t e = walrus_ptr_to_val(walrus_hash_table_lookup(s_system.model_table, name));
-        ecs_delete(ecs, e);
 
         return true;
     }
