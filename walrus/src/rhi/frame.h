@@ -76,6 +76,9 @@ typedef struct {
 
     u32 uniform_begin;
     u32 uniform_end;
+
+    u32 start_matrix;
+    u32 num_matrices;
 } RenderCompute;
 
 typedef struct {
@@ -174,5 +177,7 @@ u32 frame_avail_transient_ib_size(RenderFrame *frame, u32 num, u16 stride);
 u32 frame_alloc_transient_ib(RenderFrame *frame, u32 *num, u16 stride);
 
 void draw_clear(RenderDraw *draw, u8 flags);
+
+void compute_clear(RenderCompute *compute, u8 flags);
 
 void bind_clear(RenderBind *bind, u8 flags);

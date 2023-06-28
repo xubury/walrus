@@ -38,4 +38,4 @@ void walrus_deferred_renderer_submit_skinned_mesh(Walrus_DeferredRenderer *rende
 void walrus_deferred_renderer_start_record(Walrus_DeferredRenderer *renderer);
 void walrus_deferred_renderer_end_record(Walrus_DeferredRenderer *renderer);
 
-void walrus_deferred_renderer_log_stats(Walrus_DeferredRenderer *renderer);
+void walrus_deferred_renderer_log_stats(Walrus_DeferredRenderer *renderer, char *buffer, u32 size);

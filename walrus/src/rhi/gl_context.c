@@ -414,7 +414,7 @@ static void gl_buffer_create(Walrus_BufferHandle handle, void const *data, u64 s
     gl_ctx->buffers[handle.id].id     = vbo;
     gl_ctx->buffers[handle.id].size   = size;
     gl_ctx->buffers[handle.id].target = target;
-    gl_ctx->buffers[handle.id].flags = flags;
+    gl_ctx->buffers[handle.id].flags  = flags;
 }
 
 static void gl_buffer_destroy(Walrus_BufferHandle handle)
@@ -525,6 +525,8 @@ static void submit(RenderFrame *frame)
 
     Walrus_ProgramHandle current_prog = {WR_INVALID_HANDLE};
 
+    bool was_compute = false;
+
     glDisable(GL_STENCIL_TEST);
     glDisable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
@@ -603,10 +605,68 @@ static void submit(RenderFrame *frame)
             glDisable(GL_BLEND);
         }
 
+        if (is_compute) {
+            if (!was_compute) {
+                was_compute = true;
+            }
+            RenderCompute const *compute = &render_item->compute;
+            GlProgram           *program = &gl_ctx->programs[sortkey.program.id];
+            glUseProgram(program->id);
+
+            u32 const  max_compute_bindings = WR_RHI_MAX_TEXTURE_SAMPLERS;
+            GLbitfield barrier              = 0;
+            for (u32 unit = 0; unit < max_compute_bindings; ++unit) {
+                Binding const *bind = &render_bind->bindings[unit];
+                if (bind->id != WR_INVALID_HANDLE) {
+                    GlTexture *texture = &gl_ctx->textures[bind->id];
+                    switch (bind->type) {
+                        case WR_RHI_BIND_TEXTURE: {
+                            glBindTextureUnit(unit, texture->id);
+                        } break;
+                        case WR_RHI_BIND_IMAGE: {
+                            glBindImageTexture(unit, texture->id, bind->mip, GL_FALSE, 0, s_access[bind->access],
+                                               s_image_format[bind->format]);
+                            barrier |= GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+                        } break;
+                        default:
+                            break;
+                    }
+                }
+            }
+            for (u32 binding = 0; binding < WR_RHI_MAX_UNIFORM_BINDINGS; ++binding) {
+                BlockBinding const *bind = &render_bind->block_bindings[binding];
+                if (bind->handle.id != WR_INVALID_HANDLE) {
+                    GlBuffer *buffer = &gl_ctx->buffers[bind->handle.id];
+                    if (buffer->flags & WR_RHI_BUFFER_UNIFORM_BLOCK) {
+                        glBindBufferRange(GL_UNIFORM_BUFFER, binding, buffer->id, bind->offset, bind->size);
+                    }
+                    else {
+                        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, binding, buffer->id, bind->offset, bind->size);
+                        barrier |= GL_SHADER_STORAGE_BARRIER_BIT;
+                    }
+                }
+            }
+            if (barrier != 0) {
+                renderer_uniform_updates(frame->uniforms, draw->uniform_begin, draw->uniform_end);
+                const bool constantsChanged = compute->uniform_begin < compute->uniform_end;
+                if (constantsChanged) {
+                    commit(program);
+                }
+                set_predefineds(program, frame, view, compute->start_matrix, compute->num_matrices);
+                glDispatchCompute(compute->num_x, compute->num_y, compute->num_z);
+                glMemoryBarrier(barrier);
+            }
+            continue;
+        }
+
+        bool const reset_state = view_changed || was_compute;
+        if (was_compute) {
+            was_compute = false;
+        }
+
         u64 const new_flags       = draw->state_flags;
         u64       changed_flags   = current_state.state_flags ^ draw->state_flags;
         current_state.state_flags = new_flags;
-        bool const reset_state    = view_changed;
 
         u64 const new_stencil     = draw->stencil;
         u64       changed_stencil = current_state.stencil ^ draw->stencil;
@@ -782,7 +842,7 @@ static void submit(RenderFrame *frame)
                     *current = *bind;
                 }
             }
-            for (uint32_t binding = 0; binding < WR_RHI_MAX_UNIFORM_BINDINGS; ++binding) {
+            for (u32 binding = 0; binding < WR_RHI_MAX_UNIFORM_BINDINGS; ++binding) {
                 BlockBinding const *bind = &render_bind->block_bindings[binding];
                 if (bind->handle.id != WR_INVALID_HANDLE) {
                     GlBuffer *buffer = &gl_ctx->buffers[bind->handle.id];

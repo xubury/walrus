@@ -209,8 +209,8 @@ void walrus_deferred_renderer_end_record(Walrus_DeferredRenderer *renderer)
     renderer->stats.record = false;
 }
 
-void walrus_deferred_renderer_log_stats(Walrus_DeferredRenderer *renderer)
+void walrus_deferred_renderer_log_stats(Walrus_DeferredRenderer *renderer, char *buffer, u32 size)
 {
-    walrus_trace("num of draw calls: %d num of indices: %d num of vertices: %d", renderer->stats.draw_calls,
-                 renderer->stats.indices, renderer->stats.vertices);
+    snprintf(buffer, size, "num of draw calls: %d num of indices: %lld num of vertices: %lld",
+             renderer->stats.draw_calls, renderer->stats.indices, renderer->stats.vertices);
 }

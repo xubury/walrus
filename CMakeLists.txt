@@ -1,4 +1,5 @@
 option(WASM "Build wasm program" OFF)
+option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(BUILD_TEST "Build test" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -12,6 +13,7 @@ endif()
 
 if(WASM)
   set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/toolchain.cmake)
+  set(BUILD_SHARED_LIBS OFF)
 endif()
 
 cmake_minimum_required(VERSION 3.20.0)

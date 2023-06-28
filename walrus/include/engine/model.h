@@ -107,11 +107,6 @@ typedef enum {
 } Walrus_AnimationInterpolation;
 
 typedef struct {
-    f32  timestamp;
-    vec4 data;
-} Walrus_AnimationFrame;
-
-typedef struct {
     Walrus_AnimationInterpolation interpolation;
 
     f32 *timestamps;

@@ -853,6 +853,42 @@ void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u32 depth, u8 
     }
 }
 
+void walrus_rhi_dispatch(u16 view_id, Walrus_ProgramHandle program, u32 num_x, u32 num_y, u32 num_z, u8 flags)
+{
+    RenderFrame*   frame          = s_ctx->submit_frame;
+    const uint32_t render_item_id = frame->num_render_items;
+    frame->num_render_items       = walrus_min(walrus_u32satadd(frame->num_render_items, 1), WR_RHI_MAX_DRAW_CALLS);
+    if (WR_RHI_MAX_DRAW_CALLS <= render_item_id) {
+        discard(flags);
+        return;
+    }
+
+    s_ctx->uniform_end           = frame->uniforms->pos;
+    s_ctx->compute.uniform_begin = s_ctx->uniform_begin;
+    s_ctx->compute.uniform_end   = s_ctx->uniform_end;
+    s_ctx->compute.start_matrix  = s_ctx->draw.start_matrix;
+    s_ctx->compute.num_matrices  = s_ctx->draw.num_matrices;
+    s_ctx->compute.num_x         = walrus_max(num_x, 1);
+    s_ctx->compute.num_y         = walrus_max(num_y, 1);
+    s_ctx->compute.num_z         = walrus_max(num_z, 1);
+
+    s_ctx->key.view_id  = view_id;
+    s_ctx->key.program  = program;
+    s_ctx->key.depth    = 0;
+    s_ctx->key.sequence = s_ctx->seqs[view_id]++;
+
+    u64 key_val                       = sortkey_encode_compute(&s_ctx->key);
+    frame->sortkeys[render_item_id]   = key_val;
+    frame->sortvalues[render_item_id] = render_item_id;
+
+    frame->render_items[render_item_id].compute = s_ctx->compute;
+    frame->render_binds[render_item_id]         = s_ctx->bind;
+
+    compute_clear(&s_ctx->compute, flags);
+    bind_clear(&s_ctx->bind, flags);
+    s_ctx->uniform_begin = s_ctx->uniform_end;
+}
+
 void walrus_rhi_set_state(u64 state, u32 rgba)
 {
     u8 const blend = ((state & WR_RHI_STATE_BLEND_MASK) >> WR_RHI_STATE_BLEND_SHIFT) & 0xff;

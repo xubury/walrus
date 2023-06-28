@@ -3,13 +3,14 @@
 #include <engine/systems/model_system.h>
 #include <engine/systems/transform_system.h>
 #include <engine/engine.h>
+#include <core/log.h>
 
 ECS_COMPONENT_DECLARE(Walrus_DeferredRenderer);
 ECS_COMPONENT_DECLARE(Walrus_StaticMesh);
 ECS_COMPONENT_DECLARE(Walrus_SkinnedMesh);
 
-ECS_SYSTEM_DECLARE(deferred_render_static_mesh);
-ECS_SYSTEM_DECLARE(deferred_render_skinned_mesh);
+ECS_SYSTEM_DECLARE(deferred_submit_static_mesh);
+ECS_SYSTEM_DECLARE(deferred_submit_skinned_mesh);
 ECS_SYSTEM_DECLARE(deferred_renderer_run);
 
 static void on_model_add(ecs_iter_t *it)
@@ -79,7 +80,7 @@ static void static_mesh_update(Walrus_StaticMesh *mesh, ecs_world_t *world, ecs_
     }
 }
 
-static void deferred_render_static_mesh(ecs_iter_t *it)
+static void deferred_submit_static_mesh(ecs_iter_t *it)
 {
     Walrus_StaticMesh       *meshes     = ecs_field(it, Walrus_StaticMesh, 1);
     Walrus_Transform        *transforms = ecs_field(it, Walrus_Transform, 2);
@@ -115,9 +116,9 @@ static void skinned_mesh_update(Walrus_SkinnedMesh *mesh, ecs_world_t *world, ec
     mat4 *m = (mat4 *)mesh->joint_buffer.data;
     if (ecs_has(world, parent, Walrus_Animator)) {
         Walrus_Animator const *animator = ecs_get(world, parent, Walrus_Animator);
-        for (u32 j = 0; j < skin->num_joints; ++j) {
-            walrus_animator_transform(animator, model, skin->joints[j].node, m[j]);
-            glm_mat4_mul(m[j], skin->joints[j].inverse_bind_matrix, m[j]);
+        for (u32 i = 0; i < skin->num_joints; ++i) {
+            walrus_animator_transform(animator, model, skin->joints[i].node, m[i]);
+            glm_mat4_mul(m[i], skin->joints[i].inverse_bind_matrix, m[i]);
         }
 
         if (mesh->mesh->num_weights > 0) {
@@ -125,9 +126,9 @@ static void skinned_mesh_update(Walrus_SkinnedMesh *mesh, ecs_world_t *world, ec
         }
     }
     else {
-        for (u32 j = 0; j < skin->num_joints; ++j) {
-            walrus_transform_compose(&skin->joints[j].node->world_transform, m[j]);
-            glm_mat4_mul(m[j], skin->joints[j].inverse_bind_matrix, m[j]);
+        for (u32 i = 0; i < skin->num_joints; ++i) {
+            walrus_transform_compose(&skin->joints[i].node->world_transform, m[i]);
+            glm_mat4_mul(m[i], skin->joints[i].inverse_bind_matrix, m[i]);
         }
 
         if (mesh->mesh->num_weights > 0) {
@@ -136,7 +137,7 @@ static void skinned_mesh_update(Walrus_SkinnedMesh *mesh, ecs_world_t *world, ec
     }
 }
 
-static void deferred_render_skinned_mesh(ecs_iter_t *it)
+static void deferred_submit_skinned_mesh(ecs_iter_t *it)
 {
     Walrus_SkinnedMesh      *meshes   = ecs_field(it, Walrus_SkinnedMesh, 1);
     Walrus_Transform        *worlds   = ecs_field(it, Walrus_Transform, 2);
@@ -170,10 +171,12 @@ static void deferred_renderer_run(ecs_iter_t *it)
     for (i32 i = 0; i < it->count; ++i) {
         walrus_deferred_renderer_set_camera(&renderers[i], &cameras[i]);
         walrus_deferred_renderer_start_record(&renderers[i]);
-        ecs_run(ecs, ecs_id(deferred_render_static_mesh), 0, &renderers[i]);
-        ecs_run(ecs, ecs_id(deferred_render_skinned_mesh), 0, &renderers[i]);
+        ecs_run(ecs, ecs_id(deferred_submit_static_mesh), 0, &renderers[i]);
+        ecs_run(ecs, ecs_id(deferred_submit_skinned_mesh), 0, &renderers[i]);
         walrus_deferred_renderer_end_record(&renderers[i]);
-        /* walrus_deferred_renderer_log_stats(&renderers[i]); */
+        /* char buffer[255]; */
+        /* walrus_deferred_renderer_log_stats(&renderers[i], buffer, 255); */
+        /* walrus_trace(buffer); */
     }
     walrus_rhi_touch(0);
 }
@@ -188,8 +191,8 @@ void walrus_render_system_init(void)
     ECS_OBSERVER(ecs, on_model_add, EcsOnSet, Walrus_Transform, Walrus_Model);
     ECS_OBSERVER(ecs, on_model_remove, EcsOnRemove, Walrus_Model);
 
-    ECS_SYSTEM_DEFINE(ecs, deferred_render_static_mesh, 0, Walrus_StaticMesh, Walrus_Transform);
-    ECS_SYSTEM_DEFINE(ecs, deferred_render_skinned_mesh, 0, Walrus_SkinnedMesh, Walrus_Transform);
+    ECS_SYSTEM_DEFINE(ecs, deferred_submit_static_mesh, 0, Walrus_StaticMesh, Walrus_Transform);
+    ECS_SYSTEM_DEFINE(ecs, deferred_submit_skinned_mesh, 0, Walrus_SkinnedMesh, Walrus_Transform);
     ECS_SYSTEM_DEFINE(ecs, deferred_renderer_run, 0, Walrus_DeferredRenderer, Walrus_Camera);
 
     walrus_deferred_renderer_init_uniforms();

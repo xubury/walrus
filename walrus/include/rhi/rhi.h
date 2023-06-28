@@ -17,6 +17,7 @@ Walrus_RenderResult walrus_rhi_render_frame(i32 ms);
 
 void walrus_rhi_touch(u16 view_id);
 void walrus_rhi_submit(u16 view_id, Walrus_ProgramHandle program, u32 depth, u8 flags);
+void walrus_rhi_dispatch(u16 view_id, Walrus_ProgramHandle program, u32 num_x, u32 num_y, u32 num_z, u8 flags);
 
 void walrus_rhi_set_state(u64 state, u32 rgba);
 void walrus_rhi_set_stencil(u32 fstencil, u32 bstencil);

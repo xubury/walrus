@@ -351,6 +351,18 @@ void draw_clear(RenderDraw *draw, u8 flags)
     }
 }
 
+void compute_clear(RenderCompute *compute, u8 flags)
+{
+    if (flags & WR_RHI_DISCARD_STATE) {
+        compute->uniform_begin = 0;
+        compute->uniform_end   = 0;
+    }
+    if (flags & WR_RHI_DISCARD_TRANSFORM) {
+        compute->start_matrix = 0;
+        compute->num_matrices = 1;
+    }
+}
+
 void bind_clear(RenderBind *bind, u8 flags)
 {
     if (flags & WR_RHI_DISCARD_BINDINGS) {

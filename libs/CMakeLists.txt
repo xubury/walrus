@@ -35,6 +35,10 @@ set(IMGUI_FREETYPE
     CACHE STRING "Build with freetype library")
 set(IMGUI_LIBRARIES)
 
+if(NOT BUILD_SHARED_LIBS)
+    set(IMGUI_STATIC on)
+endif()
+
 if(IMGUI_FREETYPE)
   find_package(freetype REQUIRED PATHS ${FREETYPE_PATH})
   list(APPEND IMGUI_LIBRARIES freetype)
