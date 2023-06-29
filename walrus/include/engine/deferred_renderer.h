@@ -18,10 +18,11 @@ typedef struct {
 
     Walrus_Camera *camera;
 
-    i16 x;
-    i16 y;
-    u16 width;
-    u16 height;
+    bool active;
+    i16  x;
+    i16  y;
+    u16  width;
+    u16  height;
 
     Walrus_RendererSubmitStats stats;
 } Walrus_DeferredRenderer;

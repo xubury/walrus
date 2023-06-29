@@ -169,6 +169,9 @@ static void deferred_renderer_run(ecs_iter_t *it)
     Walrus_Camera           *cameras   = ecs_field(it, Walrus_Camera, 2);
 
     for (i32 i = 0; i < it->count; ++i) {
+        if (!renderers[i].active) {
+            continue;
+        }
         walrus_deferred_renderer_set_camera(&renderers[i], &cameras[i]);
         walrus_deferred_renderer_start_record(&renderers[i]);
         ecs_run(ecs, ecs_id(deferred_submit_static_mesh), 0, &renderers[i]);

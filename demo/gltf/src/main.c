@@ -32,7 +32,7 @@ Walrus_AppError on_init(Walrus_App *app)
     ecs_set(ecs, data->camera, Walrus_Camera,
             {.fov = glm_rad(45.0), .aspect = 1440.0 / 900, .near_z = 0.01, .far_z = 1000.0});
     ecs_set(ecs, data->camera, Walrus_DeferredRenderer,
-            {.x = 0, .y = 0, .width = 1440, .height = 900, .framebuffer = {WR_INVALID_HANDLE}});
+            {.x = 0, .y = 0, .width = 1440, .height = 900, .active = true, .framebuffer = {WR_INVALID_HANDLE}});
 
     walrus_model_system_load_from_file("shibahu", "assets/gltf/shibahu/scene.gltf");
 
@@ -47,8 +47,8 @@ Walrus_AppError on_init(Walrus_App *app)
 
 void on_render(Walrus_App *app)
 {
-    AppData     *data = app->userdata;
-    ecs_world_t *ecs  = walrus_engine_vars()->ecs;
+    AppData             *data      = app->userdata;
+    ecs_world_t         *ecs       = walrus_engine_vars()->ecs;
     Walrus_Camera const *camera    = ecs_get(ecs, data->camera, Walrus_Camera);
     Walrus_Transform    *transform = ecs_get_mut(ecs, data->character, Walrus_Transform);
 
