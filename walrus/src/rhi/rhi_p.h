@@ -128,6 +128,8 @@ typedef struct {
     Walrus_HandleAlloc *textures;
     TextureRef          texture_refs[WR_RHI_MAX_TEXTURES];
 
+    Walrus_HandleAlloc *framebuffers;
+
     Walrus_HashTable *uniform_map;
     u32               uniform_begin;
     u32               uniform_end;

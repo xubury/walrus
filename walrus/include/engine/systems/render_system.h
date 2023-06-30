@@ -10,4 +10,6 @@ extern ECS_COMPONENT_DECLARE(Walrus_SkinnedMesh);
 
 void walrus_render_system_init(void);
 
+void walrus_render_system_shutdown(void);
+
 void walrus_render_system_render(void);

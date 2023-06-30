@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/log.h>
 #include <engine/app.h>
 #include <engine/window.h>
 #include <engine/input.h>

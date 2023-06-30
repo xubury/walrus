@@ -37,7 +37,8 @@ void walrus_shader_library_init(char const *dir)
 {
     s_library             = walrus_new(ShaderLibary, 1);
     s_library->dir        = walrus_str_dup(dir);
-    s_library->shader_map = walrus_hash_table_create_full(walrus_str_hash, walrus_str_equal, NULL, shader_destroy);
+    s_library->shader_map = walrus_hash_table_create_full(walrus_str_hash, walrus_str_equal,
+                                                          (Walrus_KeyDestroyFunc)walrus_str_free, shader_destroy);
 }
 
 void walrus_shader_library_shutdown(void)
@@ -92,7 +93,7 @@ Walrus_ShaderHandle walrus_shader_library_load(Walrus_ShaderType type, char cons
                 ref         = walrus_new(ShaderRef, 1);
                 ref->type   = type;
                 ref->handle = walrus_rhi_create_shader(type, final);
-                walrus_hash_table_insert(s_library->shader_map, full_path, ref);
+                walrus_hash_table_insert(s_library->shader_map, walrus_str_dup(full_path), ref);
                 free(final);
             }
             else {

@@ -14,6 +14,8 @@ struct Walrus_Array {
     u32 element_size;
 
     u8* data;
+
+    Walrus_ArrayElementDestroyFunc destroy_func;
 };
 
 static void array_maybe_expand(Walrus_Array* array, u32 inc)
@@ -36,12 +38,17 @@ static void array_maybe_expand(Walrus_Array* array, u32 inc)
 
 Walrus_Array* walrus_array_create(u32 element_size, u32 len)
 {
+    return walrus_array_create_full(element_size, len, NULL);
+}
+
+Walrus_Array* walrus_array_create_full(u32 element_size, u32 len, Walrus_ArrayElementDestroyFunc func)
+{
     Walrus_Array* array = walrus_new(Walrus_Array, 1);
     array->element_size = element_size;
     array->capcacity    = 0;
     array->len          = 0;
     array->data         = NULL;
-
+    array->destroy_func = func;
     walrus_array_resize(array, len);
 
     return array;
@@ -49,13 +56,14 @@ Walrus_Array* walrus_array_create(u32 element_size, u32 len)
 
 void walrus_array_destroy(Walrus_Array* array)
 {
+    walrus_array_resize(array, 0);
     walrus_free(array->data);
     walrus_free(array);
 }
 
 void walrus_array_clear(Walrus_Array* array)
 {
-    array->len = 0;
+    walrus_array_resize(array, 0);
 }
 
 void walrus_array_fit(Walrus_Array* array)
@@ -67,6 +75,11 @@ void walrus_array_fit(Walrus_Array* array)
 void walrus_array_resize(Walrus_Array* array, u32 len)
 {
     array_maybe_expand(array, walrus_max(array->len, len) - array->len);
+    if (array->destroy_func && array->len > len) {
+        for (u32 i = len; i < array->len; ++i) {
+            array->destroy_func(walrus_array_get(array, i));
+        }
+    }
     array->len = len;
 }
 
@@ -97,4 +110,11 @@ Walrus_Array* walrus_array_nappend(Walrus_Array* array, void* data, u32 len)
     array->len += len;
 
     return array;
+}
+
+void walrus_array_foreach(Walrus_Array* array, Walrus_ArrayForeachFunc func, void* userdata)
+{
+    for (u32 index = 0; index < array->len; ++index) {
+        func(array->data + array->element_size * index, userdata);
+    }
 }

@@ -72,6 +72,50 @@ void walrus_deferred_renderer_init_uniforms(void)
     walrus_rhi_touch(0);
 }
 
+void walrus_deferreed_renderer_init(Walrus_DeferredRenderer *renderer)
+{
+    // pos normal tangent bitangent albedo emissive
+    Walrus_Attachment attachments[6] = {0};
+
+    attachments[0].handle = walrus_rhi_create_texture(
+        &(Walrus_TextureCreateInfo){
+            .ratio = WR_RHI_RATIO_EQUAL, .format = WR_RHI_FORMAT_RGB32F, .num_mipmaps = 0, .flags = 0},
+        NULL);
+    attachments[0].access = WR_RHI_ACCESS_READWRITE;
+
+    attachments[1].handle = walrus_rhi_create_texture(
+        &(Walrus_TextureCreateInfo){
+            .ratio = WR_RHI_RATIO_EQUAL, .format = WR_RHI_FORMAT_RGB32F, .num_mipmaps = 0, .flags = 0},
+        NULL);
+    attachments[1].access = WR_RHI_ACCESS_READWRITE;
+
+    attachments[2].handle = walrus_rhi_create_texture(
+        &(Walrus_TextureCreateInfo){
+            .ratio = WR_RHI_RATIO_EQUAL, .format = WR_RHI_FORMAT_RGB32F, .num_mipmaps = 0, .flags = 0},
+        NULL);
+    attachments[2].access = WR_RHI_ACCESS_READWRITE;
+
+    attachments[3].handle = walrus_rhi_create_texture(
+        &(Walrus_TextureCreateInfo){
+            .ratio = WR_RHI_RATIO_EQUAL, .format = WR_RHI_FORMAT_RGB32F, .num_mipmaps = 0, .flags = 0},
+        NULL);
+    attachments[3].access = WR_RHI_ACCESS_READWRITE;
+
+    attachments[4].handle = walrus_rhi_create_texture(
+        &(Walrus_TextureCreateInfo){
+            .ratio = WR_RHI_RATIO_EQUAL, .format = WR_RHI_FORMAT_RGBA8, .num_mipmaps = 0, .flags = 0},
+        NULL);
+    attachments[4].access = WR_RHI_ACCESS_READWRITE;
+
+    attachments[5].handle = walrus_rhi_create_texture(
+        &(Walrus_TextureCreateInfo){
+            .ratio = WR_RHI_RATIO_EQUAL, .format = WR_RHI_FORMAT_RGB8, .num_mipmaps = 0, .flags = 0},
+        NULL);
+    attachments[5].access = WR_RHI_ACCESS_READWRITE;
+
+    renderer->gbuffer = walrus_rhi_create_framebuffer(attachments, walrus_count_of(attachments));
+}
+
 static void setup_primitive(Walrus_MeshPrimitive const *prim)
 {
     Walrus_MeshMaterial *material = prim->material;

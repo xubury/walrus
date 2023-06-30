@@ -16,6 +16,8 @@ typedef struct {
 typedef struct {
     Walrus_FramebufferHandle framebuffer;
 
+    Walrus_FramebufferHandle gbuffer;
+
     Walrus_Camera *camera;
 
     bool active;
@@ -28,6 +30,8 @@ typedef struct {
 } Walrus_DeferredRenderer;
 
 void walrus_deferred_renderer_init_uniforms(void);
+
+void walrus_deferreed_renderer_init(Walrus_DeferredRenderer *renderer);
 
 void walrus_deferred_renderer_set_camera(Walrus_DeferredRenderer *renderer, Walrus_Camera *camera);
 

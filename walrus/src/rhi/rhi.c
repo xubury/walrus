@@ -34,10 +34,12 @@ static void handles_init(RhiContext* ctx)
     ctx->vertex_layouts = walrus_handle_create(WR_RHI_MAX_VERTEX_LAYOUTS);
     ctx->buffers        = walrus_handle_create(WR_RHI_MAX_BUFFERS);
     ctx->textures       = walrus_handle_create(WR_RHI_MAX_TEXTURES);
+    ctx->framebuffers   = walrus_handle_create(WR_RHI_MAX_FRAMEBUFFERS);
 }
 
 static void handles_shutdown(RhiContext* ctx)
 {
+    walrus_handle_destroy(ctx->framebuffers);
     walrus_handle_destroy(ctx->textures);
     walrus_handle_destroy(ctx->buffers);
     walrus_handle_destroy(ctx->vertex_layouts);
@@ -1437,6 +1439,9 @@ Walrus_TextureHandle walrus_rhi_create_texture(Walrus_TextureCreateInfo const* i
 
     if (_info.ratio != WR_RHI_RATIO_COUNT) {
         compute_texture_size_from_ratio(_info.ratio, &_info.width, &_info.height);
+        _info.cube_map   = false;
+        _info.depth      = 1;
+        _info.num_layers = 1;
     }
 
     // if no mip mode is selected, force num_mipmaps to be 1
@@ -1584,7 +1589,7 @@ bool walrus_rhi_alloc_transient_index_buffer(Walrus_TransientBuffer* buffer, u32
 
 Walrus_FramebufferHandle walrus_rhi_create_framebuffer(Walrus_Attachment* attachments, u8 num)
 {
-    Walrus_FramebufferHandle handle = (Walrus_FramebufferHandle){walrus_handle_alloc(s_ctx->textures)};
+    Walrus_FramebufferHandle handle = (Walrus_FramebufferHandle){walrus_handle_alloc(s_ctx->framebuffers)};
     if (handle.id == WR_INVALID_HANDLE) {
         s_ctx->err = WR_RHI_ALLOC_HADNLE_ERROR;
         return handle;

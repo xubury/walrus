@@ -328,6 +328,7 @@ static void systems_init(void)
 
 static void systems_shutdown(void)
 {
+    walrus_render_system_shutdown();
     walrus_model_system_shutdown();
 }
 

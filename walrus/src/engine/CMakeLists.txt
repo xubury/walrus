@@ -25,6 +25,7 @@ add_library(
   input_device.c
   input.c
   model.c
+  rdg.c
   shader_library.c
   thread_pool.c
   window.c)
