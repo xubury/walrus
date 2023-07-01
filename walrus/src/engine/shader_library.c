@@ -20,6 +20,7 @@ typedef struct {
 } ShaderLibary;
 
 typedef struct {
+    char               *name;
     Walrus_ShaderType   type;
     Walrus_ShaderHandle handle;
 } ShaderRef;
@@ -29,6 +30,7 @@ static ShaderLibary *s_library;
 WR_INLINE void shader_destroy(void *ptr)
 {
     ShaderRef *ref = ptr;
+    walrus_str_free(ref->name);
     walrus_rhi_destroy_shader(ref->handle);
     walrus_free(ref);
 }
@@ -37,8 +39,7 @@ void walrus_shader_library_init(char const *dir)
 {
     s_library             = walrus_new(ShaderLibary, 1);
     s_library->dir        = walrus_str_dup(dir);
-    s_library->shader_map = walrus_hash_table_create_full(walrus_str_hash, walrus_str_equal,
-                                                          (Walrus_KeyDestroyFunc)walrus_str_free, shader_destroy);
+    s_library->shader_map = walrus_hash_table_create_full(walrus_str_hash, walrus_str_equal, NULL, shader_destroy);
 }
 
 void walrus_shader_library_shutdown(void)
@@ -91,9 +92,10 @@ Walrus_ShaderHandle walrus_shader_library_load(Walrus_ShaderType type, char cons
             char *final = stb_include_string(source, NULL, s_library->dir, full_path, error);
             if (final != NULL) {
                 ref         = walrus_new(ShaderRef, 1);
+                ref->name   = walrus_str_dup(full_path);
                 ref->type   = type;
                 ref->handle = walrus_rhi_create_shader(type, final);
-                walrus_hash_table_insert(s_library->shader_map, walrus_str_dup(full_path), ref);
+                walrus_hash_table_insert(s_library->shader_map, ref->name, ref);
                 free(final);
             }
             else {

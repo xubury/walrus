@@ -8,7 +8,7 @@ typedef u32 (*Walrus_HashFunc)(void const *);
 typedef bool (*Walrus_EqualFunc)(void const *, void const *);
 typedef void (*Walrus_KeyDestroyFunc)(void *);
 typedef void (*Walrus_ValueDestroyFunc)(void *);
-typedef void (*Walrus_ForeachFunc)(void const *, void const *, void *);
+typedef void (*Walrus_ForeachFunc)(void const *, void *, void *);
 
 Walrus_HashTable *walrus_hash_table_create(Walrus_HashFunc hash, Walrus_EqualFunc equal);
 Walrus_HashTable *walrus_hash_table_create_full(Walrus_HashFunc hash, Walrus_EqualFunc equal,

@@ -6,6 +6,8 @@ typedef struct {
     Walrus_Mesh           *mesh;
     Walrus_ModelNode      *node;
     Walrus_TransientBuffer weight_buffer;
+
+    bool culled;
 } Walrus_StaticMesh;
 
 typedef struct {
@@ -14,4 +16,6 @@ typedef struct {
     Walrus_ModelNode      *node;
     Walrus_TransientBuffer joint_buffer;
     Walrus_TransientBuffer weight_buffer;
+
+    bool culled;
 } Walrus_SkinnedMesh;

@@ -21,11 +21,11 @@ add_library(
   event.c
   font.c
   fps_controller.c
+  frame_graph.c
   imgui.c
   input_device.c
   input.c
   model.c
-  rdg.c
   shader_library.c
   thread_pool.c
   window.c)

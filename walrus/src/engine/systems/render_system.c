@@ -2,11 +2,11 @@
 #include <engine/systems/animator_system.h>
 #include <engine/systems/model_system.h>
 #include <engine/systems/transform_system.h>
-#include <engine/rdg.h>
+#include <engine/frame_graph.h>
 #include <engine/engine.h>
 #include <core/macro.h>
 
-static Walrus_FrameGraph s_frame_graph;
+static Walrus_FrameGraph s_render_graph;
 
 ECS_COMPONENT_DECLARE(Walrus_DeferredRenderer);
 ECS_COMPONENT_DECLARE(Walrus_StaticMesh);
@@ -14,7 +14,12 @@ ECS_COMPONENT_DECLARE(Walrus_SkinnedMesh);
 
 ECS_SYSTEM_DECLARE(deferred_submit_static_mesh);
 ECS_SYSTEM_DECLARE(deferred_submit_skinned_mesh);
+ECS_SYSTEM_DECLARE(cull_test_static_mesh);
+ECS_SYSTEM_DECLARE(cull_test_skinned_mesh);
 ECS_SYSTEM_DECLARE(deferred_renderer_run);
+
+#define DEFERRED_RENDERER_PASS "DeferredRenderPass"
+#define CULLING_PASS           "CullingPass"
 
 static void on_model_add(ecs_iter_t *it)
 {
@@ -26,10 +31,11 @@ static void on_model_add(ecs_iter_t *it)
         if (node->mesh) {
             Walrus_Transform const *transform = &node->world_transform;
             if (node->skin) {
-                ecs_set(it->world, mesh, Walrus_SkinnedMesh, {.mesh = node->mesh, .skin = node->skin, .node = node});
+                ecs_set(it->world, mesh, Walrus_SkinnedMesh,
+                        {.mesh = node->mesh, .skin = node->skin, .node = node, .culled = false});
             }
             else {
-                ecs_set(it->world, mesh, Walrus_StaticMesh, {.mesh = node->mesh, .node = node});
+                ecs_set(it->world, mesh, Walrus_StaticMesh, {.mesh = node->mesh, .node = node, .culled = false});
             }
             ecs_set(it->world, mesh, Walrus_Transform, {0});
             ecs_set(it->world, mesh, Walrus_LocalTransform,
@@ -90,13 +96,13 @@ static void deferred_submit_static_mesh(ecs_iter_t *it)
     Walrus_DeferredRenderer *renderer   = it->param;
 
     for (i32 i = 0; i < it->count; ++i) {
+        if (meshes[i].culled) {
+            continue;
+        }
+
         ecs_entity_t parent = ecs_get_target(it->world, it->entities[i], EcsChildOf, 0);
         mat4         world;
         walrus_transform_compose(&transforms[i], world);
-
-        if (!walrus_camera_frustum_cull_test(renderer->camera, world, meshes[i].mesh->min, meshes[i].mesh->max)) {
-            continue;
-        }
 
         static_mesh_update(&meshes[i], it->world, parent);
         walrus_deferred_renderer_submit_mesh(renderer, world, &meshes[i]);
@@ -147,12 +153,13 @@ static void deferred_submit_skinned_mesh(ecs_iter_t *it)
     Walrus_DeferredRenderer *renderer = it->param;
 
     for (i32 i = 0; i < it->count; ++i) {
+        if (meshes[i].culled) {
+            continue;
+        }
+
         ecs_entity_t parent = ecs_get_target(it->world, it->entities[i], EcsChildOf, 0);
         mat4         world;
         walrus_transform_compose(&worlds[i], world);
-        if (!walrus_camera_frustum_cull_test(renderer->camera, world, meshes[i].mesh->min, meshes[i].mesh->max)) {
-            continue;
-        }
 
         Walrus_Transform const *p_trans = ecs_get(it->world, parent, Walrus_Transform);
 
@@ -161,6 +168,44 @@ static void deferred_submit_skinned_mesh(ecs_iter_t *it)
 
         skinned_mesh_update(&meshes[i], it->world, parent);
         walrus_deferred_renderer_submit_skinned_mesh(renderer, p_world, &meshes[i]);
+    }
+}
+
+static void cull_test_static_mesh(ecs_iter_t *it)
+{
+    Walrus_StaticMesh *meshes     = ecs_field(it, Walrus_StaticMesh, 1);
+    Walrus_Transform  *transforms = ecs_field(it, Walrus_Transform, 2);
+    Walrus_Camera     *camera     = it->param;
+
+    for (i32 i = 0; i < it->count; ++i) {
+        mat4 world;
+        walrus_transform_compose(&transforms[i], world);
+
+        meshes[i].culled = false;
+
+        if (!walrus_camera_frustum_cull_test(camera, world, meshes[i].mesh->min, meshes[i].mesh->max)) {
+            meshes[i].culled = true;
+            continue;
+        }
+    }
+}
+
+static void cull_test_skinned_mesh(ecs_iter_t *it)
+{
+    Walrus_SkinnedMesh *meshes     = ecs_field(it, Walrus_SkinnedMesh, 1);
+    Walrus_Transform   *transforms = ecs_field(it, Walrus_Transform, 2);
+    Walrus_Camera      *camera     = it->param;
+
+    for (i32 i = 0; i < it->count; ++i) {
+        mat4 world;
+        walrus_transform_compose(&transforms[i], world);
+
+        meshes[i].culled = false;
+
+        if (!walrus_camera_frustum_cull_test(camera, world, meshes[i].mesh->min, meshes[i].mesh->max)) {
+            meshes[i].culled = true;
+            continue;
+        }
     }
 }
 
@@ -175,20 +220,35 @@ static void deferred_renderer_run(ecs_iter_t *it)
         }
         walrus_deferred_renderer_set_camera(&renderers[i], &cameras[i]);
         walrus_deferred_renderer_start_record(&renderers[i]);
-        walrus_fg_execute(&s_frame_graph, &renderers[i]);
+        walrus_fg_write_ptr(&s_render_graph, "DeferredRenderer", &renderers[i]);
+        walrus_fg_write_ptr(&s_render_graph, "Camera", &cameras[i]);
+        walrus_fg_execute(&s_render_graph, DEFERRED_RENDERER_PASS);
+        /* char buffer[255]; */
+        /* walrus_deferred_renderer_log_stats(&renderers[i], buffer, 255); */
+        /* walrus_trace(buffer); */
         walrus_deferred_renderer_end_record(&renderers[i]);
     }
     walrus_rhi_touch(0);
 }
 
-static void gbuffer_pass(Walrus_RenderNode const *node, void *userdata)
+static void culling_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
+{
+    ecs_world_t   *ecs    = walrus_engine_vars()->ecs;
+    Walrus_Camera *camera = walrus_fg_read_ptr(graph, "Camera");
+
+    ecs_run(ecs, ecs_id(cull_test_static_mesh), 0, camera);
+    ecs_run(ecs, ecs_id(cull_test_skinned_mesh), 0, camera);
+
+    walrus_trace("render index: %d name: %s", node->index, node->name);
+}
+
+static void gbuffer_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
 {
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
 
-    Walrus_DeferredRenderer *renderer = userdata;
+    Walrus_DeferredRenderer *renderer = walrus_fg_read_ptr(graph, "DeferredRenderer");
     Walrus_FramebufferHandle gbuffer  = renderer->gbuffer;
-    walrus_fg_write(&s_frame_graph, "GBuffer", gbuffer.id);
-    walrus_trace("create gbuffer: %d", gbuffer.id);
+    walrus_fg_write(graph, "GBuffer", gbuffer.id);
 
     ecs_run(ecs, ecs_id(deferred_submit_static_mesh), 0, renderer);
     ecs_run(ecs, ecs_id(deferred_submit_skinned_mesh), 0, renderer);
@@ -196,10 +256,9 @@ static void gbuffer_pass(Walrus_RenderNode const *node, void *userdata)
     walrus_trace("render index: %d name: %s gbuffer: %d", node->index, node->name, gbuffer.id);
 }
 
-static void deferred_lighting_pass(Walrus_RenderNode const *node, void *userdata)
+static void deferred_lighting_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
 {
-    Walrus_DeferredRenderer *renderer = userdata;
-    Walrus_FramebufferHandle gbuffer  = {walrus_fg_read(&s_frame_graph, "GBuffer")};
+    Walrus_FramebufferHandle gbuffer = {walrus_fg_read(graph, "GBuffer")};
 
     walrus_trace("render index: %d name: %s gbuffer: %d", node->index, node->name, gbuffer.id);
 }
@@ -217,20 +276,30 @@ void walrus_render_system_init(void)
     ECS_SYSTEM_DEFINE(ecs, deferred_submit_static_mesh, 0, Walrus_StaticMesh, Walrus_Transform);
     ECS_SYSTEM_DEFINE(ecs, deferred_submit_skinned_mesh, 0, Walrus_SkinnedMesh, Walrus_Transform);
     ECS_SYSTEM_DEFINE(ecs, deferred_renderer_run, 0, Walrus_DeferredRenderer, Walrus_Camera);
+    ECS_SYSTEM_DEFINE(ecs, cull_test_static_mesh, 0, Walrus_StaticMesh, Walrus_Transform);
+    ECS_SYSTEM_DEFINE(ecs, cull_test_skinned_mesh, 0, Walrus_SkinnedMesh, Walrus_Transform);
 
     walrus_deferred_renderer_init_uniforms();
 
-    walrus_fg_init(&s_frame_graph);
+    walrus_fg_init(&s_render_graph);
+    Walrus_FramePipeline *dummy_pipeline = walrus_fg_add_pipeline(&s_render_graph, "dummy");
 
-    walrus_fg_add_node(&s_frame_graph, gbuffer_pass, "GBuffer");
-    walrus_fg_add_node(&s_frame_graph, deferred_lighting_pass, "DeferredLighting");
+    Walrus_FramePipeline *culling_pipeline = walrus_fg_add_pipeline(&s_render_graph, CULLING_PASS);
+    walrus_fg_add_node(culling_pipeline, culling_pass, "Culling");
 
-    walrus_fg_compile(&s_frame_graph);
+    Walrus_FramePipeline *deferred_pipeline = walrus_fg_add_pipeline(&s_render_graph, DEFERRED_RENDERER_PASS);
+    walrus_fg_add_node(deferred_pipeline, gbuffer_pass, "GBuffer");
+    walrus_fg_add_node(deferred_pipeline, deferred_lighting_pass, "DeferredLighting");
+
+    walrus_fg_connect_pipeline(culling_pipeline, deferred_pipeline);
+    walrus_fg_connect_pipeline(dummy_pipeline, culling_pipeline);
+
+    walrus_fg_compile(&s_render_graph);
 }
 
 void walrus_render_system_shutdown(void)
 {
-    walrus_fg_shutdown(&s_frame_graph);
+    walrus_fg_shutdown(&s_render_graph);
 }
 
 void walrus_render_system_render(void)

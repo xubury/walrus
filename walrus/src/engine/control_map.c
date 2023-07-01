@@ -158,7 +158,7 @@ void walrus_control_clear(Walrus_ControlMap *map, char const *name)
     walrus_hash_table_remove(map->mapping, name);
 }
 
-void foreach_axis_control(void const *key, void const *value, void *userdata)
+void foreach_axis_control(void const *key, void *value, void *userdata)
 {
     walrus_unused(key);
     Walrus_Input   *input   = walrus_engine_vars()->input;
@@ -220,7 +220,7 @@ void foreach_axis_control(void const *key, void const *value, void *userdata)
     }
 }
 
-void foreach_action_control(void const *key, void const *value, void *userdata)
+void foreach_action_control(void const *key, void *value, void *userdata)
 {
     walrus_unused(key);
     Walrus_Input   *input   = walrus_engine_vars()->input;
