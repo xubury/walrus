@@ -73,6 +73,9 @@ typedef struct Walrus_ModelNode Walrus_ModelNode;
 typedef struct {
     Walrus_ModelNode *node;
     mat4              inverse_bind_matrix;
+
+    vec3 min;
+    vec3 max;
 } Walrus_SkinJoint;
 
 typedef struct {

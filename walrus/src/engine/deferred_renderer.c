@@ -206,12 +206,13 @@ static void dump_stats(Walrus_DeferredRenderer *renderer, Walrus_Mesh *mesh)
     }
 }
 
-void walrus_deferred_renderer_submit_mesh(Walrus_DeferredRenderer *renderer, mat4 const world, Walrus_StaticMesh *mesh)
+void walrus_deferred_renderer_submit_mesh(Walrus_DeferredRenderer *renderer, mat4 const world, Walrus_StaticMesh *mesh,
+                                          Walrus_TransientBuffer weights)
 {
     walrus_rhi_set_transform(world);
 
-    if (mesh->weight_buffer.handle.id != WR_INVALID_HANDLE) {
-        walrus_rhi_set_transient_buffer(0, &mesh->weight_buffer);
+    if (weights.handle.id != WR_INVALID_HANDLE) {
+        walrus_rhi_set_transient_buffer(0, &weights);
     }
 
     for (u32 i = 0; i < mesh->mesh->num_primitives; ++i) {
@@ -223,13 +224,14 @@ void walrus_deferred_renderer_submit_mesh(Walrus_DeferredRenderer *renderer, mat
 }
 
 void walrus_deferred_renderer_submit_skinned_mesh(Walrus_DeferredRenderer *renderer, mat4 const world,
-                                                  Walrus_SkinnedMesh *mesh)
+                                                  Walrus_SkinnedMesh *mesh, Walrus_TransientBuffer joints,
+                                                  Walrus_TransientBuffer weights)
 {
     walrus_rhi_set_transform(world);
 
-    walrus_rhi_set_transient_buffer(0, &mesh->joint_buffer);
-    if (mesh->weight_buffer.handle.id != WR_INVALID_HANDLE) {
-        walrus_rhi_set_transient_buffer(1, &mesh->weight_buffer);
+    walrus_rhi_set_transient_buffer(0, &joints);
+    if (weights.handle.id != WR_INVALID_HANDLE) {
+        walrus_rhi_set_transient_buffer(1, &weights);
     }
 
     for (u32 i = 0; i < mesh->mesh->num_primitives; ++i) {

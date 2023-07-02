@@ -365,6 +365,11 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
 
         model->skins[i].num_joints = skin->joints_count;
         model->skins[i].joints     = resource_new(Walrus_SkinJoint, skin->joints_count);
+
+        for (u32 j = 0; j < skin->joints_count; ++j) {
+            glm_vec3_copy((vec3){FLT_MAX, FLT_MAX, FLT_MAX}, model->skins[i].joints[j].min);
+            glm_vec3_copy((vec3){-FLT_MAX, -FLT_MAX, -FLT_MAX}, model->skins[i].joints[j].max);
+        }
     }
 }
 
@@ -912,6 +917,85 @@ static void buffers_shutdown(Walrus_Model *model)
     walrus_rhi_destroy_buffer(model->tangent_buffer);
 }
 
+static void calculate_skin_min_max(Walrus_Model *model, cgltf_data *gltf)
+{
+    for (u32 i = 0; i < model->num_nodes; ++i) {
+        cgltf_node *node = &gltf->nodes[i];
+        if (node->skin) {
+            cgltf_mesh       *mesh = node->mesh;
+            Walrus_ModelSkin *skin = &model->skins[node->skin - &gltf->skins[0]];
+            for (u32 j = 0; j < mesh->primitives_count; ++j) {
+                cgltf_primitive *primitive = &mesh->primitives[j];
+                cgltf_accessor  *apos      = NULL;
+                cgltf_accessor  *aweights  = NULL;
+                cgltf_accessor  *ajoints   = NULL;
+                for (u32 l = 0; l < primitive->attributes_count; ++l) {
+                    cgltf_attribute *attr = &primitive->attributes[l];
+                    if (attr->index > 0) {
+                        continue;
+                    }
+                    if (attr->type == cgltf_attribute_type_position) {
+                        apos = attr->data;
+                    }
+                    else if (attr->type == cgltf_attribute_type_weights) {
+                        aweights = attr->data;
+                    }
+                    else if (attr->type == cgltf_attribute_type_joints) {
+                        ajoints = attr->data;
+                    }
+                }
+                for (u32 k = 0; k < primitive->indices->count; ++k) {
+                    u32  v_index = cgltf_accessor_read_index(primitive->indices, k);
+                    vec4 pos;
+                    pos[3] = 1;
+                    vec4 weights;
+                    vec4 joints;
+                    cgltf_accessor_read_float(apos, v_index, pos, sizeof(vec3));
+                    cgltf_accessor_read_float(aweights, v_index, weights, sizeof(vec4));
+                    cgltf_accessor_read_float(ajoints, v_index, joints, sizeof(vec4));
+                    mat4 skin_matrix = GLM_MAT4_ZERO_INIT;
+                    mat4 skin_matrices[4];
+                    for (u32 l = 0; l < 4; ++l) {
+                        mat4 world;
+                        walrus_transform_compose(&skin->joints[(u32)joints[l]].node->world_transform, world);
+                        glm_mat4_copy(skin->joints[(u32)joints[l]].inverse_bind_matrix, skin_matrices[l]);
+                        glm_mat4_mul(world, skin_matrices[l], world);
+
+                        glm_mat4_scale(skin_matrices[l], weights[l]);
+                        glm_vec4_add(skin_matrix[0], skin_matrices[l][0], skin_matrix[0]);
+                        glm_vec4_add(skin_matrix[1], skin_matrices[l][1], skin_matrix[1]);
+                        glm_vec4_add(skin_matrix[2], skin_matrices[l][2], skin_matrix[2]);
+                        glm_vec4_add(skin_matrix[3], skin_matrices[l][3], skin_matrix[3]);
+                    }
+                    vec4 world_pos;
+                    glm_mat4_mulv(skin_matrix, pos, world_pos);
+                    for (u32 l = 0; l < 4; ++l) {
+                        if (weights[l] > 0) {
+                            mat4 inv_world;
+                            walrus_transform_compose(&skin->joints[(u32)joints[l]].node->world_transform, inv_world);
+                            glm_inv_tr(inv_world);
+
+                            vec4 local;
+                            glm_mat4_mulv(inv_world, world_pos, local);
+                            glm_vec4_scale(local, 1.0 / local[3], local);
+                            glm_vec3_minv(local, skin->joints[(u32)joints[l]].min, skin->joints[(u32)joints[l]].min);
+                            glm_vec3_maxv(local, skin->joints[(u32)joints[l]].max, skin->joints[(u32)joints[l]].max);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for (u32 i = 0; i < model->num_skins; ++i) {
+        for (u32 j = 0; j < model->skins[i].num_joints; ++j) {
+            walrus_trace("joint: %d min: %f %f %f max: %f %f %f", j, model->skins[i].joints[j].min[0],
+                         model->skins[i].joints[j].min[1], model->skins[i].joints[j].min[2],
+                         model->skins[i].joints[j].max[0], model->skins[i].joints[j].max[1],
+                         model->skins[i].joints[j].max[2]);
+        }
+    }
+}
+
 static void model_init(Walrus_Model *model, Walrus_Image *images, cgltf_data *gltf)
 {
     model_allocate(model, gltf);
@@ -929,6 +1013,8 @@ static void model_init(Walrus_Model *model, Walrus_Image *images, cgltf_data *gl
     animations_init(model, gltf);
 
     skins_init(model, gltf);
+
+    calculate_skin_min_max(model, gltf);
 }
 
 void walrus_model_shutdown(Walrus_Model *model)
