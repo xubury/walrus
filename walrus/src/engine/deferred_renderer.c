@@ -206,7 +206,7 @@ static void dump_stats(Walrus_DeferredRenderer *renderer, Walrus_Mesh *mesh)
     }
 }
 
-void walrus_deferred_renderer_submit_mesh(Walrus_DeferredRenderer *renderer, mat4 const world, Walrus_StaticMesh *mesh,
+void walrus_deferred_renderer_submit_mesh(Walrus_DeferredRenderer *renderer, mat4 const world, Walrus_Mesh *mesh,
                                           Walrus_TransientBuffer weights)
 {
     walrus_rhi_set_transform(world);
@@ -215,16 +215,16 @@ void walrus_deferred_renderer_submit_mesh(Walrus_DeferredRenderer *renderer, mat
         walrus_rhi_set_transient_buffer(0, &weights);
     }
 
-    for (u32 i = 0; i < mesh->mesh->num_primitives; ++i) {
-        Walrus_MeshPrimitive *prim = &mesh->mesh->primitives[i];
+    for (u32 i = 0; i < mesh->num_primitives; ++i) {
+        Walrus_MeshPrimitive *prim = &mesh->primitives[i];
         setup_primitive(prim);
         walrus_rhi_submit(0, s_data->shader, 0, WR_RHI_DISCARD_ALL);
     }
-    dump_stats(renderer, mesh->mesh);
+    dump_stats(renderer, mesh);
 }
 
 void walrus_deferred_renderer_submit_skinned_mesh(Walrus_DeferredRenderer *renderer, mat4 const world,
-                                                  Walrus_SkinnedMesh *mesh, Walrus_TransientBuffer joints,
+                                                  Walrus_Mesh *mesh, Walrus_TransientBuffer joints,
                                                   Walrus_TransientBuffer weights)
 {
     walrus_rhi_set_transform(world);
@@ -234,12 +234,12 @@ void walrus_deferred_renderer_submit_skinned_mesh(Walrus_DeferredRenderer *rende
         walrus_rhi_set_transient_buffer(1, &weights);
     }
 
-    for (u32 i = 0; i < mesh->mesh->num_primitives; ++i) {
-        Walrus_MeshPrimitive *prim = &mesh->mesh->primitives[i];
+    for (u32 i = 0; i < mesh->num_primitives; ++i) {
+        Walrus_MeshPrimitive *prim = &mesh->primitives[i];
         setup_primitive(prim);
         walrus_rhi_submit(0, s_data->skin_shader, 0, WR_RHI_DISCARD_ALL);
     }
-    dump_stats(renderer, mesh->mesh);
+    dump_stats(renderer, mesh);
 }
 
 void walrus_deferred_renderer_start_record(Walrus_DeferredRenderer *renderer)

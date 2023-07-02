@@ -11,12 +11,11 @@
 static Walrus_FrameGraph s_render_graph;
 
 ECS_COMPONENT_DECLARE(Walrus_DeferredRenderer);
-ECS_COMPONENT_DECLARE(Walrus_StaticMesh);
-ECS_COMPONENT_DECLARE(Walrus_SkinnedMesh);
-ECS_COMPONENT_DECLARE(Walrus_MeshResource);
+ECS_COMPONENT_DECLARE(Walrus_RenderMesh);
+ECS_COMPONENT_DECLARE(Walrus_WeightResource);
 ECS_COMPONENT_DECLARE(Walrus_SkinResource);
 
-ECS_SYSTEM_DECLARE(mesh_update);
+ECS_SYSTEM_DECLARE(weight_update);
 ECS_SYSTEM_DECLARE(skin_update);
 ECS_SYSTEM_DECLARE(deferred_submit_static_mesh);
 ECS_SYSTEM_DECLARE(deferred_submit_skinned_mesh);
@@ -31,15 +30,13 @@ static void on_model_add(ecs_iter_t *it)
 {
     Walrus_Model *model = ecs_field(it, Walrus_Model, 2);
 
-    ecs_entity_t *meshes = walrus_new(ecs_entity_t, model->num_meshes);
-    ecs_entity_t *skins  = walrus_new(ecs_entity_t, model->num_skins);
-    for (u32 i = 0; i < model->num_meshes; ++i) {
-        meshes[i] = ecs_new_w_pair(it->world, EcsChildOf, it->entities[0]);
-        ecs_set(it->world, meshes[i], Walrus_MeshResource, {.mesh = &model->meshes[i]});
-    }
+    ecs_entity_t *skins = walrus_new(ecs_entity_t, model->num_skins);
     for (u32 i = 0; i < model->num_skins; ++i) {
         skins[i] = ecs_new_w_pair(it->world, EcsChildOf, it->entities[0]);
-        ecs_set(it->world, skins[i], Walrus_SkinResource, {.skin = &model->skins[i]});
+        ecs_set(it->world, skins[i], Walrus_SkinResource,
+                {
+                    .skin = &model->skins[i],
+                });
     }
 
     for (u32 i = 0; i < model->num_nodes; ++i) {
@@ -48,16 +45,21 @@ static void on_model_add(ecs_iter_t *it)
         if (node->mesh) {
             Walrus_Transform const *transform = &node->world_transform;
 
-            u32 mesh_id = node->mesh - &model->meshes[0];
-            ecs_add_pair(it->world, mesh, EcsDependsOn, meshes[mesh_id]);
+            if (node->mesh->num_weights > 0) {
+                ecs_entity_t weight = ecs_new_w_pair(it->world, EcsChildOf, it->entities[0]);
+                ecs_set(it->world, weight, Walrus_WeightResource,
+                        {
+                            .node = node,
+                        });
+                ecs_add_pair(it->world, mesh, EcsIsA, weight);
+            }
+
             if (node->skin) {
-                ecs_set(it->world, mesh, Walrus_SkinnedMesh, {.mesh = node->mesh, .node = node, .culled = false});
                 u32 skin_id = node->skin - &model->skins[0];
-                ecs_add_pair(it->world, mesh, EcsDependsOn, skins[skin_id]);
+                ecs_add_pair(it->world, mesh, EcsIsA, skins[skin_id]);
             }
-            else {
-                ecs_set(it->world, mesh, Walrus_StaticMesh, {.mesh = node->mesh, .node = node, .culled = false});
-            }
+
+            ecs_set(it->world, mesh, Walrus_RenderMesh, {.mesh = node->mesh, .culled = false});
             ecs_set(it->world, mesh, Walrus_Transform, {0});
             ecs_set(it->world, mesh, Walrus_LocalTransform,
                     {.trans = {transform->trans[0], transform->trans[1], transform->trans[2]},
@@ -65,43 +67,30 @@ static void on_model_add(ecs_iter_t *it)
                      .scale = {transform->scale[0], transform->scale[1], transform->scale[2]}});
         }
     }
-    walrus_free(meshes);
     walrus_free(skins);
-}
-
-static void remove_dependency(ecs_world_t *world, ecs_entity_t entity)
-{
-    ecs_filter_t *ff = ecs_filter_init(world, &(ecs_filter_desc_t){.terms = {{.id = ecs_pair(EcsDependsOn, entity)}}});
-    ecs_iter_t    it_ff = ecs_filter_iter(world, ff);
-    while (ecs_filter_next(&it_ff)) {
-        for (i32 i = 0; i < it_ff.count; ++i) {
-            ecs_delete(world, it_ff.entities[i]);
-        }
-    }
-    ecs_filter_fini(ff);
 }
 
 static void on_model_remove(ecs_iter_t *it)
 {
     ecs_entity_t  entity = it->entities[0];
-    ecs_filter_t *f    = ecs_filter_init(it->world, &(ecs_filter_desc_t){.terms = {{.id = ecs_id(Walrus_SkinResource)},
-                                                                                   {.id = ecs_pair(EcsChildOf, entity)}}});
-    ecs_iter_t    it_f = ecs_filter_iter(it->world, f);
+    ecs_filter_t *f      = ecs_filter_init(
+        it->world, &(ecs_filter_desc_t){.terms = {{.id = ecs_id(Walrus_SkinResource), .src.flags = EcsSelf},
+                                                       {.id = ecs_pair(EcsChildOf, entity)}}});
+    ecs_iter_t it_f = ecs_filter_iter(it->world, f);
     while (ecs_filter_next(&it_f)) {
         for (i32 i = 0; i < it_f.count; ++i) {
-            remove_dependency(it->world, it_f.entities[i]);
             ecs_delete(it->world, it_f.entities[i]);
         }
     }
     ecs_filter_fini(f);
 
-    f = ecs_filter_init(it->world, &(ecs_filter_desc_t){.terms = {{.id = ecs_id(Walrus_MeshResource)},
-                                                                  {.id = ecs_pair(EcsChildOf, entity)}}});
+    f = ecs_filter_init(it->world,
+                        &(ecs_filter_desc_t){.terms = {{.id = ecs_id(Walrus_WeightResource), .src.flags = EcsSelf},
+                                                       {.id = ecs_pair(EcsChildOf, entity)}}});
 
     it_f = ecs_filter_iter(it->world, f);
     while (ecs_filter_next(&it_f)) {
         for (i32 i = 0; i < it_f.count; ++i) {
-            remove_dependency(it->world, it_f.entities[i]);
             ecs_delete(it->world, it_f.entities[i]);
         }
     }
@@ -110,7 +99,7 @@ static void on_model_remove(ecs_iter_t *it)
 
 static void deferred_submit_static_mesh(ecs_iter_t *it)
 {
-    Walrus_StaticMesh       *meshes     = ecs_field(it, Walrus_StaticMesh, 1);
+    Walrus_RenderMesh       *meshes     = ecs_field(it, Walrus_RenderMesh, 1);
     Walrus_Transform        *transforms = ecs_field(it, Walrus_Transform, 2);
     Walrus_DeferredRenderer *renderer   = it->param;
 
@@ -122,15 +111,17 @@ static void deferred_submit_static_mesh(ecs_iter_t *it)
         mat4 world;
         walrus_transform_compose(&transforms[i], world);
 
-        ecs_entity_t res_mesh =
-            ecs_get_target_for_id(it->real_world, it->entities[i], EcsDependsOn, ecs_id(Walrus_MeshResource));
-        walrus_deferred_renderer_submit_mesh(renderer, world, &meshes[i],
-                                             ecs_get(it->world, res_mesh, Walrus_MeshResource)->weight_buffer);
+        Walrus_TransientBuffer weights = {.handle = {WR_INVALID_HANDLE}};
+        if (ecs_has(it->world, it->entities[i], Walrus_WeightResource)) {
+            weights = ecs_get(it->world, it->entities[i], Walrus_WeightResource)->weight_buffer;
+        }
+        walrus_deferred_renderer_submit_mesh(renderer, world, meshes[i].mesh, weights);
     }
 }
+
 static void deferred_submit_skinned_mesh(ecs_iter_t *it)
 {
-    Walrus_SkinnedMesh      *meshes   = ecs_field(it, Walrus_SkinnedMesh, 1);
+    Walrus_RenderMesh       *meshes   = ecs_field(it, Walrus_RenderMesh, 1);
     Walrus_DeferredRenderer *renderer = it->param;
 
     for (i32 i = 0; i < it->count; ++i) {
@@ -141,22 +132,22 @@ static void deferred_submit_skinned_mesh(ecs_iter_t *it)
         ecs_entity_t parent = ecs_get_target(it->world, it->entities[i], EcsChildOf, 0);
 
         Walrus_Transform const *p_trans = ecs_get(it->world, parent, Walrus_Transform);
-
-        mat4 p_world;
+        mat4                    p_world;
         walrus_transform_compose(p_trans, p_world);
-        ecs_entity_t res_skin =
-            ecs_get_target_for_id(it->real_world, it->entities[i], EcsDependsOn, ecs_id(Walrus_SkinResource));
-        ecs_entity_t res_mesh =
-            ecs_get_target_for_id(it->real_world, it->entities[i], EcsDependsOn, ecs_id(Walrus_MeshResource));
-        walrus_deferred_renderer_submit_skinned_mesh(renderer, p_world, &meshes[i],
-                                                     ecs_get(it->world, res_skin, Walrus_SkinResource)->joint_buffer,
-                                                     ecs_get(it->world, res_mesh, Walrus_MeshResource)->weight_buffer);
+
+        Walrus_TransientBuffer weights = {.handle = {WR_INVALID_HANDLE}};
+        if (ecs_has(it->world, it->entities[i], Walrus_WeightResource)) {
+            weights = ecs_get(it->world, it->entities[i], Walrus_WeightResource)->weight_buffer;
+        }
+        walrus_deferred_renderer_submit_skinned_mesh(
+            renderer, p_world, meshes[i].mesh, ecs_get(it->world, it->entities[i], Walrus_SkinResource)->joint_buffer,
+            weights);
     }
 }
 
 static void cull_test_static_mesh(ecs_iter_t *it)
 {
-    Walrus_StaticMesh *meshes     = ecs_field(it, Walrus_StaticMesh, 1);
+    Walrus_RenderMesh *meshes     = ecs_field(it, Walrus_RenderMesh, 1);
     Walrus_Transform  *transforms = ecs_field(it, Walrus_Transform, 2);
     Walrus_Camera     *camera     = it->param;
 
@@ -194,8 +185,8 @@ static void transform_bound(mat4 const m, vec3 const min, vec3 const max, vec3 r
 
 static void cull_test_skinned_mesh(ecs_iter_t *it)
 {
-    Walrus_SkinnedMesh *meshes = ecs_field(it, Walrus_SkinnedMesh, 1);
-    Walrus_Camera      *camera = it->param;
+    Walrus_RenderMesh *meshes = ecs_field(it, Walrus_RenderMesh, 1);
+    Walrus_Camera     *camera = it->param;
 
     for (i32 i = 0; i < it->count; ++i) {
         ecs_entity_t parent = ecs_get_target(it->world, it->entities[i], EcsChildOf, 0);
@@ -207,9 +198,7 @@ static void cull_test_skinned_mesh(ecs_iter_t *it)
 
         meshes[i].culled = false;
 
-        ecs_entity_t res_skin =
-            ecs_get_target_for_id(it->real_world, it->entities[i], EcsDependsOn, ecs_id(Walrus_SkinResource));
-        Walrus_SkinResource const *skin = ecs_get(it->world, res_skin, Walrus_SkinResource);
+        Walrus_SkinResource const *skin = ecs_get(it->world, it->entities[i], Walrus_SkinResource);
         if (!walrus_camera_frustum_cull_test(camera, p_world, skin->min, skin->max)) {
             meshes[i].culled = true;
             continue;
@@ -247,7 +236,7 @@ static void culling_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
     ecs_run(ecs, ecs_id(cull_test_static_mesh), 0, camera);
     ecs_run(ecs, ecs_id(cull_test_skinned_mesh), 0, camera);
 
-    /* walrus_trace("render index: %d name: %s", node->index, node->name); */
+    walrus_trace("render index: %d name: %s", node->index, node->name);
 }
 
 static void gbuffer_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
@@ -261,72 +250,67 @@ static void gbuffer_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
     ecs_run(ecs, ecs_id(deferred_submit_static_mesh), 0, renderer);
     ecs_run(ecs, ecs_id(deferred_submit_skinned_mesh), 0, renderer);
 
-    /* walrus_trace("render index: %d name: %s gbuffer: %d", node->index, node->name, gbuffer.id); */
+    walrus_trace("render index: %d name: %s gbuffer: %d", node->index, node->name, gbuffer.id);
 }
 
 static void deferred_lighting_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
 {
     Walrus_FramebufferHandle gbuffer = {walrus_fg_read(graph, "GBuffer")};
 
-    /* walrus_trace("render index: %d name: %s gbuffer: %d", node->index, node->name, gbuffer.id); */
+    walrus_trace("render index: %d name: %s gbuffer: %d", node->index, node->name, gbuffer.id);
 }
 
-static void mesh_update(ecs_iter_t *it)
+static void weight_update(ecs_iter_t *it)
 {
-    Walrus_MeshResource *resource = ecs_field(it, Walrus_MeshResource, 1);
+    Walrus_WeightResource *weights = ecs_field(it, Walrus_WeightResource, 1);
     for (i32 i = 0; i < it->count; ++i) {
-        if (resource[i].mesh->num_weights > 0) {
-            walrus_rhi_alloc_transient_buffer(&resource[i].weight_buffer, resource[i].mesh->num_weights, sizeof(f32));
+        walrus_rhi_alloc_transient_buffer(&weights[i].weight_buffer, weights[i].node->mesh->num_weights, sizeof(f32));
+
+        ecs_entity_t        parent = ecs_get_target(it->world, it->entities[i], EcsChildOf, 0);
+        Walrus_Model const *model  = ecs_get(it->world, parent, Walrus_Model);
+        if (ecs_has(it->world, parent, Walrus_Animator)) {
+            Walrus_Animator const *animator = ecs_get(it->world, parent, Walrus_Animator);
+            walrus_animator_weights(animator, model, weights[i].node, (f32 *)weights[i].weight_buffer.data);
         }
         else {
-            resource[i].weight_buffer.handle.id = WR_INVALID_HANDLE;
+            memcpy(weights[i].weight_buffer.data, weights[i].node->mesh->weights,
+                   sizeof(f32) * weights[i].node->mesh->num_weights);
         }
-        memcpy(resource[i].weight_buffer.data, resource[i].mesh->weights, sizeof(f32) * resource[i].mesh->num_weights);
     }
 }
 
 static void skin_update(ecs_iter_t *it)
 {
-    Walrus_SkinResource *resource = ecs_field(it, Walrus_SkinResource, 1);
+    Walrus_SkinResource *skins = ecs_field(it, Walrus_SkinResource, 1);
     for (i32 i = 0; i < it->count; ++i) {
         ecs_entity_t        parent = ecs_get_target(it->world, it->entities[i], EcsChildOf, 0);
         Walrus_Model const *model  = ecs_get(it->world, parent, Walrus_Model);
-        walrus_rhi_alloc_transient_buffer(&resource[i].joint_buffer, resource[i].skin->num_joints, sizeof(mat4));
+        walrus_rhi_alloc_transient_buffer(&skins[i].joint_buffer, skins[i].skin->num_joints, sizeof(mat4));
 
-        Walrus_ModelSkin *skin = resource[i].skin;
+        Walrus_ModelSkin *skin = skins[i].skin;
 
-        mat4 *m = (mat4 *)resource[i].joint_buffer.data;
-        if (ecs_has(it->world, parent, Walrus_Animator)) {
-            Walrus_Animator const *animator = ecs_get(it->world, parent, Walrus_Animator);
-            for (u32 i = 0; i < skin->num_joints; ++i) {
-                walrus_animator_transform(animator, model, skin->joints[i].node, m[i]);
-                glm_mat4_mul(m[i], skin->joints[i].inverse_bind_matrix, m[i]);
-            }
-        }
-        else {
-            for (u32 i = 0; i < skin->num_joints; ++i) {
-                walrus_transform_compose(&skin->joints[i].node->world_transform, m[i]);
-                glm_mat4_mul(m[i], skin->joints[i].inverse_bind_matrix, m[i]);
-            }
-        }
-        glm_vec3_copy((vec3){FLT_MAX, FLT_MAX, FLT_MAX}, resource[i].min);
-        glm_vec3_copy((vec3){-FLT_MAX, -FLT_MAX, -FLT_MAX}, resource[i].max);
+        mat4 *skin_matrices = (mat4 *)skins[i].joint_buffer.data;
+
+        glm_vec3_copy((vec3){FLT_MAX, FLT_MAX, FLT_MAX}, skins[i].min);
+        glm_vec3_copy((vec3){-FLT_MAX, -FLT_MAX, -FLT_MAX}, skins[i].max);
         for (u32 j = 0; j < skin->num_joints; ++j) {
             mat4 m;
             if (ecs_has(it->world, parent, Walrus_Animator)) {
                 Walrus_Animator const *animator = ecs_get(it->world, parent, Walrus_Animator);
                 walrus_animator_transform(animator, model, skin->joints[j].node, m);
+                glm_mat4_mul(m, skin->joints[j].inverse_bind_matrix, skin_matrices[j]);
             }
             else {
                 walrus_transform_compose(&skin->joints[j].node->world_transform, m);
+                glm_mat4_mul(m, skin->joints[j].inverse_bind_matrix, skin_matrices[j]);
             }
             vec3 min, max;
             if (skin->joints[j].min[0] == FLT_MAX || skin->joints[j].max[0] == -FLT_MAX) {
                 continue;
             }
             transform_bound(m, skin->joints[j].min, skin->joints[j].max, min, max);
-            glm_vec3_minv(min, resource[i].min, resource[i].min);
-            glm_vec3_maxv(max, resource[i].max, resource[i].max);
+            glm_vec3_minv(min, skins[i].min, skins[i].min);
+            glm_vec3_maxv(max, skins[i].max, skins[i].max);
         }
     }
 }
@@ -335,27 +319,47 @@ void walrus_render_system_init(void)
 {
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
     ECS_COMPONENT_DEFINE(ecs, Walrus_DeferredRenderer);
-    ECS_COMPONENT_DEFINE(ecs, Walrus_StaticMesh);
-    ECS_COMPONENT_DEFINE(ecs, Walrus_SkinnedMesh);
-    ECS_COMPONENT_DEFINE(ecs, Walrus_MeshResource);
+    ECS_COMPONENT_DEFINE(ecs, Walrus_RenderMesh);
+    ECS_COMPONENT_DEFINE(ecs, Walrus_WeightResource);
     ECS_COMPONENT_DEFINE(ecs, Walrus_SkinResource);
 
+    // TODO: filter not self?
     ECS_OBSERVER(ecs, on_model_add, EcsOnSet, Walrus_Transform, Walrus_Model);
     ECS_OBSERVER(ecs, on_model_remove, EcsOnRemove, Walrus_Model);
 
-    ECS_SYSTEM_DEFINE(ecs, mesh_update, 0, Walrus_MeshResource);
-    ECS_SYSTEM_DEFINE(ecs, skin_update, 0, Walrus_SkinResource);
-    ECS_SYSTEM_DEFINE(ecs, deferred_submit_static_mesh, 0, Walrus_StaticMesh, Walrus_Transform);
-    ECS_SYSTEM_DEFINE(ecs, deferred_submit_skinned_mesh, 0, Walrus_SkinnedMesh);
+    ecs_id(skin_update)   = ecs_system(ecs, {
+                                                .entity = ecs_entity(ecs, {.name = "skin_update", .add = {0}}),
+                                                .query.filter.terms =
+                                                  {
+                                                      {.id = ecs_id(Walrus_SkinResource), .src.flags = EcsSelf},
+                                                  },
+                                                .callback = skin_update,
+                                          });
+    ecs_id(weight_update) = ecs_system(ecs, {
+                                                .entity = ecs_entity(ecs, {.name = "weight_update", .add = {0}}),
+                                                .query.filter.terms =
+                                                    {
+                                                        {.id = ecs_id(Walrus_WeightResource), .src.flags = EcsSelf},
+                                                    },
+                                                .callback = weight_update,
+                                            });
+
+    ecs_id(deferred_submit_static_mesh) =
+        ecs_system(ecs, {
+                            .entity             = ecs_entity(ecs, {.name = "deferred_submit_static_mesh", .add = {0}}),
+                            .query.filter.terms = {{.id = ecs_id(Walrus_RenderMesh)},
+                                                   {.id = ecs_id(Walrus_Transform)},
+                                                   {.id = ecs_id(Walrus_SkinResource), .oper = EcsNot}},
+                            .callback           = deferred_submit_static_mesh,
+                        });
+    ECS_SYSTEM_DEFINE(ecs, deferred_submit_skinned_mesh, 0, Walrus_RenderMesh, Walrus_SkinResource);
     ECS_SYSTEM_DEFINE(ecs, deferred_renderer_run, 0, Walrus_DeferredRenderer, Walrus_Camera);
-    ECS_SYSTEM_DEFINE(ecs, cull_test_static_mesh, 0, Walrus_StaticMesh, Walrus_Transform);
-    ECS_SYSTEM_DEFINE(ecs, cull_test_skinned_mesh, 0, Walrus_SkinnedMesh);
+    ECS_SYSTEM_DEFINE(ecs, cull_test_static_mesh, 0, Walrus_RenderMesh, Walrus_Transform);
+    ECS_SYSTEM_DEFINE(ecs, cull_test_skinned_mesh, 0, Walrus_RenderMesh, Walrus_SkinResource);
 
     walrus_deferred_renderer_init_uniforms();
 
     walrus_fg_init(&s_render_graph);
-
-    Walrus_FramePipeline *dummy_pipeline = walrus_fg_add_pipeline(&s_render_graph, "dummy");
 
     Walrus_FramePipeline *culling_pipeline = walrus_fg_add_pipeline(&s_render_graph, CULLING_PASS);
     walrus_fg_add_node(culling_pipeline, culling_pass, "Culling");
@@ -365,7 +369,6 @@ void walrus_render_system_init(void)
     walrus_fg_add_node(deferred_pipeline, deferred_lighting_pass, "DeferredLighting");
 
     walrus_fg_connect_pipeline(culling_pipeline, deferred_pipeline);
-    walrus_fg_connect_pipeline(dummy_pipeline, culling_pipeline);
 
     walrus_fg_compile(&s_render_graph);
 }
@@ -379,7 +382,7 @@ void walrus_render_system_render(void)
 {
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
 
-    ecs_run(ecs, ecs_id(mesh_update), 0, NULL);
+    ecs_run(ecs, ecs_id(weight_update), 0, NULL);
     ecs_run(ecs, ecs_id(skin_update), 0, NULL);
     ecs_run(ecs, ecs_id(deferred_renderer_run), 0, NULL);
 }

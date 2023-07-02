@@ -3,23 +3,15 @@
 #include <engine/model.h>
 
 typedef struct {
-    Walrus_Mesh      *mesh;
-    Walrus_ModelNode *node;
+    Walrus_Mesh *mesh;
 
     bool culled;
-} Walrus_StaticMesh;
+} Walrus_RenderMesh;
 
 typedef struct {
-    Walrus_Mesh      *mesh;
-    Walrus_ModelNode *node;
-
-    bool culled;
-} Walrus_SkinnedMesh;
-
-typedef struct {
-    Walrus_Mesh           *mesh;
+    Walrus_ModelNode      *node;
     Walrus_TransientBuffer weight_buffer;
-} Walrus_MeshResource;
+} Walrus_WeightResource;
 
 typedef struct {
     vec3 min;
