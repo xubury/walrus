@@ -72,29 +72,43 @@ static void on_model_add(ecs_iter_t *it)
 
 static void on_model_remove(ecs_iter_t *it)
 {
-    ecs_entity_t  entity = it->entities[0];
-    ecs_filter_t *f      = ecs_filter_init(
-        it->world, &(ecs_filter_desc_t){.terms = {{.id = ecs_id(Walrus_SkinResource), .src.flags = EcsSelf},
-                                                       {.id = ecs_pair(EcsChildOf, entity)}}});
-    ecs_iter_t it_f = ecs_filter_iter(it->world, f);
-    while (ecs_filter_next(&it_f)) {
-        for (i32 i = 0; i < it_f.count; ++i) {
-            ecs_delete(it->world, it_f.entities[i]);
+    ecs_entity_t entity = it->entities[0];
+    {
+        ecs_filter_t *f = ecs_filter_init(
+            it->world,
+            &(ecs_filter_desc_t){.terms = {{.id = ecs_id(Walrus_RenderMesh)}, {.id = ecs_pair(EcsChildOf, entity)}}});
+        ecs_iter_t it_f = ecs_filter_iter(it->world, f);
+        while (ecs_filter_next(&it_f)) {
+            for (i32 i = 0; i < it_f.count; ++i) {
+                ecs_delete(it->world, it_f.entities[i]);
+            }
         }
+        ecs_filter_fini(f);
     }
-    ecs_filter_fini(f);
-
-    f = ecs_filter_init(it->world,
-                        &(ecs_filter_desc_t){.terms = {{.id = ecs_id(Walrus_WeightResource), .src.flags = EcsSelf},
-                                                       {.id = ecs_pair(EcsChildOf, entity)}}});
-
-    it_f = ecs_filter_iter(it->world, f);
-    while (ecs_filter_next(&it_f)) {
-        for (i32 i = 0; i < it_f.count; ++i) {
-            ecs_delete(it->world, it_f.entities[i]);
+    {
+        ecs_filter_t *f = ecs_filter_init(
+            it->world, &(ecs_filter_desc_t){.terms = {{.id = ecs_id(Walrus_WeightResource), .src.flags = EcsSelf},
+                                                      {.id = ecs_pair(EcsChildOf, entity)}}});
+        ecs_iter_t it_f = ecs_filter_iter(it->world, f);
+        while (ecs_filter_next(&it_f)) {
+            for (i32 i = 0; i < it_f.count; ++i) {
+                ecs_delete(it->world, it_f.entities[i]);
+            }
         }
+        ecs_filter_fini(f);
     }
-    ecs_filter_fini(f);
+    {
+        ecs_filter_t *f = ecs_filter_init(
+            it->world, &(ecs_filter_desc_t){.terms = {{.id = ecs_id(Walrus_SkinResource), .src.flags = EcsSelf},
+                                                      {.id = ecs_pair(EcsChildOf, entity)}}});
+        ecs_iter_t it_f = ecs_filter_iter(it->world, f);
+        while (ecs_filter_next(&it_f)) {
+            for (i32 i = 0; i < it_f.count; ++i) {
+                ecs_delete(it->world, it_f.entities[i]);
+            }
+        }
+        ecs_filter_fini(f);
+    }
 }
 
 static void deferred_submit_static_mesh(ecs_iter_t *it)
