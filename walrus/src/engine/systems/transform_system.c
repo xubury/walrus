@@ -62,7 +62,7 @@ void walrus_transform_system_init(void)
     ECS_OBSERVER(ecs, on_transform_add, EcsOnSet, Walrus_Transform);
 
     ecs_system(ecs,
-               {.entity = ecs_entity(ecs, {.name = "transform_tick", .add = {ecs_dependson(EcsOnUpdate)}}),
+               {.entity = ecs_entity(ecs, {.add = {ecs_dependson(EcsOnUpdate)}}),
                 .query.filter.terms =
                     {
                         {.id = ecs_id(Walrus_Transform)},

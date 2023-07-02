@@ -11,6 +11,7 @@ add_library(
   systems/model_system.c
   systems/render_system.c
   systems/transform_system.c
+  systems/pipelines/culling_pipeline.c
   animator.c
   app.c
   batch_renderer.c
