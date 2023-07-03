@@ -21,8 +21,6 @@ static UniformAttribute const s_predefineds[PREDEFINED_COUNT] = {
     {WR_RHI_UNIFORM_MAT4, "u_model", 1},
 };
 
-static char const* no_backend_str = "No render backend specifed";
-
 static RhiContext*  s_ctx      = NULL;
 static RhiRenderer* s_renderer = NULL;
 
@@ -214,15 +212,15 @@ static const u32 pixel_size[WR_RHI_FORMAT_COUNT] = {
     4,  // DEPTH24STENCIL8
 };
 
-void renderer_create(Walrus_RhiCreateInfo* info)
+void renderer_create(Walrus_RhiCreateInfo const* info)
 {
     s_renderer = walrus_malloc(sizeof(RhiRenderer));
 
     if (info->flags & WR_RHI_FLAG_OPENGL) {
-        gl_backend_init(info, s_renderer);
+        gl_backend_init(info, &s_ctx->caps, s_renderer);
     }
     else {
-        walrus_assert_msg(false, no_backend_str);
+        walrus_assert_msg(false, "No render backend specifed");
     }
 }
 
@@ -338,7 +336,9 @@ static void render_exec_command(CommandBuffer* buffer)
 
                 renderer_create(&info);
                 s_ctx->initialized = s_renderer != NULL;
-                s_ctx->err         = WR_RHI_SUCCESS;
+                if (s_ctx->initialized) {
+                    s_ctx->err = WR_RHI_SUCCESS;
+                }
                 if (!s_ctx->initialized) {
                     command_buffer_read(buffer, Command, &cmd);
                     walrus_assert_msg(cmd == COMMAND_END, "Unexpected command!");
@@ -625,7 +625,8 @@ Walrus_RhiError walrus_rhi_init(Walrus_RhiCreateInfo* info)
 {
     RhiContext* ctx = walrus_malloc(sizeof(RhiContext));
 
-    ctx->info         = *info;
+    ctx->info = *info;
+
     ctx->resolution   = info->resolution;
     ctx->exit         = false;
     ctx->initialized  = false;
@@ -636,6 +637,8 @@ Walrus_RhiError walrus_rhi_init(Walrus_RhiCreateInfo* info)
 
     ctx->uniform_begin = 0;
     ctx->uniform_end   = 0;
+
+    ctx->caps.instance_align = 16;
 
     init_resources(ctx);
 
@@ -1539,18 +1542,18 @@ void walrus_rhi_set_image(uint8_t unit, Walrus_TextureHandle handle, u8 mip, Wal
     bind->access  = (uint8_t)(access);
 }
 
-u32 walrus_rhi_avail_transient_buffer(u32 num, u32 stride)
+u32 walrus_rhi_avail_transient_buffer(u32 num, u32 stride, u32 align)
 {
-    return frame_avail_transient_vb_size(s_ctx->submit_frame, num, stride);
+    return frame_avail_transient_vb_size(s_ctx->submit_frame, num, stride, align);
 }
 
-bool walrus_rhi_alloc_transient_buffer(Walrus_TransientBuffer* buffer, u32 num, u32 stride)
+bool walrus_rhi_alloc_transient_buffer(Walrus_TransientBuffer* buffer, u32 num, u32 stride, u32 align)
 {
-    if (num == walrus_rhi_avail_transient_buffer(num, stride)) {
+    if (num == walrus_rhi_avail_transient_buffer(num, stride, align)) {
         walrus_assert_msg(buffer != NULL, "buffer can't be NULL!");
         walrus_assert_msg(num > 0, "num must be greater than 0!");
 
-        const uint32_t offset = frame_alloc_transient_vb(s_ctx->submit_frame, &num, stride);
+        const uint32_t offset = frame_alloc_transient_vb(s_ctx->submit_frame, &num, stride, align);
 
         Walrus_TransientBuffer const* tvb = s_ctx->submit_frame->transient_vb;
         buffer->data                      = &tvb->data[offset];
@@ -1565,7 +1568,7 @@ bool walrus_rhi_alloc_transient_buffer(Walrus_TransientBuffer* buffer, u32 num, 
 
 u32 walrus_rhi_avail_transient_index_buffer(u32 num, u32 stride)
 {
-    return frame_avail_transient_ib_size(s_ctx->submit_frame, num, stride);
+    return frame_avail_transient_ib_size(s_ctx->submit_frame, num, stride, stride);
 }
 
 bool walrus_rhi_alloc_transient_index_buffer(Walrus_TransientBuffer* buffer, u32 num, u32 stride)
@@ -1574,7 +1577,7 @@ bool walrus_rhi_alloc_transient_index_buffer(Walrus_TransientBuffer* buffer, u32
         walrus_assert_msg(buffer != NULL, "buffer can't be NULL!");
         walrus_assert_msg(num > 0, "num must be greater than 0!");
 
-        const uint32_t offset = frame_alloc_transient_ib(s_ctx->submit_frame, &num, stride);
+        const uint32_t offset = frame_alloc_transient_ib(s_ctx->submit_frame, &num, stride, stride);
 
         Walrus_TransientBuffer const* tib = s_ctx->submit_frame->transient_ib;
         buffer->data                      = &tib->data[offset];
@@ -1616,4 +1619,9 @@ void walrus_rhi_destroy_framebuffer(Walrus_FramebufferHandle handle)
 void walrus_rhi_set_framebuffer(u16 view_id, Walrus_FramebufferHandle handle)
 {
     s_ctx->views[view_id].fb = handle;
+}
+
+Walrus_RhiCapabilities const* walrus_rhi_get_caps(void)
+{
+    return &s_ctx->caps;
 }

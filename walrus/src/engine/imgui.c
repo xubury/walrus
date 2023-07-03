@@ -148,7 +148,7 @@ static void render(ImDrawData *data)
         u32 const              num_vertices = list->VtxBuffer.Size;
         u32 const              num_indices  = list->IdxBuffer.Size;
 
-        bool succ = walrus_rhi_alloc_transient_buffer(&tvb, num_vertices, sizeof(ImDrawVert)) &&
+        bool succ = walrus_rhi_alloc_transient_buffer(&tvb, num_vertices, sizeof(ImDrawVert), sizeof(ImDrawVert)) &&
                     walrus_rhi_alloc_transient_index_buffer(&tib, num_indices, sizeof(ImDrawIdx));
         if (!succ) {
             walrus_error("Failed to allocate transient buffer (not enough space)");

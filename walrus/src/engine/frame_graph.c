@@ -16,6 +16,7 @@ void pipeline_free(void *ptr)
     Walrus_FramePipeline *pipeline = ptr;
     walrus_str_free(pipeline->name);
     walrus_list_free(pipeline->command_list);
+    walrus_array_destroy(pipeline->prevs);
     walrus_array_destroy(pipeline->nodes);
     walrus_free(pipeline);
 }
@@ -37,7 +38,7 @@ Walrus_FramePipeline *walrus_fg_add_pipeline(Walrus_FrameGraph *graph, char cons
 {
     Walrus_FramePipeline *pipeline = walrus_malloc(sizeof(Walrus_FramePipeline));
     pipeline->name                 = walrus_str_dup(name);
-    pipeline->prev                 = NULL;
+    pipeline->prevs                = walrus_array_create(sizeof(Walrus_FramePipeline *), 0);
     pipeline->command_list         = walrus_list_alloc();
     pipeline->nodes                = walrus_array_create_full(sizeof(Walrus_FrameNode), 0, node_free);
 
@@ -57,7 +58,7 @@ Walrus_FramePipeline *walrus_fg_lookup_pipeline(Walrus_FrameGraph *graph, char c
 
 void walrus_fg_connect_pipeline(Walrus_FramePipeline *parent, Walrus_FramePipeline *child)
 {
-    child->prev = parent;
+    walrus_array_append(child->prevs, &parent);
 }
 
 void walrus_fg_add_node(Walrus_FramePipeline *pipeline, Walrus_FrameNodeCallback func, char const *name)
@@ -93,23 +94,31 @@ void *walrus_fg_read_ptr(Walrus_FrameGraph const *graph, char const *name)
     return walrus_hash_table_lookup(graph->resources, name);
 }
 
-void construct_pipeline_command(void const *key, void *value, void *userdata)
+static Walrus_List *insert_pipeline_to_list(Walrus_List *command_list, Walrus_FramePipeline *p)
+{
+    if (walrus_array_len(p->nodes) > 0) {
+        command_list = walrus_list_append(command_list, p);
+    }
+    u32 len = walrus_array_len(p->prevs);
+
+    for (u32 i = 0; i < len; ++i) {
+        Walrus_FramePipeline **prev = walrus_array_get(p->prevs, i);
+
+        command_list = insert_pipeline_to_list(command_list, *prev);
+    }
+
+    return command_list;
+}
+
+static void construct_pipeline_command(void const *key, void *value, void *userdata)
 {
     walrus_unused(key);
     walrus_unused(userdata);
     Walrus_FramePipeline *target = value;
-    Walrus_FramePipeline *p      = target;
 
     walrus_list_free(target->command_list);
-    target->command_list = walrus_list_append(NULL, target);
-
-    while (p->prev != NULL) {
-        walrus_list_append(target->command_list, p->prev);
-
-        p = p->prev;
-    }
-
-    target->start = walrus_list_last(target->command_list);
+    target->command_list = insert_pipeline_to_list(NULL, target);
+    target->start        = walrus_list_last(target->command_list);
 }
 
 void walrus_fg_compile(Walrus_FrameGraph *graph)

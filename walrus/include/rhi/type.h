@@ -181,3 +181,9 @@ typedef struct {
     u8                   layer;
     u8                   num_layers;
 } Walrus_Attachment;
+
+typedef struct {
+    u32 instance_align;
+    u32 ssbo_align;
+    u32 ubo_align;
+} Walrus_RhiCapabilities;

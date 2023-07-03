@@ -164,8 +164,9 @@ static void flush_quads(void)
     u32 const              index_size    = sizeof(quad_indices[0]);
     u32 const              ins_size      = sizeof(s_renderer->quads[0]);
 
-    bool const succ = walrus_rhi_alloc_transient_buffer(&instance_buffer, num_instances, ins_size) &&
-                      walrus_rhi_alloc_transient_buffer(&vertex_buffer, 4, vertex_size) &&
+    bool const succ = walrus_rhi_alloc_transient_buffer(&instance_buffer, num_instances, ins_size,
+                                                        walrus_rhi_get_caps()->instance_align) &&
+                      walrus_rhi_alloc_transient_buffer(&vertex_buffer, 4, vertex_size, vertex_size) &&
                       walrus_rhi_alloc_transient_index_buffer(&index_buffer, 6, index_size);
     if (!succ) {
         walrus_error("Fail to allocated transient buffers");
@@ -201,8 +202,9 @@ static void flush_circles(void)
     u32 const              index_size    = sizeof(quad_indices[0]);
     u32 const              ins_size      = sizeof(s_renderer->circles[0]);
 
-    bool const succ = walrus_rhi_alloc_transient_buffer(&instance_buffer, num_instances, ins_size) &&
-                      walrus_rhi_alloc_transient_buffer(&vertex_buffer, 4, vertex_size) &&
+    bool const succ = walrus_rhi_alloc_transient_buffer(&instance_buffer, num_instances, ins_size,
+                                                        walrus_rhi_get_caps()->instance_align) &&
+                      walrus_rhi_alloc_transient_buffer(&vertex_buffer, 4, vertex_size, vertex_size) &&
                       walrus_rhi_alloc_transient_index_buffer(&index_buffer, 6, index_size);
     if (!succ) {
         walrus_error("Fail to allocated transient buffers");

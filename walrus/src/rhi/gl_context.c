@@ -312,7 +312,7 @@ static void set_render_context_size(u32 width, u32 height, u32 flags)
     create_msaa_fbo(width, height, msaa);
 }
 
-static void init_ctx(Walrus_RhiCreateInfo *info)
+static void init_ctx(Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *caps)
 {
 #if WR_PLATFORM != WR_PLATFORM_WASM
     GLenum err = glew_init();
@@ -351,6 +351,13 @@ static void init_ctx(Walrus_RhiCreateInfo *info)
     memset(gl_ctx->msaa_rbos, 0, sizeof(gl_ctx->msaa_rbos));
     set_render_context_size(info->resolution.width, info->resolution.height, info->resolution.flags);
     glGenVertexArrays(1, &gl_ctx->vao);
+
+    GLint align;
+    glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &align);
+    caps->ssbo_align = align;
+
+    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &align);
+    caps->ubo_align = align;
 }
 
 static void shutdown_ctx(void)
@@ -1027,9 +1034,9 @@ static void init_api(RhiRenderer *renderer)
     renderer->framebuffer_destroy_fn = gl_framebuffer_destroy;
 }
 
-void gl_backend_init(Walrus_RhiCreateInfo *info, RhiRenderer *renderer)
+void gl_backend_init(Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *caps, RhiRenderer *renderer)
 {
-    init_ctx(info);
+    init_ctx(info, caps);
     init_api(renderer);
 }
 

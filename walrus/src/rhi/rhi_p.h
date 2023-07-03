@@ -96,6 +96,8 @@ typedef struct {
 
     Walrus_RhiCreateInfo info;
 
+    Walrus_RhiCapabilities caps;
+
     Walrus_Semaphore *api_sem;
     Walrus_Semaphore *render_sem;
 
@@ -159,7 +161,7 @@ u8 get_predefined_type(char const *name);
 
 char const *get_glsl_header(void);
 
-void gl_backend_init(Walrus_RhiCreateInfo *info, RhiRenderer *renderer);
+void gl_backend_init(Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *caps, RhiRenderer *renderer);
 
 void gl_backend_shutdown(void);
 

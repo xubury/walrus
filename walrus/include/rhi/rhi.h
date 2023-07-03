@@ -81,8 +81,8 @@ void walrus_rhi_set_texture(u8 unit, Walrus_TextureHandle texture);
 void walrus_rhi_set_image(uint8_t unit, Walrus_TextureHandle handle, u8 mip, Walrus_DataAccess access,
                           Walrus_PixelFormat format);
 
-u32  walrus_rhi_avail_transient_buffer(u32 num, u32 stride);
-bool walrus_rhi_alloc_transient_buffer(Walrus_TransientBuffer* buffer, u32 num, u32 stride);
+u32  walrus_rhi_avail_transient_buffer(u32 num, u32 stride, u32 align);
+bool walrus_rhi_alloc_transient_buffer(Walrus_TransientBuffer* buffer, u32 num, u32 stride, u32 align);
 u32  walrus_rhi_avail_transient_index_buffer(u32 num, u32 stride);
 bool walrus_rhi_alloc_transient_index_buffer(Walrus_TransientBuffer* buffer, u32 num, u32 stride);
 
@@ -90,3 +90,5 @@ Walrus_FramebufferHandle walrus_rhi_create_framebuffer(Walrus_Attachment* attach
 void                     walrus_rhi_destroy_framebuffer(Walrus_FramebufferHandle handle);
 
 void walrus_rhi_set_framebuffer(u16 view_id, Walrus_FramebufferHandle handle);
+
+Walrus_RhiCapabilities const *walrus_rhi_get_caps(void);

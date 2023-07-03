@@ -4,8 +4,6 @@
 #include <engine/engine.h>
 #include <engine/camera.h>
 
-#define CULLING_PASS "CullingPass"
-
 ECS_SYSTEM_DECLARE(cull_test_static_mesh);
 ECS_SYSTEM_DECLARE(cull_test_skinned_mesh);
 
@@ -62,14 +60,21 @@ static void culling_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
     walrus_trace("render index: %d name: %s", node->index, node->name);
 }
 
-Walrus_FramePipeline *walrus_culling_pipeline_add(Walrus_FrameGraph *graph)
+Walrus_FramePipeline *walrus_culling_pipeline_add(Walrus_FrameGraph *graph, char const *name)
 {
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
 
-    ECS_SYSTEM_DEFINE(ecs, cull_test_static_mesh, 0, Walrus_RenderMesh, Walrus_Transform);
+    ecs_id(cull_test_static_mesh) =
+        ecs_system(ecs, {
+                            .entity             = ecs_entity(ecs, {0}),
+                            .query.filter.terms = {{.id = ecs_id(Walrus_RenderMesh)},
+                                                   {.id = ecs_id(Walrus_Transform)},
+                                                   {.id = ecs_id(Walrus_SkinResource), .oper = EcsNot}},
+                            .callback           = cull_test_static_mesh,
+                        });
     ECS_SYSTEM_DEFINE(ecs, cull_test_skinned_mesh, 0, Walrus_RenderMesh, Walrus_SkinResource);
 
-    Walrus_FramePipeline *culling_pipeline = walrus_fg_add_pipeline(graph, CULLING_PASS);
+    Walrus_FramePipeline *culling_pipeline = walrus_fg_add_pipeline(graph, name);
     walrus_fg_add_node(culling_pipeline, culling_pass, "Culling");
     return culling_pipeline;
 }

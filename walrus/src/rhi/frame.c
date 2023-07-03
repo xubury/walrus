@@ -281,36 +281,37 @@ u32 frame_add_matrices(RenderFrame *frame, mat4 const mat, u32 *num)
     }
     return 0;
 }
-u32 frame_avail_transient_vb_size(RenderFrame *frame, u32 num, u16 stride)
+
+u32 frame_avail_transient_vb_size(RenderFrame *frame, u32 num, u16 stride, u16 align)
 {
-    u32 const offset     = walrus_stride_align(frame->vbo_offset, stride);
+    u32 const offset     = walrus_stride_align(frame->vbo_offset, align);
     u32       vbo_offset = offset + num * stride;
     vbo_offset           = walrus_min(vbo_offset, frame->max_transient_vb);
-    u32 const availNum   = (vbo_offset - offset) / stride;
-    return availNum;
+    u32 const avail_num  = (vbo_offset - offset) / stride;
+    return avail_num;
 }
 
-u32 frame_alloc_transient_vb(RenderFrame *frame, u32 *num, u16 stride)
+u32 frame_alloc_transient_vb(RenderFrame *frame, u32 *num, u16 stride, u16 align)
 {
-    u32 offset        = walrus_stride_align(frame->vbo_offset, stride);
-    *num              = frame_avail_transient_vb_size(frame, *num, stride);
+    u32 offset        = walrus_stride_align(frame->vbo_offset, align);
+    *num              = frame_avail_transient_vb_size(frame, *num, stride, align);
     frame->vbo_offset = offset + *num * stride;
     return offset;
 }
 
-u32 frame_avail_transient_ib_size(RenderFrame *frame, u32 num, u16 stride)
+u32 frame_avail_transient_ib_size(RenderFrame *frame, u32 num, u16 stride, u16 align)
 {
-    u32 const offset     = walrus_stride_align(frame->ibo_offset, stride);
+    u32 const offset     = walrus_stride_align(frame->ibo_offset, align);
     u32       ibo_offset = offset + num * stride;
     ibo_offset           = walrus_min(ibo_offset, frame->max_transient_ib);
     u32 const avail_num  = (ibo_offset - offset) / stride;
     return avail_num;
 }
 
-u32 frame_alloc_transient_ib(RenderFrame *frame, u32 *num, u16 stride)
+u32 frame_alloc_transient_ib(RenderFrame *frame, u32 *num, u16 stride, u16 align)
 {
-    u32 offset        = walrus_stride_align(frame->ibo_offset, stride);
-    *num              = frame_avail_transient_ib_size(frame, *num, stride);
+    u32 offset        = walrus_stride_align(frame->ibo_offset, align);
+    *num              = frame_avail_transient_ib_size(frame, *num, stride, align);
     frame->ibo_offset = offset + *num * stride;
     return offset;
 }

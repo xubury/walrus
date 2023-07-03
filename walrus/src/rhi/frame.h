@@ -168,13 +168,13 @@ void frame_sort(RenderFrame *frame);
 
 u32 frame_add_matrices(RenderFrame *frame, mat4 const mat, u32 *num);
 
-u32 frame_avail_transient_vb_size(RenderFrame *frame, u32 num, u16 stride);
+u32 frame_avail_transient_vb_size(RenderFrame *frame, u32 num, u16 stride, u16 align);
 
-u32 frame_alloc_transient_vb(RenderFrame *frame, u32 *num, u16 stride);
+u32 frame_alloc_transient_vb(RenderFrame *frame, u32 *num, u16 stride, u16 align);
 
-u32 frame_avail_transient_ib_size(RenderFrame *frame, u32 num, u16 stride);
+u32 frame_avail_transient_ib_size(RenderFrame *frame, u32 num, u16 stride, u16 align);
 
-u32 frame_alloc_transient_ib(RenderFrame *frame, u32 *num, u16 stride);
+u32 frame_alloc_transient_ib(RenderFrame *frame, u32 *num, u16 stride, u16 align);
 
 void draw_clear(RenderDraw *draw, u8 flags);
 
