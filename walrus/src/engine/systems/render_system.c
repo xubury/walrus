@@ -11,6 +11,7 @@
 #include <core/macro.h>
 #include <core/memory.h>
 #include <core/assert.h>
+#include <core/math.h>
 
 static Walrus_FrameGraph s_render_graph;
 
@@ -178,7 +179,8 @@ static void skin_update(ecs_iter_t *it)
     for (i32 i = 0; i < it->count; ++i) {
         ecs_entity_t        parent = ecs_get_target(it->world, it->entities[i], EcsChildOf, 0);
         Walrus_Model const *model  = ecs_get(it->world, parent, Walrus_Model);
-        walrus_rhi_alloc_transient_buffer(&skins[i].joint_buffer, skins[i].skin->num_joints, sizeof(mat4), walrus_rhi_get_caps()->ssbo_align);
+        walrus_rhi_alloc_transient_buffer(&skins[i].joint_buffer, skins[i].skin->num_joints, sizeof(mat4),
+                                          walrus_max(walrus_rhi_get_caps()->ssbo_align, 16));
 
         Walrus_ModelSkin *skin = skins[i].skin;
 
