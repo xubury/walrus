@@ -65,6 +65,8 @@ static void view_reset(RenderView* view)
     view->clear.flags   = WR_RHI_CLEAR_NONE;
     view->clear.depth   = 0;
     view->clear.stencil = 0;
+
+    view->ratio = WR_RHI_RATIO_COUNT;
 }
 
 void renderer_uniform_updates(UniformBuffer* uniform, u32 begin, u32 end)
@@ -733,6 +735,15 @@ void walrus_rhi_set_resolution(u32 width, u32 height)
 
         for (u32 i = 0; i < WR_RHI_MAX_VIEWS; ++i) {
             s_ctx->views[i].fb.id = WR_INVALID_HANDLE;
+            if (s_ctx->views[i].ratio != WR_RHI_RATIO_COUNT) {
+                u32 width  = s_ctx->resolution.width;
+                u32 height = s_ctx->resolution.height;
+
+                compute_texture_size_from_ratio(s_ctx->views[i].ratio, &width, &height);
+
+                s_ctx->views[i].viewport.width  = width;
+                s_ctx->views[i].viewport.height = height;
+            }
         }
         for (u32 i = 0; i < s_ctx->textures->num_handles; ++i) {
             TextureRef* ref = &s_ctx->texture_refs[i];
@@ -938,6 +949,22 @@ void walrus_rhi_set_view_rect(u16 view_id, i32 x, i32 y, u32 width, u32 height)
 
     view->viewport.x      = x;
     view->viewport.y      = y;
+    view->viewport.width  = width;
+    view->viewport.height = height;
+}
+
+void walrus_rhi_set_view_rect_ratio(u16 view_id, Walrus_BackBufferRatio ratio)
+{
+    RenderView* view = &s_ctx->views[view_id];
+
+    u32 width  = s_ctx->resolution.width;
+    u32 height = s_ctx->resolution.height;
+
+    compute_texture_size_from_ratio(ratio, &width, &height);
+
+    view->ratio           = ratio;
+    view->viewport.x      = 0;
+    view->viewport.y      = 0;
     view->viewport.width  = width;
     view->viewport.height = height;
 }
@@ -1441,6 +1468,8 @@ Walrus_TextureHandle walrus_rhi_create_texture(Walrus_TextureCreateInfo const* i
     Walrus_TextureCreateInfo _info = *info;
 
     if (_info.ratio != WR_RHI_RATIO_COUNT) {
+        _info.width  = s_ctx->resolution.width;
+        _info.height = s_ctx->resolution.height;
         compute_texture_size_from_ratio(_info.ratio, &_info.width, &_info.height);
         _info.cube_map   = false;
         _info.depth      = 1;
@@ -1456,7 +1485,7 @@ Walrus_TextureHandle walrus_rhi_create_texture(Walrus_TextureCreateInfo const* i
     _info.num_mipmaps = _info.num_mipmaps == 0 ? compute_mipmap(_info.width, _info.height) : _info.num_mipmaps;
 
     u64   size     = _info.width * _info.height * _info.depth * _info.num_layers * pixel_size[_info.format];
-    void* new_data = walrus_memdup(data, size);
+    void* new_data = data ? walrus_memdup(data, size) : NULL;
 
     CommandBuffer* cmdbuf = get_command_buffer(COMMAND_CREATE_TEXTURE);
     command_buffer_write(cmdbuf, Walrus_TextureHandle, &handle);
@@ -1602,6 +1631,20 @@ Walrus_FramebufferHandle walrus_rhi_create_framebuffer(Walrus_Attachment* attach
     Walrus_Attachment* mem = walrus_memdup(attachments, sizeof(Walrus_Attachment) * num);
     command_buffer_write(cmdbuf, Walrus_Attachment*, &mem);
     command_buffer_write(cmdbuf, u8, &num);
+
+    FramebufferRef* ref = &s_ctx->fb_refs[handle.id];
+
+    memset(ref->th, 0xff, sizeof(ref->th));
+
+    for (uint32_t i = 0; i < num; ++i) {
+        Walrus_TextureHandle th = attachments[i].handle;
+        ref->th[i]              = th;
+
+        /* textureIncRef(th); */
+        /* if (destroyTexture) { */
+        /*     textureTakeOwnership(th); */
+        /* } */
+    }
     return handle;
 }
 
@@ -1614,6 +1657,12 @@ void walrus_rhi_destroy_framebuffer(Walrus_FramebufferHandle handle)
 
     CommandBuffer* cmdbuf = get_command_buffer(COMMAND_DESTROY_FRAMEBUFFER);
     command_buffer_write(cmdbuf, Walrus_TextureHandle, &handle);
+}
+
+Walrus_TextureHandle walrus_rhi_get_texture(Walrus_FramebufferHandle handle, u8 id)
+{
+    FramebufferRef* ref = &s_ctx->fb_refs[handle.id];
+    return ref->th[id];
 }
 
 void walrus_rhi_set_framebuffer(u16 view_id, Walrus_FramebufferHandle handle)

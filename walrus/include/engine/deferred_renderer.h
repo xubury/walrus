@@ -42,6 +42,8 @@ void walrus_deferred_renderer_submit_skinned_mesh(Walrus_DeferredRenderer *rende
                                                   Walrus_Mesh *mesh, Walrus_TransientBuffer joints,
                                                   Walrus_TransientBuffer weights);
 
+void walrus_deferred_renderer_lighting(void);
+
 void walrus_deferred_renderer_start_record(Walrus_DeferredRenderer *renderer);
 void walrus_deferred_renderer_end_record(Walrus_DeferredRenderer *renderer);
 

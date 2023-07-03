@@ -91,6 +91,12 @@ typedef struct {
 } TextureRef;
 
 typedef struct {
+    uint32_t             width;
+    uint32_t             height;
+    Walrus_TextureHandle th[WR_RHI_MAX_FRAMEBUFFER_ATTACHMENTS];
+} FramebufferRef;
+
+typedef struct {
     bool initialized;
     bool exit;
 
@@ -131,6 +137,7 @@ typedef struct {
     TextureRef          texture_refs[WR_RHI_MAX_TEXTURES];
 
     Walrus_HandleAlloc *framebuffers;
+    FramebufferRef      fb_refs[WR_RHI_MAX_FRAMEBUFFERS];
 
     Walrus_HashTable *uniform_map;
     u32               uniform_begin;

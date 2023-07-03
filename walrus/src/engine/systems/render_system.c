@@ -198,9 +198,6 @@ static void skin_update(ecs_iter_t *it)
                 glm_mat4_mul(m, skin->joints[j].inverse_bind_matrix, skin_matrices[j]);
             }
             vec3 min, max;
-            if (skin->joints[j].min[0] == FLT_MAX || skin->joints[j].max[0] == -FLT_MAX) {
-                continue;
-            }
             transform_bound(m, skin->joints[j].min, skin->joints[j].max, min, max);
             glm_vec3_minv(min, skins[i].min, skins[i].min);
             glm_vec3_maxv(max, skins[i].max, skins[i].max);

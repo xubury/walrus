@@ -929,8 +929,8 @@ static void calculate_skin_min_max(Walrus_Model *model, cgltf_data *gltf)
                 cgltf_accessor  *apos      = NULL;
                 cgltf_accessor  *aweights  = NULL;
                 cgltf_accessor  *ajoints   = NULL;
-                for (u32 l = 0; l < primitive->attributes_count; ++l) {
-                    cgltf_attribute *attr = &primitive->attributes[l];
+                for (u32 k = 0; k < primitive->attributes_count; ++k) {
+                    cgltf_attribute *attr = &primitive->attributes[k];
                     if (attr->index > 0) {
                         continue;
                     }
@@ -953,9 +953,11 @@ static void calculate_skin_min_max(Walrus_Model *model, cgltf_data *gltf)
                     cgltf_accessor_read_float(apos, v_index, pos, sizeof(vec3));
                     cgltf_accessor_read_float(aweights, v_index, weights, sizeof(vec4));
                     cgltf_accessor_read_float(ajoints, v_index, joints, sizeof(vec4));
-                    mat4 skin_matrix = GLM_MAT4_ZERO_INIT;
-                    mat4 skin_matrices[4];
-                    for (u32 l = 0; l < 4; ++l) {
+                    mat4     skin_matrix       = GLM_MAT4_ZERO_INIT;
+                    u8 const max_weight_factor = 4;
+
+                    mat4 skin_matrices[max_weight_factor];
+                    for (u32 l = 0; l < max_weight_factor; ++l) {
                         mat4 world;
                         walrus_transform_compose(&skin->joints[(u32)joints[l]].node->world_transform, world);
                         glm_mat4_copy(skin->joints[(u32)joints[l]].inverse_bind_matrix, skin_matrices[l]);
@@ -969,7 +971,7 @@ static void calculate_skin_min_max(Walrus_Model *model, cgltf_data *gltf)
                     }
                     vec4 world_pos;
                     glm_mat4_mulv(skin_matrix, pos, world_pos);
-                    for (u32 l = 0; l < 4; ++l) {
+                    for (u32 l = 0; l < max_weight_factor; ++l) {
                         if (weights[l] > 0) {
                             mat4 inv_world;
                             walrus_transform_compose(&skin->joints[(u32)joints[l]].node->world_transform, inv_world);
@@ -988,10 +990,12 @@ static void calculate_skin_min_max(Walrus_Model *model, cgltf_data *gltf)
     }
     for (u32 i = 0; i < model->num_skins; ++i) {
         for (u32 j = 0; j < model->skins[i].num_joints; ++j) {
-            walrus_trace("joint: %d min: %f %f %f max: %f %f %f", j, model->skins[i].joints[j].min[0],
-                         model->skins[i].joints[j].min[1], model->skins[i].joints[j].min[2],
-                         model->skins[i].joints[j].max[0], model->skins[i].joints[j].max[1],
-                         model->skins[i].joints[j].max[2]);
+            if (glm_vec3_eq(model->skins[i].joints[j].min, FLT_MAX)) {
+                glm_vec3_zero(model->skins[i].joints[j].min);
+            }
+            if (glm_vec3_eq(model->skins[i].joints[j].max, -FLT_MAX)) {
+                glm_vec3_zero(model->skins[i].joints[j].max);
+            }
         }
     }
 }

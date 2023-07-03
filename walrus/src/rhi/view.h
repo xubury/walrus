@@ -33,6 +33,8 @@ typedef struct {
     mat4 projection;
 
     Walrus_ViewMode mode;
+
+    Walrus_BackBufferRatio ratio;
 } RenderView;
 
 WR_INLINE void viewrect_intersect(ViewRect *rect, ViewRect const *other)

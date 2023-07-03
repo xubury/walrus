@@ -36,6 +36,7 @@ typedef struct {
     u32                height;
     u32                depth;
     u64                flags;
+    u32                num_mipmaps;
     Walrus_PixelFormat format;
 
     GlFormat gl;

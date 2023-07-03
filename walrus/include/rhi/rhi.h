@@ -25,6 +25,7 @@ void walrus_rhi_set_stencil(u32 fstencil, u32 bstencil);
 void walrus_rhi_set_scissor(i32 x, i32 y, u32 width, u32 height);
 
 void walrus_rhi_set_view_rect(u16 view_id, i32 x, i32 y, u32 width, u32 height);
+void walrus_rhi_set_view_rect_ratio(u16 view_id, Walrus_BackBufferRatio ratio);
 void walrus_rhi_set_view_clear(u16 view_id, u16 flags, u32 rgba, f32 depth, u8 stencil);
 void walrus_rhi_set_view_transform(u16 view_id, mat4 const view, mat4 const projection);
 void walrus_rhi_set_view_mode(u16 view_id, Walrus_ViewMode mode);
@@ -88,6 +89,7 @@ bool walrus_rhi_alloc_transient_index_buffer(Walrus_TransientBuffer* buffer, u32
 
 Walrus_FramebufferHandle walrus_rhi_create_framebuffer(Walrus_Attachment* attachments, u8 num);
 void                     walrus_rhi_destroy_framebuffer(Walrus_FramebufferHandle handle);
+Walrus_TextureHandle walrus_rhi_get_texture(Walrus_FramebufferHandle handle, u8 id);
 
 void walrus_rhi_set_framebuffer(u16 view_id, Walrus_FramebufferHandle handle);
 

@@ -65,6 +65,7 @@ static void set_wrap(GLenum target, uint64_t flags)
     };
     const GLenum u_wrap = wrap_mode[(flags & WR_RHI_SAMPLER_U_MASK) >> WR_RHI_SAMPLER_U_SHIFT];
     const GLenum v_wrap = wrap_mode[(flags & WR_RHI_SAMPLER_V_MASK) >> WR_RHI_SAMPLER_V_SHIFT];
+    target              = target == GL_TEXTURE_2D_MULTISAMPLE ? GL_TEXTURE_2D : target;
     glTexParameteri(target, GL_TEXTURE_WRAP_S, u_wrap);
     glTexParameteri(target, GL_TEXTURE_WRAP_T, v_wrap);
     if (target == GL_TEXTURE_3D) {
@@ -108,6 +109,7 @@ static void set_filter(GLenum target, bool has_mipmaps, uint64_t flags)
     GLenum const mag_filter = s_tex_filter_mag[mag];
     GLenum const min_filter = s_tex_filter_min[min][has_mipmaps ? mip : 0];
 
+    target = target == GL_TEXTURE_2D_MULTISAMPLE ? GL_TEXTURE_2D : target;
     glTexParameteri(target, GL_TEXTURE_MIN_FILTER, min_filter);
     glTexParameteri(target, GL_TEXTURE_MAG_FILTER, mag_filter);
 }
@@ -165,8 +167,8 @@ void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo con
         else {
             if (target == GL_TEXTURE_3D) {
                 if (msaa_sample) {
-                    glTexStorage3DMultisample(target, msaa_quality, info->num_mipmaps, internal_fmt, info->width,
-                                              info->height, info->depth);
+                    glTexStorage3DMultisample(target, msaa_quality, internal_fmt, info->width, info->height,
+                                              info->depth, GL_FALSE);
                 }
                 else {
                     glTexStorage3D(target, info->num_mipmaps, internal_fmt, info->width, info->height, info->depth);
@@ -174,8 +176,7 @@ void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo con
             }
             else {
                 if (msaa_sample) {
-                    glTexStorage2DMultisample(target, msaa_quality, info->num_mipmaps, internal_fmt, info->width,
-                                              info->height);
+                    glTexStorage2DMultisample(target, msaa_quality, internal_fmt, info->width, info->height, GL_FALSE);
                 }
                 else {
                     glTexStorage2D(target, info->num_mipmaps, internal_fmt, info->width, info->height);
@@ -214,14 +215,15 @@ void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo con
     }
     glBindTexture(target, 0);
 
-    gl_ctx->textures[handle.id].id     = id;
-    gl_ctx->textures[handle.id].rbo    = rbo;
-    gl_ctx->textures[handle.id].target = target;
-    gl_ctx->textures[handle.id].width  = info->width;
-    gl_ctx->textures[handle.id].height = info->height;
-    gl_ctx->textures[handle.id].format = info->format;
-    gl_ctx->textures[handle.id].flags  = info->flags;
-    gl_ctx->textures[handle.id].gl     = gl_format;
+    gl_ctx->textures[handle.id].id          = id;
+    gl_ctx->textures[handle.id].rbo         = rbo;
+    gl_ctx->textures[handle.id].target      = target;
+    gl_ctx->textures[handle.id].width       = info->width;
+    gl_ctx->textures[handle.id].height      = info->height;
+    gl_ctx->textures[handle.id].format      = info->format;
+    gl_ctx->textures[handle.id].flags       = info->flags;
+    gl_ctx->textures[handle.id].num_mipmaps = info->num_mipmaps;
+    gl_ctx->textures[handle.id].gl          = gl_format;
 }
 
 void gl_texture_destroy(Walrus_TextureHandle handle)

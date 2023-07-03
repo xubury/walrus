@@ -23,7 +23,7 @@ static struct {
     vec2 pos;
 } circle_vertices[] = {{{-1.0, 1.0}}, {{1.0, 1.0}}, {{1.0, -1.0}}, {{-1.0, -1.0}}};
 
-u16 quad_indices[] = {0, 1, 2, 2, 3, 0};
+static u16 quad_indices[] = {0, 1, 2, 2, 3, 0};
 
 typedef struct {
     u16 view_id;

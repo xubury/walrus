@@ -34,7 +34,7 @@ static const char *glEnumName(GLenum _enum)
 static void framebuffer_validate(void)
 {
     GLenum complete = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    walrus_assert_msg(GL_FRAMEBUFFER_COMPLETE == complete, "glCheckFramebufferStatus failed : {0}", complete,
+    walrus_assert_msg(GL_FRAMEBUFFER_COMPLETE == complete, "glCheckFramebufferStatus failed: 0x%x %s", complete,
                       glEnumName(complete));
 }
 
@@ -108,6 +108,8 @@ void gl_framebuffer_post_reset(GlFramebuffer *fb)
         if (need_resolve) {
             glGenFramebuffers(1, &fb->fbo[1]);
             glBindFramebuffer(GL_FRAMEBUFFER, fb->fbo[1]);
+
+            color_id = 0;
             for (u8 i = 0; i < fb->num_textures; ++i) {
                 Walrus_Attachment *attach = &fb->attachments[i];
                 if (attach->handle.id != WR_INVALID_HANDLE) {
@@ -150,10 +152,10 @@ void gl_framebuffer_resolve(GlFramebuffer *fb)
                 if (format != WR_RHI_FORMAT_DEPTH24 && format != WR_RHI_FORMAT_STENCIL8 &&
                     format != WR_RHI_FORMAT_DEPTH24STENCIL8) {
                     glDisable(GL_SCISSOR_TEST);
-                    glReadBuffer(GL_COLOR_ATTACHMENT0 + color_id);
-                    glDrawBuffer(GL_COLOR_ATTACHMENT0 + color_id);
                     glBindFramebuffer(GL_READ_FRAMEBUFFER, fb->fbo[0]);
                     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb->fbo[1]);
+                    glReadBuffer(GL_COLOR_ATTACHMENT0 + color_id);
+                    glDrawBuffer(GL_COLOR_ATTACHMENT0 + color_id);
                     glBlitFramebuffer(0, 0, fb->width, fb->height, 0, 0, fb->width, fb->height, GL_COLOR_BUFFER_BIT,
                                       GL_LINEAR);
                     ++color_id;
@@ -173,8 +175,11 @@ void gl_framebuffer_resolve(GlFramebuffer *fb)
     for (u32 i = 0; i < fb->num_textures; ++i) {
         Walrus_Attachment *attach = &fb->attachments[i];
         if (attach->handle.id != WR_INVALID_HANDLE) {
-            GlTexture *texture = &gl_ctx->textures[attach->handle.id];
-            glGenerateTextureMipmap(texture->id);
+            GlTexture *texture       = &gl_ctx->textures[attach->handle.id];
+            bool const render_target = (texture->flags & WR_RHI_TEXTURE_RT_MASK) != 0;
+            if (render_target && texture->num_mipmaps > 1) {
+                glGenerateTextureMipmap(texture->id);
+            }
         }
     }
 }

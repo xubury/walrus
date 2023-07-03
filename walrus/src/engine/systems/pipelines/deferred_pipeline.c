@@ -14,7 +14,6 @@ static void gbuffer_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
 
     Walrus_DeferredRenderer *renderer = walrus_fg_read_ptr(graph, "DeferredRenderer");
     Walrus_FramebufferHandle gbuffer  = renderer->gbuffer;
-    walrus_fg_write(graph, "GBuffer", gbuffer.id);
 
     ecs_run(ecs, ecs_id(deferred_submit_static_mesh), 0, renderer);
     ecs_run(ecs, ecs_id(deferred_submit_skinned_mesh), 0, renderer);
@@ -24,9 +23,8 @@ static void gbuffer_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
 
 static void deferred_lighting_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
 {
-    Walrus_FramebufferHandle gbuffer = {walrus_fg_read(graph, "GBuffer")};
-
-    walrus_trace("render index: %d name: %s gbuffer: %d", node->index, node->name, gbuffer.id);
+    walrus_deferred_renderer_lighting();
+    walrus_trace("render index: %d name: %s ", node->index, node->name);
 }
 
 static void deferred_submit_static_mesh(ecs_iter_t *it)
