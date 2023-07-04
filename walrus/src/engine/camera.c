@@ -71,6 +71,7 @@ bool walrus_camera_frustum_cull_test(Walrus_Camera const *camera, mat4 const wor
 
     bool inside = false;
 
+    // FIXME: incorrect implementaion, frustum may be inside AABB
     for (u8 i = 0; i < 8; ++i) {
         vec4 corner;
         glm_mat4_mulv(mvp, corners[i], corner);
@@ -80,6 +81,8 @@ bool walrus_camera_frustum_cull_test(Walrus_Camera const *camera, mat4 const wor
             break;
         }
     }
+
+    inside = true;
 
     return inside;
 }

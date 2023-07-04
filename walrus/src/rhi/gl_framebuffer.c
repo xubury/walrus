@@ -160,7 +160,7 @@ void gl_framebuffer_resolve(GlFramebuffer *fb)
                                       GL_LINEAR);
                     ++color_id;
                 }
-                else if (write_only) {
+                else if (!write_only) {
                     glDisable(GL_SCISSOR_TEST);
                     glBindFramebuffer(GL_READ_FRAMEBUFFER, fb->fbo[0]);
                     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb->fbo[1]);

@@ -32,13 +32,13 @@ static void cull_test_skinned_mesh(ecs_iter_t *it)
 
 static void cull_test_static_mesh(ecs_iter_t *it)
 {
-    Walrus_RenderMesh *meshes     = ecs_field(it, Walrus_RenderMesh, 1);
-    Walrus_Transform  *transforms = ecs_field(it, Walrus_Transform, 2);
-    Walrus_Camera     *camera     = it->param;
+    Walrus_RenderMesh *meshes = ecs_field(it, Walrus_RenderMesh, 1);
+    Walrus_Transform  *worlds = ecs_field(it, Walrus_Transform, 2);
+    Walrus_Camera     *camera = it->param;
 
     for (i32 i = 0; i < it->count; ++i) {
         mat4 world;
-        walrus_transform_compose(&transforms[i], world);
+        walrus_transform_compose(&worlds[i], world);
 
         meshes[i].culled = false;
 

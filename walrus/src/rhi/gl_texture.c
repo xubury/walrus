@@ -152,15 +152,16 @@ void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo con
         }
     }
 
-    glGenTextures(1, &id);
-    glBindTexture(target, id);
-    set_wrap(target, info->flags);
-    set_filter(target, info->num_mipmaps > 1, info->flags);
-
     GlFormat     gl_format     = s_format_info[info->format];
     const GLenum internal_fmt  = srgb ? gl_format.internal_srgb_format : gl_format.internal_format;
     bool const   texture_array = target == GL_TEXTURE_2D_ARRAY || target == GL_TEXTURE_CUBE_MAP_ARRAY;
     if (!write_only || (render_target && texture_array)) {
+        glGenTextures(1, &id);
+        glBindTexture(target, id);
+
+        set_wrap(target, info->flags);
+        set_filter(target, info->num_mipmaps > 1, info->flags);
+
         if (texture_array) {
             glTexStorage3D(target, info->num_mipmaps, internal_fmt, info->width, info->height, info->num_layers);
         }

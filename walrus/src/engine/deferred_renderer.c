@@ -45,6 +45,7 @@ typedef struct {
     Walrus_UniformHandle u_gbitangent;
     Walrus_UniformHandle u_galbedo;
     Walrus_UniformHandle u_gemissive;
+    Walrus_UniformHandle u_gdepth;
 
     Walrus_FramebufferHandle gbuffer;
 } RenderData;
@@ -90,6 +91,7 @@ void walrus_deferred_renderer_init_uniforms(void)
     s_data->u_gbitangent = walrus_rhi_create_uniform("u_gbitangent", WR_RHI_UNIFORM_SAMPLER, 1);
     s_data->u_galbedo    = walrus_rhi_create_uniform("u_galbedo", WR_RHI_UNIFORM_SAMPLER, 1);
     s_data->u_gemissive  = walrus_rhi_create_uniform("u_gemissive", WR_RHI_UNIFORM_SAMPLER, 1);
+    s_data->u_gdepth     = walrus_rhi_create_uniform("u_gdepth", WR_RHI_UNIFORM_SAMPLER, 1);
 
     Walrus_ShaderHandle vs_mesh         = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_mesh.glsl");
     Walrus_ShaderHandle vs_skinned_mesh = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_skinned_mesh.glsl");
@@ -152,14 +154,11 @@ static bool setup_primitive(Walrus_MeshPrimitive const *prim, bool opaque)
                 return false;
             }
         }
-        else if (material->alpha_mode == WR_ALPHA_MODE_MASK) {
-            if (opaque) {
-                return false;
-            }
-            alpha_cutoff = material->alpha_cutoff;
-        }
         else if (!opaque) {
             return false;
+        }
+        else if (material->alpha_mode == WR_ALPHA_MODE_MASK) {
+            alpha_cutoff = material->alpha_cutoff;
         }
         walrus_rhi_set_state(flags, 0);
 
@@ -327,6 +326,9 @@ void walrus_deferred_renderer_lighting(void)
 
     walrus_rhi_set_uniform(s_data->u_gemissive, 0, sizeof(u32), &(u32){5});
     walrus_rhi_set_texture(5, walrus_rhi_get_texture(s_data->gbuffer, 5));
+
+    walrus_rhi_set_uniform(s_data->u_gdepth, 0, sizeof(u32), &(u32){6});
+    walrus_rhi_set_texture(6, walrus_rhi_get_texture(s_data->gbuffer, 6));
 
     walrus_rhi_set_state(WR_RHI_STATE_WRITE_RGB | WR_RHI_STATE_WRITE_Z, 0);
     walrus_rhi_set_vertex_buffer(0, s_data->quad_vertices, s_data->quad_layout, 0, 4);

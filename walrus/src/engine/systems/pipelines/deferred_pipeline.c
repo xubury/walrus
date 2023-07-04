@@ -26,7 +26,7 @@ static void deferred_lighting_pass(Walrus_FrameGraph *graph, Walrus_FrameNode co
 {
     walrus_unused(graph);
     walrus_deferred_renderer_lighting();
-    walrus_trace("render index: %d name: %s ", node->index, node->name);
+    walrus_trace("render index: %d name: %s", node->index, node->name);
 }
 
 static void forward_lighting_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
