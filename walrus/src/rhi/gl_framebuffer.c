@@ -178,7 +178,9 @@ void gl_framebuffer_resolve(GlFramebuffer *fb)
             GlTexture *texture       = &gl_ctx->textures[attach->handle.id];
             bool const render_target = (texture->flags & WR_RHI_TEXTURE_RT_MASK) != 0;
             if (render_target && texture->num_mipmaps > 1) {
-                glGenerateTextureMipmap(texture->id);
+                glBindTexture(texture->target, texture->id);
+                glGenerateMipmap(texture->target);
+                glBindTexture(texture->target, 0);
             }
         }
     }

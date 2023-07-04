@@ -358,6 +358,8 @@ static void init_ctx(Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *c
 
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &align);
     caps->ubo_align = align;
+
+    glDepthRangef(0, 1);
 }
 
 static void shutdown_ctx(void)

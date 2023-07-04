@@ -35,9 +35,11 @@ Walrus_AppError on_init(Walrus_App *app)
             {.x = 0, .y = 0, .width = 1440, .height = 900, .active = true, .framebuffer = {WR_INVALID_HANDLE}});
 
     walrus_model_system_load_from_file("shibahu", "assets/gltf/shibahu/scene.gltf");
+    walrus_model_system_load_from_file("cubes", "assets/gltf/EmissiveStrengthTest.gltf");
 
     data->character = walrus_model_instantiate("shibahu", (vec3){-2, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1});
     ecs_set(ecs, data->character, Walrus_Animator, {0});
+    walrus_model_instantiate("cubes", (vec3){0, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1});
 
     /* walrus_model_instantiate("shibahu", (vec3){2, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1}); */
     /* walrus_model_system_unload("shibahu"); */

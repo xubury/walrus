@@ -16,8 +16,6 @@ typedef struct {
 typedef struct {
     Walrus_FramebufferHandle framebuffer;
 
-    Walrus_FramebufferHandle gbuffer;
-
     Walrus_Camera *camera;
 
     bool active;
@@ -37,6 +35,12 @@ void walrus_deferred_renderer_set_camera(Walrus_DeferredRenderer *renderer, Walr
 
 void walrus_deferred_renderer_submit_mesh(Walrus_DeferredRenderer *renderer, mat4 const world, Walrus_Mesh *mesh,
                                           Walrus_TransientBuffer weights);
+
+void walrus_forward_renderer_submit_mesh(Walrus_DeferredRenderer *renderer, mat4 const world, Walrus_Mesh *mesh,
+                                         Walrus_TransientBuffer weights);
+
+void walrus_forward_renderer_submit_skinned_mesh(Walrus_DeferredRenderer *renderer, mat4 const world, Walrus_Mesh *mesh,
+                                                 Walrus_TransientBuffer joints, Walrus_TransientBuffer weights);
 
 void walrus_deferred_renderer_submit_skinned_mesh(Walrus_DeferredRenderer *renderer, mat4 const world,
                                                   Walrus_Mesh *mesh, Walrus_TransientBuffer joints,

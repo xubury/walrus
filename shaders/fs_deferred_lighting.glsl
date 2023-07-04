@@ -9,6 +9,8 @@ uniform sampler2D u_gnormal;
 uniform sampler2D u_galbedo;
 uniform sampler2D u_gemissive;
 
+uniform mat4 u_viewproj;
+
 void main()
 {
     vec3 pos = texture(u_gpos, v_uv).rgb;
@@ -16,8 +18,20 @@ void main()
     vec4 albedo = texture(u_galbedo, v_uv);
     vec3 emissive = texture(u_gemissive, v_uv).rgb;
 
+
+    float lnormal = length(normal);
+    if (lnormal != 0) {
+        vec4 clip = u_viewproj * vec4(pos, 1.0);
+        clip /= clip.w;
+        gl_FragDepth = (-clip.z + 1.0) / 2.0;
+
+        normal /= lnormal;
+    }
+    else {
+        discard;
+    }
+
     vec3 light_dir = normalize(vec3(0, 0, 1));
     float diff = max(dot(normal, light_dir), 0.0);
-
     fragcolor = linear_to_srgb(diff * albedo.rgb + emissive, 2.2);
 }

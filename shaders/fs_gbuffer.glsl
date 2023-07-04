@@ -30,7 +30,7 @@ void main() {
     vec3 emissive = texture(u_emissive, v_uv).rgb * u_emissive_factor;
     vec4 albedo = texture(u_albedo, v_uv) * u_albedo_factor;
 
-    if (albedo.a < u_alpha_cutoff) {
+    if (albedo.a <= u_alpha_cutoff) {
         discard;
     }
 
