@@ -29,7 +29,8 @@ ECS_SYSTEM_DECLARE(deferred_renderer_run);
 
 static void on_model_add(ecs_iter_t *it)
 {
-    Walrus_Model *model = ecs_field(it, Walrus_Model, 2);
+    Walrus_Transform *worlds = ecs_field(it, Walrus_Transform, 1);
+    Walrus_Model     *model  = ecs_field(it, Walrus_Model, 2);
 
     ecs_entity_t *skins = walrus_new(ecs_entity_t, model->num_skins);
     for (u32 i = 0; i < model->num_skins; ++i) {
@@ -66,6 +67,8 @@ static void on_model_add(ecs_iter_t *it)
                     {.trans = {transform->trans[0], transform->trans[1], transform->trans[2]},
                      .rot   = {transform->rot[0], transform->rot[1], transform->rot[2], transform->rot[3]},
                      .scale = {transform->scale[0], transform->scale[1], transform->scale[2]}});
+
+            walrus_transform_mul(&worlds[0], transform, ecs_get_mut(it->world, mesh, Walrus_Transform));
         }
     }
     walrus_free(skins);
