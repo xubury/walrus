@@ -2,6 +2,16 @@
 
 #include <core/type.h>
 #include <core/transform.h>
+#include <engine/geometry.h>
+
+typedef struct {
+    Walrus_Plane left;
+    Walrus_Plane right;
+    Walrus_Plane bottom;
+    Walrus_Plane top;
+    Walrus_Plane near;
+    Walrus_Plane far;
+} Walrus_Frustrum;
 
 typedef struct {
     f32 fov;

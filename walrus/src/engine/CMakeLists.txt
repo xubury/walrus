@@ -24,6 +24,7 @@ add_library(
   font.c
   fps_controller.c
   frame_graph.c
+  geometry.c
   imgui.c
   input_device.c
   input.c

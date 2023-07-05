@@ -46,6 +46,7 @@ void walrus_camera_init(Walrus_Camera *camera, vec3 const pos, versor const rot,
     camera->need_update_projection = true;
 
     walrus_camera_update(camera, &transform);
+
 }
 
 void walrus_camera_update(Walrus_Camera *camera, Walrus_Transform const *transform)
