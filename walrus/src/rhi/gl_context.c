@@ -753,6 +753,11 @@ static void submit(RenderFrame *frame)
                 }
             }
         }
+        if (WR_RHI_STATE_WRITE_MASK & changed_flags) {
+            glColorMask(!!(new_flags & WR_RHI_STATE_WRITE_R), !!(new_flags & WR_RHI_STATE_WRITE_G),
+                        !!(new_flags & WR_RHI_STATE_WRITE_B), !!(new_flags & WR_RHI_STATE_WRITE_A));
+            glDepthMask(!!(new_flags & WR_RHI_STATE_WRITE_Z));
+        }
 
         if (WR_RHI_STATE_CULL_MASK & changed_flags) {
             if (WR_RHI_STATE_CULL_CCW & new_flags) {
@@ -990,8 +995,6 @@ static void submit(RenderFrame *frame)
                 glDrawArraysInstanced(primitive, 0, num_vertices, num_instances);
             }
         }
-
-        /* walrus_unused(compute); */
     }
 
     glBindVertexArray(0);

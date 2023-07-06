@@ -1,7 +1,7 @@
 #include "gl_texture.h"
 
 #include <core/math.h>
-#include "core/log.h"
+#include <core/log.h>
 
 static const GlFormat s_format_info[WR_RHI_FORMAT_COUNT] = {
     {GL_ALPHA, GL_ZERO, GL_ALPHA, GL_UNSIGNED_BYTE},  // Alpha8

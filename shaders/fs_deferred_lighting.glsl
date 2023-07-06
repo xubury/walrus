@@ -1,4 +1,5 @@
 #include "srgb.glsl"
+#include "common.glsl"
 
 out vec3 fragcolor;
 
@@ -31,4 +32,5 @@ void main()
     vec3 light_dir = normalize(vec3(0, 0, 1));
     float diff = max(dot(normal, light_dir), 0.0);
     fragcolor = linear_to_srgb(diff * albedo.rgb + emissive, 2.2);
+    // fragcolor = vec3(gl_FragDepth);
 }

@@ -33,6 +33,11 @@ void walrus_deferreed_renderer_init(Walrus_DeferredRenderer *renderer);
 
 void walrus_deferred_renderer_set_camera(Walrus_DeferredRenderer *renderer, Walrus_Camera *camera);
 
+void walrus_renderer_submit_mesh(Walrus_DeferredRenderer *renderer, mat4 const world, Walrus_Mesh *mesh,
+                                 Walrus_TransientBuffer weights);
+void walrus_renderer_submit_skinned_mesh(Walrus_DeferredRenderer *renderer, mat4 const world, Walrus_Mesh *mesh,
+                                         Walrus_TransientBuffer joints, Walrus_TransientBuffer weights);
+
 void walrus_deferred_renderer_submit_mesh(Walrus_DeferredRenderer *renderer, mat4 const world, Walrus_Mesh *mesh,
                                           Walrus_TransientBuffer weights);
 
