@@ -4,7 +4,14 @@
 #include <cglm/cglm.h>
 #include <engine/model.h>
 
-extern ECS_COMPONENT_DECLARE(Walrus_Model);
+typedef struct {
+    char        *name;
+    char        *path;
+    Walrus_Model model;
+    i32         *ref_count;
+} Walrus_ModelRef;
+
+extern ECS_COMPONENT_DECLARE(Walrus_ModelRef);
 
 void walrus_model_system_init(void);
 

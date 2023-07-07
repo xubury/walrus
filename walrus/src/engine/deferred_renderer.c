@@ -169,7 +169,7 @@ void walrus_deferred_renderer_init_uniforms(void)
     walrus_rhi_touch(0);
 }
 
-static bool setup_primitive(Walrus_MeshPrimitive const *prim, u64 flags, bool opaque)
+static void setup_primitive(Walrus_MeshPrimitive const *prim, u64 flags)
 {
     Walrus_MeshMaterial *material = prim->material;
     if (material) {
@@ -179,12 +179,6 @@ static bool setup_primitive(Walrus_MeshPrimitive const *prim, u64 flags, bool op
         u32 alpha_cutoff = 0.f;
         if (material->alpha_mode == WR_ALPHA_MODE_BLEND) {
             flags |= WR_RHI_STATE_BLEND_ALPHA;
-            if (opaque) {
-                return false;
-            }
-        }
-        else if (!opaque) {
-            return false;
         }
         else if (material->alpha_mode == WR_ALPHA_MODE_MASK) {
             alpha_cutoff = material->alpha_cutoff;
@@ -236,8 +230,6 @@ static bool setup_primitive(Walrus_MeshPrimitive const *prim, u64 flags, bool op
         Walrus_PrimitiveStream const *stream = &prim->streams[j];
         walrus_rhi_set_vertex_buffer(j, stream->buffer, stream->layout_handle, stream->offset, stream->num_vertices);
     }
-
-    return true;
 }
 
 void walrus_deferred_renderer_set_camera(Walrus_DeferredRenderer *renderer, Walrus_Camera *camera)
@@ -281,10 +273,12 @@ void walrus_deferred_renderer_submit_mesh(Walrus_DeferredRenderer *renderer, mat
 
     for (u32 i = 0; i < mesh->num_primitives; ++i) {
         Walrus_MeshPrimitive *prim = &mesh->primitives[i];
-        if (setup_primitive(prim, WR_RHI_STATE_DEFAULT, true)) {
-            walrus_rhi_submit(0, s_data->gbuffer_shader, 0, WR_RHI_DISCARD_ALL);
-            dump_stats(renderer, prim);
+        if (prim->material && prim->material->alpha_mode == WR_ALPHA_MODE_BLEND) {
+            continue;
         }
+        setup_primitive(prim, WR_RHI_STATE_DEFAULT);
+        walrus_rhi_submit(0, s_data->gbuffer_shader, 0, WR_RHI_DISCARD_ALL);
+        dump_stats(renderer, prim);
     }
 }
 
@@ -301,10 +295,13 @@ void walrus_deferred_renderer_submit_skinned_mesh(Walrus_DeferredRenderer *rende
 
     for (u32 i = 0; i < mesh->num_primitives; ++i) {
         Walrus_MeshPrimitive *prim = &mesh->primitives[i];
-        if (setup_primitive(prim, WR_RHI_STATE_DEFAULT, true)) {
-            walrus_rhi_submit(0, s_data->gbuffer_skin_shader, 0, WR_RHI_DISCARD_ALL);
-            dump_stats(renderer, prim);
+
+        if (prim->material && prim->material->alpha_mode == WR_ALPHA_MODE_BLEND) {
+            continue;
         }
+        setup_primitive(prim, WR_RHI_STATE_DEFAULT);
+        walrus_rhi_submit(0, s_data->gbuffer_skin_shader, 0, WR_RHI_DISCARD_ALL);
+        dump_stats(renderer, prim);
     }
 }
 
@@ -319,10 +316,13 @@ void walrus_forward_renderer_submit_mesh(Walrus_DeferredRenderer *renderer, mat4
 
     for (u32 i = 0; i < mesh->num_primitives; ++i) {
         Walrus_MeshPrimitive *prim = &mesh->primitives[i];
-        if (setup_primitive(prim, WR_RHI_STATE_DEFAULT, false)) {
-            walrus_rhi_submit(1, s_data->forward_shader, 0, WR_RHI_DISCARD_ALL);
-            dump_stats(renderer, prim);
+
+        if (prim->material && prim->material->alpha_mode != WR_ALPHA_MODE_BLEND) {
+            continue;
         }
+        setup_primitive(prim, WR_RHI_STATE_DEFAULT);
+        walrus_rhi_submit(1, s_data->forward_shader, 0, WR_RHI_DISCARD_ALL);
+        dump_stats(renderer, prim);
     }
 }
 
@@ -338,10 +338,12 @@ void walrus_forward_renderer_submit_skinned_mesh(Walrus_DeferredRenderer *render
 
     for (u32 i = 0; i < mesh->num_primitives; ++i) {
         Walrus_MeshPrimitive *prim = &mesh->primitives[i];
-        if (setup_primitive(prim, WR_RHI_STATE_DEFAULT, false)) {
-            walrus_rhi_submit(1, s_data->forward_skin_shader, 0, WR_RHI_DISCARD_ALL);
-            dump_stats(renderer, prim);
+        if (prim->material && prim->material->alpha_mode != WR_ALPHA_MODE_BLEND) {
+            continue;
         }
+        setup_primitive(prim, WR_RHI_STATE_DEFAULT);
+        walrus_rhi_submit(1, s_data->forward_skin_shader, 0, WR_RHI_DISCARD_ALL);
+        dump_stats(renderer, prim);
     }
 }
 

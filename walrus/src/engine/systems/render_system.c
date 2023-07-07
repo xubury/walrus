@@ -30,7 +30,8 @@ ECS_SYSTEM_DECLARE(deferred_renderer_run);
 static void on_model_add(ecs_iter_t *it)
 {
     Walrus_Transform *worlds = ecs_field(it, Walrus_Transform, 1);
-    Walrus_Model     *model  = ecs_field(it, Walrus_Model, 2);
+    Walrus_ModelRef  *ref    = ecs_field(it, Walrus_ModelRef, 2);
+    Walrus_Model     *model  = &ref->model;
 
     ecs_entity_t *skins = walrus_new(ecs_entity_t, model->num_skins);
     for (u32 i = 0; i < model->num_skins; ++i) {
@@ -164,7 +165,7 @@ static void weight_update(ecs_iter_t *it)
                                           walrus_rhi_get_caps()->ssbo_align);
 
         ecs_entity_t        parent = ecs_get_target(it->world, it->entities[i], EcsChildOf, 0);
-        Walrus_Model const *model  = ecs_get(it->world, parent, Walrus_Model);
+        Walrus_Model const *model  = &ecs_get(it->world, parent, Walrus_ModelRef)->model;
         if (ecs_has(it->world, parent, Walrus_Animator)) {
             Walrus_Animator const *animator = ecs_get(it->world, parent, Walrus_Animator);
             walrus_animator_weights(animator, model, weights[i].node, (f32 *)weights[i].weight_buffer.data);
@@ -181,7 +182,7 @@ static void skin_update(ecs_iter_t *it)
     Walrus_SkinResource *skins = ecs_field(it, Walrus_SkinResource, 1);
     for (i32 i = 0; i < it->count; ++i) {
         ecs_entity_t        parent = ecs_get_target(it->world, it->entities[i], EcsChildOf, 0);
-        Walrus_Model const *model  = ecs_get(it->world, parent, Walrus_Model);
+        Walrus_Model const *model  = &ecs_get(it->world, parent, Walrus_ModelRef)->model;
         walrus_rhi_alloc_transient_buffer(&skins[i].joint_buffer, skins[i].skin->num_joints, sizeof(mat4),
                                           walrus_max(walrus_rhi_get_caps()->ssbo_align, alignof(mat4)));
 
@@ -218,9 +219,21 @@ void walrus_render_system_init(void)
     ECS_COMPONENT_DEFINE(ecs, Walrus_WeightResource);
     ECS_COMPONENT_DEFINE(ecs, Walrus_SkinResource);
 
-    // TODO: filter not self?
-    ECS_OBSERVER(ecs, on_model_add, EcsOnSet, Walrus_Transform, Walrus_Model);
-    ECS_OBSERVER(ecs, on_model_remove, EcsOnRemove, Walrus_Model);
+    ecs_observer_init(ecs,
+                      &(ecs_observer_desc_t const){
+                          .events       = {EcsOnSet},
+                          .entity       = ecs_entity(ecs, {0}),
+                          .callback     = on_model_add,
+                          .filter.terms = {{.id = ecs_id(Walrus_Transform)},
+                                           {.id = ecs_id(Walrus_ModelRef)},
+                                           {.id = ecs_id(Walrus_ModelRef), .src.flags = EcsSelf, .oper = EcsNot}}});
+    ecs_observer_init(ecs,
+                      &(ecs_observer_desc_t const){
+                          .events       = {EcsOnRemove},
+                          .entity       = ecs_entity(ecs, {0}),
+                          .callback     = on_model_remove,
+                          .filter.terms = {{.id = ecs_id(Walrus_ModelRef)},
+                                           {.id = ecs_id(Walrus_ModelRef), .src.flags = EcsSelf, .oper = EcsNot}}});
 
     ecs_id(skin_update)   = ecs_system(ecs, {
                                                 .entity = ecs_entity(ecs, {0}),
