@@ -183,7 +183,7 @@ static void skin_update(ecs_iter_t *it)
         ecs_entity_t        parent = ecs_get_target(it->world, it->entities[i], EcsChildOf, 0);
         Walrus_Model const *model  = ecs_get(it->world, parent, Walrus_Model);
         walrus_rhi_alloc_transient_buffer(&skins[i].joint_buffer, skins[i].skin->num_joints, sizeof(mat4),
-                                          walrus_max(walrus_rhi_get_caps()->ssbo_align, 16));
+                                          walrus_max(walrus_rhi_get_caps()->ssbo_align, alignof(mat4)));
 
         Walrus_ModelSkin *skin = skins[i].skin;
 

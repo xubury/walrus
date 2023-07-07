@@ -1,6 +1,7 @@
 #pragma once
 
 #include <assert.h>
+#include <stdalign.h>
 #include "platform.h"
 #include "type.h"
 

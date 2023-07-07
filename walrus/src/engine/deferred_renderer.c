@@ -131,7 +131,7 @@ void walrus_deferred_renderer_init_uniforms(void)
 
     u64 extra_flags[7] = {0, 0, 0, 0, 0, 0, 0};
 
-    u64 flags = WR_RHI_TEXTURE_RT;
+    u64 flags = WR_RHI_TEXTURE_RT_MSAA_X8;
     for (u32 i = 0; i < walrus_count_of(attachments); ++i) {
         attachments[i].handle = walrus_rhi_create_texture(
             &(Walrus_TextureCreateInfo){
