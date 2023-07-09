@@ -33,9 +33,10 @@ static void on_model_add(ecs_iter_t *it)
     Walrus_ModelRef  *ref    = ecs_field(it, Walrus_ModelRef, 2);
     Walrus_Model     *model  = &ref->model;
 
-    ecs_entity_t *skins = walrus_new(ecs_entity_t, model->num_skins);
+    ecs_entity_t  entity = it->entities[0];
+    ecs_entity_t *skins  = walrus_new(ecs_entity_t, model->num_skins);
     for (u32 i = 0; i < model->num_skins; ++i) {
-        skins[i] = ecs_new_w_pair(it->world, EcsChildOf, it->entities[0]);
+        skins[i] = ecs_new_w_pair(it->world, EcsChildOf, entity);
         ecs_set(it->world, skins[i], Walrus_SkinResource,
                 {
                     .skin = &model->skins[i],
@@ -44,12 +45,12 @@ static void on_model_add(ecs_iter_t *it)
 
     for (u32 i = 0; i < model->num_nodes; ++i) {
         Walrus_ModelNode *node = &model->nodes[i];
-        ecs_entity_t      mesh = ecs_new_w_pair(it->world, EcsChildOf, it->entities[0]);
+        ecs_entity_t      mesh = ecs_new_w_pair(it->world, EcsChildOf, entity);
         if (node->mesh) {
             Walrus_Transform const *transform = &node->world_transform;
 
             if (node->mesh->num_weights > 0) {
-                ecs_entity_t weight = ecs_new_w_pair(it->world, EcsChildOf, it->entities[0]);
+                ecs_entity_t weight = ecs_new_w_pair(it->world, EcsChildOf, entity);
                 ecs_set(it->world, weight, Walrus_WeightResource,
                         {
                             .node = node,
@@ -254,7 +255,7 @@ void walrus_render_system_init(void)
 
     ECS_SYSTEM_DEFINE(ecs, deferred_renderer_run, 0, Walrus_DeferredRenderer, Walrus_Camera);
 
-    walrus_deferred_renderer_init_uniforms();
+    walrus_deferred_renderer_init(walrus_rhi_get_mssa());
 
     walrus_fg_init(&s_render_graph);
 

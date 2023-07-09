@@ -727,6 +727,11 @@ void walrus_rhi_shutdown(void)
     s_ctx = NULL;
 }
 
+Walrus_RhiCreateInfo const* walrus_rhi_get_info(void)
+{
+    return &s_ctx->info;
+}
+
 void walrus_rhi_set_resolution(u32 width, u32 height)
 {
     if (s_ctx->resolution.width != width || s_ctx->resolution.height != height) {
@@ -758,6 +763,11 @@ void walrus_rhi_get_resolution(u32* width, u32* height)
 {
     *width  = s_ctx->resolution.width;
     *height = s_ctx->resolution.height;
+}
+
+u8 walrus_rhi_get_mssa(void)
+{
+    return (s_ctx->resolution.flags & WR_RHI_RESOLUTION_MSAA_MASK) >> WR_RHI_RESOLUTION_MSAA_SHIFT;
 }
 
 void walrus_rhi_frame(void)

@@ -50,18 +50,14 @@ void walrus_camera_init(Walrus_Camera *camera, vec3 const pos, versor const rot,
 
 void walrus_camera_update(Walrus_Camera *camera, Walrus_Transform const *transform)
 {
-    bool change = update_view(camera, transform);
-    change |= update_projection(camera);
-    if (change) {
-        glm_mat4_mul(camera->projection, camera->view, camera->vp);
+    update_view(camera, transform);
+    if (update_projection(camera)) {
+        walrus_frustum_from_camera_local(camera, &camera->frustum);
     }
 }
 
 bool walrus_camera_frustum_cull_test(Walrus_Camera const *camera, mat4 const world, vec3 const min, vec3 const max)
 {
-    Walrus_Frustum frustum;
-    walrus_frustum_from_camera_local(camera, &frustum);
-
     Walrus_BoundingBox box;
     walrus_bounding_box_from_min_max(&box, min, max);
 
@@ -69,7 +65,7 @@ bool walrus_camera_frustum_cull_test(Walrus_Camera const *camera, mat4 const wor
     glm_mat4_mul((vec4 *)camera->view, (vec4 *)world, t);
     walrus_bounding_box_transform(&box, t);
 
-    return walrus_bounding_box_intersects_frustum(&box, &frustum);
+    return walrus_bounding_box_intersects_frustum(&box, &camera->frustum);
 }
 
 static void frustrum_construct(Walrus_Frustum *frustum, vec3 const cam_right, vec3 const cam_up, vec3 const cam_front,

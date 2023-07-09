@@ -27,7 +27,7 @@ typedef struct {
     Walrus_RendererSubmitStats stats;
 } Walrus_DeferredRenderer;
 
-void walrus_deferred_renderer_init_uniforms(void);
+void walrus_deferred_renderer_init(u8 msaa);
 
 void walrus_deferreed_renderer_init(Walrus_DeferredRenderer *renderer);
 

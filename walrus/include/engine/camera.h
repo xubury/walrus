@@ -12,9 +12,10 @@ typedef struct {
 
     mat4 view;
     mat4 projection;
-    mat4 vp;
     bool need_update_view;
     bool need_update_projection;
+
+    Walrus_Frustum frustum;
 } Walrus_Camera;
 
 void walrus_camera_init(Walrus_Camera *camera, vec3 const pos, versor const rot, f32 fov, f32 aspect, f32 near_z,

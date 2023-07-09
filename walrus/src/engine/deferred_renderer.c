@@ -64,7 +64,7 @@ static void setup_texture_uniforms(void)
     walrus_rhi_set_uniform(s_data->u_morph_texture, 0, sizeof(u32), &(u32){3});
 }
 
-void walrus_deferred_renderer_init_uniforms(void)
+void walrus_deferred_renderer_init(u8 msaa)
 {
     s_data = walrus_new(RenderData, 1);
 
@@ -122,7 +122,7 @@ void walrus_deferred_renderer_init_uniforms(void)
 
     setup_texture_uniforms();
 
-    u64                  flags = WR_RHI_TEXTURE_RT_MSAA_X8;
+    u64                  flags = (u64)msaa << WR_RHI_TEXTURE_RT_MSAA_SHIFT;
     Walrus_TextureHandle depth_texture =
         walrus_rhi_create_texture(&(Walrus_TextureCreateInfo){.ratio       = WR_RHI_RATIO_EQUAL,
                                                               .format      = WR_RHI_FORMAT_DEPTH24,
