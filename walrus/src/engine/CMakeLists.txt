@@ -13,6 +13,7 @@ add_library(
   systems/transform_system.c
   systems/pipelines/culling_pipeline.c
   systems/pipelines/deferred_pipeline.c
+  systems/pipelines/hdr_pipeline.c
   animator.c
   app.c
   batch_renderer.c

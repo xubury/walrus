@@ -19,19 +19,19 @@ void walrus_transform_decompose(Walrus_Transform *transform, mat4 const matrix)
     glm_mat4_quat(r, transform->rot);
 }
 
-void walrus_transform_right(Walrus_Transform *transform, vec3 right)
+void walrus_transform_right(Walrus_Transform const *transform, vec3 right)
 {
-    glm_quat_rotatev(transform->rot, (vec3){1, 0, 0}, right);
+    glm_quat_rotatev((f32 *)transform->rot, (vec3){1, 0, 0}, right);
 }
 
-void walrus_transform_up(Walrus_Transform *transform, vec3 up)
+void walrus_transform_up(Walrus_Transform const *transform, vec3 up)
 {
-    glm_quat_rotatev(transform->rot, (vec3){0, 1, 0}, up);
+    glm_quat_rotatev((f32 *)transform->rot, (vec3){0, 1, 0}, up);
 }
 
-void walrus_transform_front(Walrus_Transform *transform, vec3 front)
+void walrus_transform_front(Walrus_Transform const *transform, vec3 front)
 {
-    glm_quat_rotatev(transform->rot, (vec3){0, 0, 1}, front);
+    glm_quat_rotatev((f32 *)transform->rot, (vec3){0, 0, 1}, front);
 }
 
 void walrus_transform_translate(Walrus_Transform *transform, vec3 trans)

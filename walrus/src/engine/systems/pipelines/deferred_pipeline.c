@@ -14,10 +14,8 @@ static void gbuffer_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
 {
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
 
-    Walrus_DeferredRenderer *renderer = walrus_fg_read_ptr(graph, "DeferredRenderer");
-
-    ecs_run(ecs, ecs_id(deferred_submit_static_mesh), 0, renderer);
-    ecs_run(ecs, ecs_id(deferred_submit_skinned_mesh), 0, renderer);
+    ecs_run(ecs, ecs_id(deferred_submit_static_mesh), 0, NULL);
+    ecs_run(ecs, ecs_id(deferred_submit_skinned_mesh), 0, NULL);
 
     walrus_trace("render index: %d name: %s", node->index, node->name);
 }
@@ -33,21 +31,16 @@ static void forward_lighting_pass(Walrus_FrameGraph *graph, Walrus_FrameNode con
 {
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
 
-    Walrus_DeferredRenderer *renderer = walrus_fg_read_ptr(graph, "DeferredRenderer");
-
-    ecs_run(ecs, ecs_id(forward_submit_static_mesh), 0, renderer);
-    ecs_run(ecs, ecs_id(forward_submit_skinned_mesh), 0, renderer);
-
-    walrus_renderer_submit_backbuffer();
+    ecs_run(ecs, ecs_id(forward_submit_static_mesh), 0, NULL);
+    ecs_run(ecs, ecs_id(forward_submit_skinned_mesh), 0, NULL);
 
     walrus_trace("render index: %d name: %s", node->index, node->name);
 }
 
 static void deferred_submit_static_mesh(ecs_iter_t *it)
 {
-    Walrus_RenderMesh       *meshes     = ecs_field(it, Walrus_RenderMesh, 1);
-    Walrus_Transform        *transforms = ecs_field(it, Walrus_Transform, 2);
-    Walrus_DeferredRenderer *renderer   = it->param;
+    Walrus_RenderMesh *meshes     = ecs_field(it, Walrus_RenderMesh, 1);
+    Walrus_Transform  *transforms = ecs_field(it, Walrus_Transform, 2);
 
     for (i32 i = 0; i < it->count; ++i) {
         if (meshes[i].culled) {
@@ -57,18 +50,17 @@ static void deferred_submit_static_mesh(ecs_iter_t *it)
         mat4 world;
         walrus_transform_compose(&transforms[i], world);
 
-        Walrus_TransientBuffer weights = {.handle = {WR_INVALID_HANDLE}};
+        Walrus_TransientBuffer const *weights = NULL;
         if (ecs_has(it->world, it->entities[i], Walrus_WeightResource)) {
-            weights = ecs_get(it->world, it->entities[i], Walrus_WeightResource)->weight_buffer;
+            weights = &ecs_get(it->world, it->entities[i], Walrus_WeightResource)->weight_buffer;
         }
-        walrus_deferred_renderer_submit_mesh(renderer, world, meshes[i].mesh, weights);
+        walrus_deferred_renderer_submit_mesh(world, meshes[i].mesh, weights);
     }
 }
 
 static void deferred_submit_skinned_mesh(ecs_iter_t *it)
 {
-    Walrus_RenderMesh       *meshes   = ecs_field(it, Walrus_RenderMesh, 1);
-    Walrus_DeferredRenderer *renderer = it->param;
+    Walrus_RenderMesh *meshes = ecs_field(it, Walrus_RenderMesh, 1);
 
     for (i32 i = 0; i < it->count; ++i) {
         if (meshes[i].culled) {
@@ -81,21 +73,19 @@ static void deferred_submit_skinned_mesh(ecs_iter_t *it)
         mat4                    p_world;
         walrus_transform_compose(p_trans, p_world);
 
-        Walrus_TransientBuffer weights = {.handle = {WR_INVALID_HANDLE}};
+        Walrus_TransientBuffer const *weights = NULL;
         if (ecs_has(it->world, it->entities[i], Walrus_WeightResource)) {
-            weights = ecs_get(it->world, it->entities[i], Walrus_WeightResource)->weight_buffer;
+            weights = &ecs_get(it->world, it->entities[i], Walrus_WeightResource)->weight_buffer;
         }
         walrus_deferred_renderer_submit_skinned_mesh(
-            renderer, p_world, meshes[i].mesh, ecs_get(it->world, it->entities[i], Walrus_SkinResource)->joint_buffer,
-            weights);
+            p_world, meshes[i].mesh, &ecs_get(it->world, it->entities[i], Walrus_SkinResource)->joint_buffer, weights);
     }
 }
 
 static void forward_submit_static_mesh(ecs_iter_t *it)
 {
-    Walrus_RenderMesh       *meshes     = ecs_field(it, Walrus_RenderMesh, 1);
-    Walrus_Transform        *transforms = ecs_field(it, Walrus_Transform, 2);
-    Walrus_DeferredRenderer *renderer   = it->param;
+    Walrus_RenderMesh *meshes     = ecs_field(it, Walrus_RenderMesh, 1);
+    Walrus_Transform  *transforms = ecs_field(it, Walrus_Transform, 2);
 
     for (i32 i = 0; i < it->count; ++i) {
         if (meshes[i].culled) {
@@ -105,18 +95,17 @@ static void forward_submit_static_mesh(ecs_iter_t *it)
         mat4 world;
         walrus_transform_compose(&transforms[i], world);
 
-        Walrus_TransientBuffer weights = {.handle = {WR_INVALID_HANDLE}};
+        Walrus_TransientBuffer const *weights = NULL;
         if (ecs_has(it->world, it->entities[i], Walrus_WeightResource)) {
-            weights = ecs_get(it->world, it->entities[i], Walrus_WeightResource)->weight_buffer;
+            weights = &ecs_get(it->world, it->entities[i], Walrus_WeightResource)->weight_buffer;
         }
-        walrus_forward_renderer_submit_mesh(renderer, world, meshes[i].mesh, weights);
+        walrus_deferred_renderer_submit_mesh_ablend(world, meshes[i].mesh, weights);
     }
 }
 
 static void forward_submit_skinned_mesh(ecs_iter_t *it)
 {
-    Walrus_RenderMesh       *meshes   = ecs_field(it, Walrus_RenderMesh, 1);
-    Walrus_DeferredRenderer *renderer = it->param;
+    Walrus_RenderMesh *meshes = ecs_field(it, Walrus_RenderMesh, 1);
 
     for (i32 i = 0; i < it->count; ++i) {
         if (meshes[i].culled) {
@@ -129,13 +118,12 @@ static void forward_submit_skinned_mesh(ecs_iter_t *it)
         mat4                    p_world;
         walrus_transform_compose(p_trans, p_world);
 
-        Walrus_TransientBuffer weights = {.handle = {WR_INVALID_HANDLE}};
+        Walrus_TransientBuffer const *weights = NULL;
         if (ecs_has(it->world, it->entities[i], Walrus_WeightResource)) {
-            weights = ecs_get(it->world, it->entities[i], Walrus_WeightResource)->weight_buffer;
+            weights = &ecs_get(it->world, it->entities[i], Walrus_WeightResource)->weight_buffer;
         }
-        walrus_forward_renderer_submit_skinned_mesh(
-            renderer, p_world, meshes[i].mesh, ecs_get(it->world, it->entities[i], Walrus_SkinResource)->joint_buffer,
-            weights);
+        walrus_deferred_renderer_submit_skinned_mesh_ablend(
+            p_world, meshes[i].mesh, &ecs_get(it->world, it->entities[i], Walrus_SkinResource)->joint_buffer, weights);
     }
 }
 

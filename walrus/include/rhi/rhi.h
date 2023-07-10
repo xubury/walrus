@@ -70,7 +70,7 @@ void walrus_rhi_set_index_buffer(Walrus_BufferHandle handle, u32 offset, u32 num
 void walrus_rhi_set_index32_buffer(Walrus_BufferHandle handle, u32 offset, u32 num_indices);
 void walrus_rhi_set_transient_index_buffer(Walrus_TransientBuffer* buffer, u32 offset, u32 num_indices);
 
-void walrus_rhi_set_transient_buffer(u8 binding, Walrus_TransientBuffer* buffer);
+void walrus_rhi_set_transient_buffer(u8 binding, Walrus_TransientBuffer const* buffer);
 
 Walrus_TextureHandle walrus_rhi_create_texture(Walrus_TextureCreateInfo const* info, void const* data);
 Walrus_TextureHandle walrus_rhi_create_texture2d(u32 width, u32 height, Walrus_PixelFormat format, u8 mipmaps,

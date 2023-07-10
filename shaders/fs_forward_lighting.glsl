@@ -30,7 +30,6 @@ void main() {
     }
     vec3 light_dir = normalize(vec3(0, 0, 1));
     float diff = max(dot(normal, light_dir), 0.0);
-    vec3 color = linear_to_srgb(diff * albedo.rgb + emissive, 2.2);
+    vec3 color = diff * albedo.rgb + emissive;
     fragcolor = vec4(color, albedo.a);
-    // fragcolor = vec4(vec3(gl_FragDepth), 1.0);
 };

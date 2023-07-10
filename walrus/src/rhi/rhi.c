@@ -1459,7 +1459,7 @@ void walrus_rhi_set_transient_index_buffer(Walrus_TransientBuffer* buffer, u32 o
     s_ctx->draw.num_indices  = walrus_clamp(0, (buffer->size - offset) / buffer->stride, num_indices);
 }
 
-void walrus_rhi_set_transient_buffer(u8 binding, Walrus_TransientBuffer* buffer)
+void walrus_rhi_set_transient_buffer(u8 binding, Walrus_TransientBuffer const* buffer)
 {
     BlockBinding* block = &s_ctx->bind.block_bindings[binding];
     block->handle       = buffer->handle;

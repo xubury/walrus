@@ -4,6 +4,7 @@
 #include <engine/systems/transform_system.h>
 #include <engine/systems/pipelines/culling_pipeline.h>
 #include <engine/systems/pipelines/deferred_pipeline.h>
+#include <engine/systems/pipelines/hdr_pipeline.h>
 
 #include <engine/frame_graph.h>
 #include <engine/engine.h>
@@ -26,6 +27,8 @@ ECS_SYSTEM_DECLARE(deferred_renderer_run);
 
 #define DEFERRED_LIGHTING_PASS "DeferredRenderPass"
 #define CULLING_PASS           "CullingPass"
+#define HDR_PASS               "HDRPass"
+#define FINAL_PASS             "Final"
 
 static void on_model_add(ecs_iter_t *it)
 {
@@ -146,14 +149,9 @@ static void deferred_renderer_run(ecs_iter_t *it)
             continue;
         }
         walrus_deferred_renderer_set_camera(&renderers[i], &cameras[i]);
-        walrus_deferred_renderer_start_record(&renderers[i]);
         walrus_fg_write_ptr(&s_render_graph, "DeferredRenderer", &renderers[i]);
         walrus_fg_write_ptr(&s_render_graph, "Camera", &cameras[i]);
-        walrus_fg_execute(&s_render_graph, DEFERRED_LIGHTING_PASS);
-        char buffer[255];
-        walrus_deferred_renderer_log_stats(&renderers[i], buffer, 255);
-        walrus_trace(buffer);
-        walrus_deferred_renderer_end_record(&renderers[i]);
+        walrus_fg_execute(&s_render_graph, FINAL_PASS);
     }
     walrus_rhi_touch(0);
 }
@@ -261,8 +259,12 @@ void walrus_render_system_init(void)
 
     Walrus_FramePipeline *culling_pipeline  = walrus_culling_pipeline_add(&s_render_graph, CULLING_PASS);
     Walrus_FramePipeline *deferred_pipeline = walrus_deferred_pipeline_add(&s_render_graph, DEFERRED_LIGHTING_PASS);
+    Walrus_FramePipeline *hdr_pipeline      = walrus_hdr_pipeline_add(&s_render_graph, HDR_PASS);
+    Walrus_FramePipeline *final_pipeline    = walrus_fg_add_pipeline(&s_render_graph, FINAL_PASS);
 
     walrus_fg_connect_pipeline(culling_pipeline, deferred_pipeline);
+    walrus_fg_connect_pipeline(deferred_pipeline, hdr_pipeline);
+    walrus_fg_connect_pipeline(hdr_pipeline, final_pipeline);
 
     walrus_fg_compile(&s_render_graph);
 }
