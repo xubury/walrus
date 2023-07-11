@@ -1,4 +1,4 @@
-#include "srgb.glsl"
+#include "lighting.glsl"
 
 out vec4 fragcolor;
 
@@ -28,8 +28,5 @@ void main() {
     if (albedo.a <= u_alpha_cutoff) {
         discard;
     }
-    vec3 light_dir = normalize(vec3(0, 0, 1));
-    float diff = max(dot(normal, light_dir), 0.0);
-    vec3 color = (diff + 0.15) * albedo.rgb + emissive;
-    fragcolor = vec4(color, albedo.a);
+    fragcolor = vec4(debug_lighting(normal, albedo.rgb, emissive), albedo.a);
 };
