@@ -4,7 +4,7 @@
 
 ECS_COMPONENT_DECLARE(Walrus_Camera);
 
-void camera_tick(ecs_iter_t *it)
+static void camera_tick(ecs_iter_t *it)
 {
     Walrus_Camera    *cameras    = ecs_field(it, Walrus_Camera, 1);
     Walrus_Transform *transforms = ecs_field(it, Walrus_Transform, 2);
@@ -20,9 +20,8 @@ void camera_on_add(ecs_iter_t *it)
     Walrus_Camera    *camera    = ecs_field(it, Walrus_Camera, 1);
     Walrus_Transform *transform = ecs_field(it, Walrus_Transform, 2);
 
-    camera->need_update_view       = true;
-    camera->need_update_projection = true;
-    walrus_camera_update(camera, transform);
+    walrus_camera_init(camera, transform->trans, transform->rot, camera->fov, camera->aspect, camera->near_z,
+                       camera->far_z);
 }
 
 void walrus_camera_system_init(void)

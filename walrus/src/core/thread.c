@@ -48,9 +48,11 @@ Walrus_Thread* walrus_thread_create(void)
     thread->userdata   = NULL;
     thread->stack_size = 0;
 
+#if WR_PLATFORM == WR_PLATFORM_WINDOWS
     thread->handle    = INVALID_HANDLE_VALUE;
     thread->thread_id = UINT32_MAX;
     thread->exitcode  = 0;
+#endif
 
     return thread;
 }

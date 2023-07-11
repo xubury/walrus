@@ -89,7 +89,7 @@ char const *fs_grid_src =
 
 void renderer_init(Romantik_GameState *state)
 {
-    Walrus_Window *window = walrus_engine_window();
+    Walrus_Window *window = walrus_engine_vars()->window;
     i32 const      width  = walrus_window_width(window);
     i32 const      height = walrus_window_height(window);
 
