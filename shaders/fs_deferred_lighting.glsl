@@ -29,5 +29,5 @@ void main()
 
     vec3 light_dir = normalize(vec3(0, 0, 1));
     float diff = max(dot(normal, light_dir), 0.0);
-    fragcolor = diff * albedo.rgb + emissive;
+    fragcolor = (diff + 0.15) * albedo.rgb + emissive;
 }

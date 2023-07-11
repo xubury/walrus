@@ -29,8 +29,6 @@ typedef struct {
     u32 num_instance;
 } RenderStats;
 
-static RenderStats s_stats;
-
 static void clean_stats(RenderStats *stats)
 {
     stats->draw_calls    = 0;
@@ -38,6 +36,12 @@ static void clean_stats(RenderStats *stats)
     stats->num_vertices  = 0;
     stats->num_indices   = 0;
     stats->num_instance  = 0;
+}
+
+static void output_stats(RenderStats *stats)
+{
+    walrus_trace("compute calls: %d draw calls: %d num vertices: %d num indices: %d num instance: %d",
+                 stats->compute_calls, stats->draw_calls, stats->num_vertices, stats->num_indices, stats->num_instance);
 }
 
 static GLenum const s_attribute_type[WR_RHI_COMPONENT_COUNT] = {
@@ -576,7 +580,9 @@ static void submit(RenderFrame *frame)
 
     GLenum primitive = GL_TRIANGLES;
 
-    clean_stats(&s_stats);
+    RenderStats stats;
+
+    clean_stats(&stats);
 
     for (u32 item = 0; item < frame->num_render_items; ++item) {
         u64 const  key_val    = frame->sortkeys[item];
@@ -691,7 +697,7 @@ static void submit(RenderFrame *frame)
                 glDispatchCompute(compute->num_x, compute->num_y, compute->num_z);
                 glMemoryBarrier(barrier);
 
-                ++s_stats.compute_calls;
+                ++stats.compute_calls;
             }
             continue;
         }
@@ -1019,23 +1025,21 @@ static void submit(RenderFrame *frame)
                 glDrawElementsInstanced(primitive, num_indices, index_type[draw->index_size],
                                         (void *)draw->index_offset, num_instances);
 
-                ++s_stats.draw_calls;
-                s_stats.num_vertices += num_vertices;
-                s_stats.num_indices += num_indices;
+                ++stats.draw_calls;
+                stats.num_vertices += num_vertices;
+                stats.num_indices += num_indices;
             }
             else if (num_vertices != UINT32_MAX) {
                 glDrawArraysInstanced(primitive, 0, num_vertices, num_instances);
 
-                ++s_stats.draw_calls;
-                s_stats.num_vertices += num_vertices;
+                ++stats.draw_calls;
+                stats.num_vertices += num_vertices;
             }
         }
     }
 
     if (frame->debug_flags & WR_RHI_DEBUG_STATS) {
-        walrus_trace("compute calls: %d draw calls: %d num vertices: %d num indices: %d num instance: %d",
-                     s_stats.compute_calls, s_stats.draw_calls, s_stats.num_vertices, s_stats.num_indices,
-                     s_stats.num_instance);
+        output_stats(&stats);
     }
 
     glBindVertexArray(0);
