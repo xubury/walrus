@@ -72,6 +72,9 @@
 #define WR_RHI_MAX_FRAMEBUFFER_ATTACHMENTS (8)
 #endif
 
+#define WR_RHI_DEBUG_NONE UINT16_C(0x0000)
+#define WR_RHI_DEBUG_STATS UINT16_C(0x0001)
+
 #define WR_RHI_CLEAR_NONE            UINT16_C(0x0000)  //!< No clear flags.
 #define WR_RHI_CLEAR_COLOR           UINT16_C(0x0001)  //!< Clear color.
 #define WR_RHI_CLEAR_DEPTH           UINT16_C(0x0002)  //!< Clear depth.

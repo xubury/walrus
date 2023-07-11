@@ -96,3 +96,5 @@ Walrus_TextureHandle     walrus_rhi_get_texture(Walrus_FramebufferHandle handle,
 void walrus_rhi_set_framebuffer(u16 view_id, Walrus_FramebufferHandle handle);
 
 Walrus_RhiCapabilities const* walrus_rhi_get_caps(void);
+
+void walrus_rhi_set_debug(u16 debug);

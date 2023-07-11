@@ -1,6 +1,5 @@
 #pragma once
 
-#include <rhi/rhi.h>
 #include <core/hash.h>
 #include <core/semaphore.h>
 
@@ -88,6 +87,7 @@ typedef struct {
     u32                    depth;
     u8                     num_layers;
     u8                     num_mipmaps;
+    u32                    ref_count;
 } TextureRef;
 
 typedef struct {

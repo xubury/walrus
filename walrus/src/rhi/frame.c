@@ -225,6 +225,7 @@ void frame_start(RenderFrame *frame)
     frame->num_matrices     = 1;
     frame->vbo_offset       = 0;
     frame->ibo_offset       = 0;
+    frame->debug_flags      = WR_RHI_DEBUG_NONE;
     command_buffer_start(&frame->cmd_pre);
     command_buffer_start(&frame->cmd_post);
     uniform_buffer_start(frame->uniforms, 0);

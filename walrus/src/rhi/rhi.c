@@ -1,3 +1,4 @@
+#include <rhi/rhi.h>
 #include "rhi_p.h"
 #include <core/assert.h>
 #include <core/math.h>
@@ -767,7 +768,7 @@ void walrus_rhi_get_resolution(u32* width, u32* height)
 
 u8 walrus_rhi_get_mssa(void)
 {
-    return (s_ctx->resolution.flags & WR_RHI_RESOLUTION_MSAA_MASK) >> WR_RHI_RESOLUTION_MSAA_SHIFT;
+    return 1 << ((s_ctx->resolution.flags & WR_RHI_RESOLUTION_MSAA_MASK) >> WR_RHI_RESOLUTION_MSAA_SHIFT);
 }
 
 void walrus_rhi_frame(void)
@@ -1510,6 +1511,7 @@ Walrus_TextureHandle walrus_rhi_create_texture(Walrus_TextureCreateInfo const* i
     ref->depth       = _info.depth;
     ref->num_layers  = _info.num_layers;
     ref->num_mipmaps = _info.num_mipmaps;
+    ref->ref_count   = 1;
 
     return handle;
 }
@@ -1547,15 +1549,29 @@ Walrus_TextureHandle walrus_rhi_create_texture2d_ratio(Walrus_BackBufferRatio ra
     return walrus_rhi_create_texture(&info, data);
 }
 
+static void texture_inc_ref(Walrus_TextureHandle handle)
+{
+    ++s_ctx->texture_refs[handle.id].ref_count;
+}
+
+static void texture_dec_ref(Walrus_TextureHandle handle)
+{
+    i32 ref_count = --s_ctx->texture_refs[handle.id].ref_count;
+    if (ref_count == 0) {
+        walrus_assert(free_handle_queue(s_ctx->submit_frame->queue_texture, handle));
+
+        CommandBuffer* cmdbuf = get_command_buffer(COMMAND_DESTROY_TEXTURE);
+        command_buffer_write(cmdbuf, Walrus_TextureHandle, &handle);
+    }
+}
+
 void walrus_rhi_destroy_texture(Walrus_TextureHandle handle)
 {
     if (handle.id == WR_INVALID_HANDLE) {
         return;
     }
-    walrus_assert(free_handle_queue(s_ctx->submit_frame->queue_texture, handle));
 
-    CommandBuffer* cmdbuf = get_command_buffer(COMMAND_DESTROY_TEXTURE);
-    command_buffer_write(cmdbuf, Walrus_TextureHandle, &handle);
+    texture_dec_ref(handle);
 }
 
 void walrus_rhi_set_texture(u8 unit, Walrus_TextureHandle texture)
@@ -1650,7 +1666,7 @@ Walrus_FramebufferHandle walrus_rhi_create_framebuffer(Walrus_Attachment* attach
         Walrus_TextureHandle th = attachments[i].handle;
         ref->th[i]              = th;
 
-        /* textureIncRef(th); */
+        texture_inc_ref(th);
         /* if (destroyTexture) { */
         /*     textureTakeOwnership(th); */
         /* } */
@@ -1683,4 +1699,9 @@ void walrus_rhi_set_framebuffer(u16 view_id, Walrus_FramebufferHandle handle)
 Walrus_RhiCapabilities const* walrus_rhi_get_caps(void)
 {
     return &s_ctx->caps;
+}
+
+void walrus_rhi_set_debug(u16 debug)
+{
+    s_ctx->submit_frame->debug_flags = debug;
 }

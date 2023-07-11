@@ -3,6 +3,7 @@
 #include <core/memory.h>
 #include <core/macro.h>
 #include <core/log.h>
+#include <core/math.h>
 #include <rhi/rhi.h>
 
 #include <cglm/cglm.h>
@@ -142,7 +143,7 @@ void walrus_deferred_renderer_init(u8 msaa)
 
     setup_texture_uniforms();
 
-    u64                  flags = (u64)msaa << WR_RHI_TEXTURE_RT_MSAA_SHIFT;
+    u64                  flags = (u64)(walrus_u32cnttz(msaa) + 1) << WR_RHI_TEXTURE_RT_MSAA_SHIFT;
     Walrus_TextureHandle depth_texture =
         walrus_rhi_create_texture(&(Walrus_TextureCreateInfo){.ratio       = WR_RHI_RATIO_EQUAL,
                                                               .format      = WR_RHI_FORMAT_DEPTH24,

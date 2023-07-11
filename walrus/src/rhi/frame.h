@@ -140,6 +140,8 @@ typedef struct {
     Walrus_TransientBuffer *transient_vb;
     Walrus_TransientBuffer *transient_ib;
 
+    u16 debug_flags;
+
     FREE_HANDLE(WR_RHI_MAX_BUFFERS, buffer);
     FREE_HANDLE(WR_RHI_MAX_VERTEX_LAYOUTS, layout);
     FREE_HANDLE(WR_RHI_MAX_TEXTURES, texture);

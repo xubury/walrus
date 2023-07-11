@@ -76,6 +76,8 @@ typedef struct {
     GlTexture textures[WR_RHI_MAX_TEXTURES];
 
     GlFramebuffer framebuffers[WR_RHI_MAX_FRAMEBUFFERS];
+
+    GLuint max_msaa;
 } GlContext;
 
 extern GlContext *gl_ctx;

@@ -123,7 +123,7 @@ void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo con
     bool const msaa_sample    = info->flags & WR_RHI_TEXTURE_MSAA_SAMPLE;
     u32        msaa_quality   = ((info->flags & WR_RHI_TEXTURE_RT_MSAA_MASK) >> WR_RHI_TEXTURE_RT_MSAA_SHIFT);
     msaa_quality              = walrus_u32satsub(msaa_quality, 1);
-    msaa_quality              = walrus_min(msaa_quality == 0 ? 0 : 1 << msaa_quality, 16);
+    msaa_quality              = walrus_min(msaa_quality == 0 ? 0 : 1 << msaa_quality, gl_ctx->max_msaa);
     bool const srgb           = info->flags & WR_RHI_TEXTURE_SRGB;
     bool const render_target  = info->flags & WR_RHI_TEXTURE_RT_MASK;
     bool const write_only     = info->flags & WR_RHI_TEXTURE_RT_WRITE_ONLY;

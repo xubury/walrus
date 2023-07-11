@@ -152,6 +152,7 @@ static void deferred_renderer_run(ecs_iter_t *it)
         walrus_fg_write_ptr(&s_render_graph, "DeferredRenderer", &renderers[i]);
         walrus_fg_write_ptr(&s_render_graph, "Camera", &cameras[i]);
         walrus_fg_execute(&s_render_graph, FINAL_PASS);
+        walrus_rhi_set_debug(WR_RHI_DEBUG_STATS);
     }
     walrus_rhi_touch(0);
 }

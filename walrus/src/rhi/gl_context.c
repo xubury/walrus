@@ -21,6 +21,25 @@ void wajs_setup_gl_context(void);
 
 GlContext *gl_ctx = NULL;
 
+typedef struct {
+    u32 draw_calls;
+    u32 compute_calls;
+    u32 num_vertices;
+    u32 num_indices;
+    u32 num_instance;
+} RenderStats;
+
+static RenderStats s_stats;
+
+static void clean_stats(RenderStats *stats)
+{
+    stats->draw_calls    = 0;
+    stats->compute_calls = 0;
+    stats->num_vertices  = 0;
+    stats->num_indices   = 0;
+    stats->num_instance  = 0;
+}
+
 static GLenum const s_attribute_type[WR_RHI_COMPONENT_COUNT] = {
     GL_BYTE,            // Int8
     GL_UNSIGNED_BYTE,   // Uint8
@@ -352,12 +371,16 @@ static void init_ctx(Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *c
     set_render_context_size(info->resolution.width, info->resolution.height, info->resolution.flags);
     glGenVertexArrays(1, &gl_ctx->vao);
 
-    GLint align;
-    glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &align);
-    caps->ssbo_align = align;
+    GLint var;
+    glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &var);
+    caps->ssbo_align = var;
 
-    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &align);
-    caps->ubo_align = align;
+    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &var);
+    caps->ubo_align = var;
+
+    glGetIntegerv(GL_MAX_SAMPLES, &var);
+    gl_ctx->max_msaa = var;
+    caps->max_msaa   = var;
 
     glDepthRangef(0, 1);
 }
@@ -552,6 +575,9 @@ static void submit(RenderFrame *frame)
     bind_clear(&current_bind, WR_RHI_DISCARD_ALL);
 
     GLenum primitive = GL_TRIANGLES;
+
+    clean_stats(&s_stats);
+
     for (u32 item = 0; item < frame->num_render_items; ++item) {
         u64 const  key_val    = frame->sortkeys[item];
         bool const is_compute = sortkey_decode(&sortkey, key_val, frame->view_map);
@@ -664,6 +690,8 @@ static void submit(RenderFrame *frame)
                 set_predefineds(program, frame, view, compute->start_matrix, compute->num_matrices);
                 glDispatchCompute(compute->num_x, compute->num_y, compute->num_z);
                 glMemoryBarrier(barrier);
+
+                ++s_stats.compute_calls;
             }
             continue;
         }
@@ -990,11 +1018,24 @@ static void submit(RenderFrame *frame)
                 }
                 glDrawElementsInstanced(primitive, num_indices, index_type[draw->index_size],
                                         (void *)draw->index_offset, num_instances);
+
+                ++s_stats.draw_calls;
+                s_stats.num_vertices += num_vertices;
+                s_stats.num_indices += num_indices;
             }
             else if (num_vertices != UINT32_MAX) {
                 glDrawArraysInstanced(primitive, 0, num_vertices, num_instances);
+
+                ++s_stats.draw_calls;
+                s_stats.num_vertices += num_vertices;
             }
         }
+    }
+
+    if (frame->debug_flags & WR_RHI_DEBUG_STATS) {
+        walrus_trace("compute calls: %d draw calls: %d num vertices: %d num indices: %d num instance: %d",
+                     s_stats.compute_calls, s_stats.draw_calls, s_stats.num_vertices, s_stats.num_indices,
+                     s_stats.num_instance);
     }
 
     glBindVertexArray(0);

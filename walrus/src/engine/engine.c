@@ -289,7 +289,7 @@ Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height,
     opt.window_title      = title;
     opt.resolution.width  = width;
     opt.resolution.height = height;
-    opt.resolution.flags  = WR_RHI_RESOLUTION_MSAA_X8;
+    opt.resolution.flags  = WR_RHI_RESOLUTION_MSAA_X16;
     opt.window_flags      = WR_WINDOW_FLAG_VSYNC | WR_WINDOW_FLAG_OPENGL;
     opt.minfps            = 30.f;
     opt.shader_folder     = "shaders";
