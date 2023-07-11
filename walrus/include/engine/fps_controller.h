@@ -2,6 +2,7 @@
 
 #include <core/type.h>
 #include <core/transform.h>
+#include <engine/controller.h>
 #include <engine/control_map.h>
 
 typedef struct {
@@ -24,4 +25,4 @@ void walrus_fps_controller_init(Walrus_FpsController *controller, f32 speed, vec
 
 void walrus_fps_controller_shutdown(Walrus_FpsController *controller);
 
-void walrus_fps_controller_tick(Walrus_FpsController *controller, Walrus_Transform *transform, f32 dt);
+void walrus_fps_controller_tick(Walrus_ControllerEvent *event);

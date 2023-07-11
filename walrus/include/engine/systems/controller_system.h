@@ -1,8 +1,9 @@
 #pragma once
 
-#include <flecs.h>
-#include <engine/fps_controller.h>
+#include <engine/controller.h>
 
-extern ECS_COMPONENT_DECLARE(Walrus_FpsController);
+#include <flecs.h>
+
+extern ECS_COMPONENT_DECLARE(Walrus_Controller);
 
 void walrus_controller_system_init(void);

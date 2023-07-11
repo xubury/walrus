@@ -74,42 +74,45 @@ static void to_euler(versor quat, vec3 euler)
     euler[2]       = atan2(siny, cosy);
 }
 
-void walrus_fps_controller_tick(Walrus_FpsController *controller, Walrus_Transform *transform, f32 dt)
+void walrus_fps_controller_tick(Walrus_ControllerEvent *event)
 {
-    walrus_control_map_tick(&controller->map, controller);
+    Walrus_FpsController *fc        = event->userdata;
+    f32 const             dt        = event->delta_time;
+    Walrus_Transform     *transform = event->transform;
 
-    glm_vec3_scale(controller->translation, dt, controller->translation);
-    glm_vec3_lerp(controller->smooth_translation, controller->translation,
-                  walrus_clamp(dt * controller->smoothness, 0.f, 1.0f), controller->smooth_translation);
-    glm_vec3_zero(controller->translation);
+    walrus_control_map_tick(&fc->map, fc);
 
-    glm_vec2_scale(controller->rotation, dt, controller->rotation);
-    glm_vec2_lerp(controller->smooth_rotation, controller->rotation,
-                  walrus_clamp(dt * controller->smoothness, 0.f, 1.0f), controller->smooth_rotation);
-    glm_vec2_zero(controller->rotation);
+    glm_vec3_scale(fc->translation, dt, fc->translation);
+    glm_vec3_lerp(fc->smooth_translation, fc->translation, walrus_clamp(dt * fc->smoothness, 0.f, 1.0f),
+                  fc->smooth_translation);
+    glm_vec3_zero(fc->translation);
 
-    if (glm_vec2_norm2(controller->smooth_rotation) > 0) {
+    glm_vec2_scale(fc->rotation, dt, fc->rotation);
+    glm_vec2_lerp(fc->smooth_rotation, fc->rotation, walrus_clamp(dt * fc->smoothness, 0.f, 1.0f), fc->smooth_rotation);
+    glm_vec2_zero(fc->rotation);
+
+    if (glm_vec2_norm2(fc->smooth_rotation) > 0) {
         versor q;
         vec3   right;
         walrus_transform_right(transform, right);
         vec3 euler;
         to_euler(transform->rot, euler);
-        if (walrus_abs(euler[0] + glm_rad(controller->smooth_rotation[1])) < glm_rad(89.0)) {
-            from_euler(right, glm_rad(controller->smooth_rotation[1]), q);
+        if (walrus_abs(euler[0] + glm_rad(fc->smooth_rotation[1])) < glm_rad(89.0)) {
+            from_euler(right, glm_rad(fc->smooth_rotation[1]), q);
             glm_quat_mul(q, transform->rot, transform->rot);
         }
-        from_euler((vec3){0, 1, 0}, glm_rad(controller->smooth_rotation[0]), q);
+        from_euler((vec3){0, 1, 0}, glm_rad(fc->smooth_rotation[0]), q);
         glm_quat_mul(q, transform->rot, transform->rot);
 
-        walrus_transform_right(transform, controller->ground_transform[0]);
-        walrus_transform_front(transform, controller->ground_transform[2]);
-        controller->ground_transform[2][1] = 0;
-        glm_vec3_normalize(controller->ground_transform[2]);
+        walrus_transform_right(transform, fc->ground_transform[0]);
+        walrus_transform_front(transform, fc->ground_transform[2]);
+        fc->ground_transform[2][1] = 0;
+        glm_vec3_normalize(fc->ground_transform[2]);
     }
 
-    if (glm_vec3_norm2(controller->smooth_translation) > 0) {
+    if (glm_vec3_norm2(fc->smooth_translation) > 0) {
         vec3 local;
-        glm_mat3_mulv(controller->ground_transform, controller->smooth_translation, local);
+        glm_mat3_mulv(fc->ground_transform, fc->smooth_translation, local);
         walrus_transform_translate(transform, local);
     }
 }

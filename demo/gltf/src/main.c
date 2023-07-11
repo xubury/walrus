@@ -20,15 +20,25 @@ typedef struct {
 
 } AppData;
 
+static void controller_shutdown(void *controller)
+{
+    walrus_fps_controller_shutdown(controller);
+    walrus_free(controller);
+}
+
 Walrus_AppError on_init(Walrus_App *app)
 {
     AppData *data = app->userdata;
 
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
 
+    Walrus_FpsController *fps_controller = walrus_new(Walrus_FpsController, 1);
+    walrus_fps_controller_init(fps_controller, 10.0, (vec2){3.0, 3.0}, 20.0);
+
     data->camera = ecs_new_id(ecs);
     ecs_set(ecs, data->camera, Walrus_Transform, {.rot = {0, 0, 0, 1}, .trans = {0, 2, 5}, .scale = {1, 1, 1}});
-    ecs_set(ecs, data->camera, Walrus_FpsController, {.speed = 10.0, .rotate_speed = {3.0, 3.0}, .smoothness = 20.0});
+    ecs_set(ecs, data->camera, Walrus_Controller,
+            {.tick = walrus_fps_controller_tick, .shutdown = controller_shutdown, .userdata = fps_controller});
     ecs_set(ecs, data->camera, Walrus_Camera,
             {.fov = glm_rad(45.0), .aspect = 1440.0 / 900, .near_z = 0.01, .far_z = 1000.0});
     ecs_set(ecs, data->camera, Walrus_DeferredRenderer,
