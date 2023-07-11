@@ -331,7 +331,7 @@ static void set_render_context_size(u32 width, u32 height, u32 flags)
 
     destroy_msaa_fbo();
     u32 msaa = (flags & WR_RHI_RESOLUTION_MSAA_MASK) >> WR_RHI_RESOLUTION_MSAA_SHIFT;
-    msaa     = walrus_min(16, msaa == 0 ? 0 : 1 << msaa);
+    msaa     = walrus_min(gl_ctx->max_msaa, msaa == 0 ? 0 : 1 << msaa);
     create_msaa_fbo(width, height, msaa);
 }
 
