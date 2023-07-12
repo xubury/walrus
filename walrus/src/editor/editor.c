@@ -49,7 +49,7 @@ void walrus_editor_system_init(void)
     ECS_COMPONENT_DEFINE(ecs, Walrus_TransformGuizmo);
 
     ECS_SYSTEM_DEFINE(ecs, editor_ui, 0, Walrus_EditorRenderer, Walrus_Camera);
-    ECS_SYSTEM_DEFINE(ecs, transform_guizmo_ui, 0, Walrus_Transform, Walrus_TransformUI);
+    ECS_SYSTEM_DEFINE(ecs, transform_guizmo_ui, 0, Walrus_Transform, Walrus_TransformGuizmo);
 }
 
 void walrus_editor_system_render(void)
