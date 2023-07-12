@@ -319,10 +319,10 @@ Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height,
 static void systems_init(void)
 {
     walrus_transform_system_init();
-    walrus_model_system_init();
-    walrus_camera_system_init();
-    walrus_render_system_init();
     walrus_controller_system_init();
+    walrus_camera_system_init();
+    walrus_model_system_init();
+    walrus_render_system_init();
     walrus_animator_system_init();
 }
 

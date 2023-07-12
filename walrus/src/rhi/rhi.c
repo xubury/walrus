@@ -60,6 +60,9 @@ static void view_reset(RenderView* view)
     view->viewport = (ViewRect){0, 0, 1, 1};
     view->scissor  = (ViewRect){0, 0, 0, 0};
 
+    glm_mat4_identity(view->view);
+    glm_mat4_identity(view->projection);
+
     view->mode = WR_RHI_VIEWMODE_DEFAULT;
 
     unpack_rgba(0, view->clear.index, view->clear.index + 1, view->clear.index + 2, view->clear.index + 3);

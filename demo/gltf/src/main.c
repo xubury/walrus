@@ -13,11 +13,11 @@
 #include <engine/systems/render_system.h>
 #include <engine/systems/camera_system.h>
 #include <engine/systems/controller_system.h>
+#include <editor/editor.h>
 
 typedef struct {
     ecs_entity_t camera;
     ecs_entity_t character;
-
 } AppData;
 
 static void controller_shutdown(void *controller)
@@ -32,6 +32,8 @@ Walrus_AppError on_init(Walrus_App *app)
 
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
 
+    walrus_editor_system_init();
+
     Walrus_FpsController *fps_controller = walrus_new(Walrus_FpsController, 1);
     walrus_fps_controller_init(fps_controller, 10.0, (vec2){3.0, 3.0}, 20.0);
 
@@ -43,12 +45,14 @@ Walrus_AppError on_init(Walrus_App *app)
             {.fov = glm_rad(45.0), .aspect = 1440.0 / 900, .near_z = 0.01, .far_z = 1000.0});
     ecs_set(ecs, data->camera, Walrus_DeferredRenderer,
             {.x = 0, .y = 0, .width = 1440, .height = 900, .active = true, .framebuffer = {WR_INVALID_HANDLE}});
+    ecs_set(ecs, data->camera, Walrus_EditorRenderer, {.width = 1440, .height = 900});
 
     walrus_model_system_load_from_file("shibahu", "assets/gltf/shibahu/scene.gltf");
     walrus_model_system_load_from_file("cubes", "assets/gltf/EmissiveStrengthTest.gltf");
 
     data->character = walrus_model_instantiate("shibahu", (vec3){-2, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1});
     ecs_set(ecs, data->character, Walrus_Animator, {0});
+    ecs_set(ecs, data->character, Walrus_TransformGuizmo, {.op = TRANSLATE, .mode = WORLD});
     walrus_model_instantiate("cubes", (vec3){0, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1});
 
     /* walrus_model_instantiate("shibahu", (vec3){2, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1}); */
@@ -59,31 +63,32 @@ Walrus_AppError on_init(Walrus_App *app)
 
 void on_render(Walrus_App *app)
 {
-    AppData             *data      = app->userdata;
-    ecs_world_t         *ecs       = walrus_engine_vars()->ecs;
-    Walrus_Camera const *camera    = ecs_get(ecs, data->camera, Walrus_Camera);
-    Walrus_Transform    *transform = ecs_get_mut(ecs, data->character, Walrus_Transform);
+    walrus_editor_system_render();
+    /* AppData             *data      = app->userdata; */
+    /* ecs_world_t         *ecs       = walrus_engine_vars()->ecs; */
+    /* Walrus_Camera const *camera    = ecs_get(ecs, data->camera, Walrus_Camera); */
+    /* Walrus_Transform    *transform = ecs_get_mut(ecs, data->character, Walrus_Transform); */
 
-    u32 width, height;
-    walrus_rhi_get_resolution(&width, &height);
-    walrus_imgui_new_frame(width, height, 255);
+    /* u32 width, height; */
+    /* walrus_rhi_get_resolution(&width, &height); */
+    /* walrus_imgui_new_frame(width, height, 255); */
 
-    ImGuizmo_SetRect(0, 0, width, height);
-    ImGuizmo_SetOrthographic(false);
-    mat4 world;
-    walrus_transform_compose(transform, world);
-    if (ImGuizmo_Manipulate(camera->view[0], camera->projection[0], TRANSLATE, WORLD, world[0], NULL, NULL, NULL,
-                            NULL)) {
-        walrus_transform_decompose(transform, world);
-    }
+    /* ImGuizmo_SetRect(0, 0, width, height); */
+    /* ImGuizmo_SetOrthographic(false); */
+    /* mat4 world; */
+    /* walrus_transform_compose(transform, world); */
+    /* if (ImGuizmo_Manipulate(camera->view[0], camera->projection[0], TRANSLATE, WORLD, world[0], NULL, NULL, NULL, */
+    /*                         NULL)) { */
+    /*     walrus_transform_decompose(transform, world); */
+    /* } */
 
-    igBegin("Hello, world!", NULL, 0);
-    igText("This is some useful text");
-    igText("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO()->Framerate, igGetIO()->Framerate);
-    static i32 lod = 0;
-    igInputInt("LOD", &lod, 1, 1, 0);
-    igEnd();
-    walrus_imgui_end_frame();
+    /* igBegin("Hello, world!", NULL, 0); */
+    /* igText("This is some useful text"); */
+    /* igText("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO()->Framerate, igGetIO()->Framerate); */
+    /* static i32 lod = 0; */
+    /* igInputInt("LOD", &lod, 1, 1, 0); */
+    /* igEnd(); */
+    /* walrus_imgui_end_frame(); */
 }
 
 void on_event(Walrus_App *app, Walrus_Event *e)

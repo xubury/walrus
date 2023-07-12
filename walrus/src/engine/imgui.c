@@ -199,9 +199,8 @@ static void render(ImDrawData *data)
                     walrus_rhi_set_state(state, 0);
                     walrus_rhi_set_transient_vertex_buffer(0, &tvb, s_ctx->layout, 0, num_vertices);
                     walrus_rhi_set_transient_index_buffer(&tib, offset, cmd->ElemCount);
-                    u32 unit = 0;
-                    walrus_rhi_set_uniform(s_ctx->u_texture, 0, sizeof(u32), &unit);
-                    walrus_rhi_set_texture(unit, th);
+                    walrus_rhi_set_uniform(s_ctx->u_texture, 0, sizeof(u32), &(u32){0});
+                    walrus_rhi_set_texture(0, th);
                     walrus_rhi_submit(s_ctx->view_id, prog, 0, WR_RHI_DISCARD_ALL);
                 }
             }

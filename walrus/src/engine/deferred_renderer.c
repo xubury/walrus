@@ -51,7 +51,9 @@ typedef struct {
     Walrus_UniformHandle u_gemissive;
 
     Walrus_UniformHandle u_color_buffer;
+    Walrus_UniformHandle u_depth_buffer;
 
+    Walrus_TextureHandle     depth_buffer;
     Walrus_FramebufferHandle gbuffer;
     Walrus_FramebufferHandle hdr_buffer;
     Walrus_FramebufferHandle back_buffer;
@@ -116,6 +118,7 @@ void walrus_deferred_renderer_init(u8 msaa)
     s_data->u_gemissive  = walrus_rhi_create_uniform("u_gemissive", WR_RHI_UNIFORM_SAMPLER, 1);
 
     s_data->u_color_buffer = walrus_rhi_create_uniform("u_color_buffer", WR_RHI_UNIFORM_SAMPLER, 1);
+    s_data->u_depth_buffer = walrus_rhi_create_uniform("u_depth_buffer", WR_RHI_UNIFORM_SAMPLER, 1);
 
     Walrus_ShaderHandle vs_mesh         = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_mesh.glsl");
     Walrus_ShaderHandle vs_skinned_mesh = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_skinned_mesh.glsl");
@@ -143,13 +146,11 @@ void walrus_deferred_renderer_init(u8 msaa)
 
     setup_texture_uniforms();
 
-    u64                  flags = (u64)(walrus_u32cnttz(msaa) + 1) << WR_RHI_TEXTURE_RT_MSAA_SHIFT;
-    Walrus_TextureHandle depth_texture =
-        walrus_rhi_create_texture(&(Walrus_TextureCreateInfo){.ratio       = WR_RHI_RATIO_EQUAL,
-                                                              .format      = WR_RHI_FORMAT_DEPTH24,
-                                                              .num_mipmaps = 1,
-                                                              .flags       = flags | WR_RHI_TEXTURE_RT_WRITE_ONLY},
-                                  NULL);
+    u64 flags            = (u64)(walrus_u32cnttz(msaa) + 1) << WR_RHI_TEXTURE_RT_MSAA_SHIFT;
+    s_data->depth_buffer = walrus_rhi_create_texture(
+        &(Walrus_TextureCreateInfo){
+            .ratio = WR_RHI_RATIO_EQUAL, .format = WR_RHI_FORMAT_DEPTH24, .num_mipmaps = 1, .flags = flags},
+        NULL);
     {
         Walrus_Attachment attachments[2] = {0};
 
@@ -158,7 +159,7 @@ void walrus_deferred_renderer_init(u8 msaa)
                 .ratio = WR_RHI_RATIO_EQUAL, .format = WR_RHI_FORMAT_RGBA8, .num_mipmaps = 1, .flags = flags},
             NULL);
         attachments[0].access = WR_RHI_ACCESS_WRITE;
-        attachments[1].handle = depth_texture;
+        attachments[1].handle = s_data->depth_buffer;
         attachments[1].access = WR_RHI_ACCESS_WRITE;
 
         s_data->back_buffer = walrus_rhi_create_framebuffer(attachments, walrus_count_of(attachments));
@@ -174,7 +175,7 @@ void walrus_deferred_renderer_init(u8 msaa)
             WR_RHI_FORMAT_RGB8     // emissive
         };
 
-        attachments[walrus_count_of(attachments) - 1].handle = depth_texture;
+        attachments[walrus_count_of(attachments) - 1].handle = s_data->depth_buffer;
 
         for (u32 i = 0; i < walrus_count_of(formats); ++i) {
             attachments[i].handle = walrus_rhi_create_texture(
@@ -396,7 +397,10 @@ void walrus_renderer_submit_backbuffer(void)
     walrus_rhi_set_uniform(s_data->u_color_buffer, 0, sizeof(u32), &(u32){0});
     walrus_rhi_set_texture(0, walrus_rhi_get_texture(s_data->hdr_buffer, 0));
 
-    walrus_rhi_set_state(WR_RHI_STATE_WRITE_RGB | WR_RHI_STATE_WRITE_A, 0);
+    walrus_rhi_set_uniform(s_data->u_depth_buffer, 0, sizeof(u32), &(u32){1});
+    walrus_rhi_set_texture(1, s_data->depth_buffer);
+
+    walrus_rhi_set_state(WR_RHI_STATE_WRITE_RGB | WR_RHI_STATE_WRITE_A | WR_RHI_STATE_WRITE_Z, 0);
     walrus_renderer_submit_quad(3, s_data->copy_shader);
 }
 
