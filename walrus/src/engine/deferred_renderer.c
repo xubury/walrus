@@ -265,7 +265,7 @@ static void setup_primitive(Walrus_MeshPrimitive const *prim)
     }
 }
 
-void walrus_deferred_renderer_set_camera(Walrus_DeferredRenderer const *renderer, Walrus_Camera const *camera)
+void walrus_deferred_renderer_set_camera(Walrus_Renderer const *renderer, Walrus_Camera const *camera)
 {
     walrus_rhi_set_view_rect_ratio(0, WR_RHI_RATIO_EQUAL);
     walrus_rhi_set_view_clear(0, WR_RHI_CLEAR_DEPTH | WR_RHI_CLEAR_COLOR, 0, 1.0, 0);

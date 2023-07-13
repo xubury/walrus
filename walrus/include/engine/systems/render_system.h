@@ -4,7 +4,7 @@
 #include <engine/renderer_mesh.h>
 #include <flecs.h>
 
-extern ECS_COMPONENT_DECLARE(Walrus_DeferredRenderer);
+extern ECS_COMPONENT_DECLARE(Walrus_Renderer);
 extern ECS_COMPONENT_DECLARE(Walrus_RenderMesh);
 extern ECS_COMPONENT_DECLARE(Walrus_WeightResource);
 extern ECS_COMPONENT_DECLARE(Walrus_SkinResource);

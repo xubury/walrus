@@ -15,11 +15,11 @@ typedef struct {
     u16  width;
     u16  height;
 
-} Walrus_DeferredRenderer;
+} Walrus_Renderer;
 
 void walrus_deferred_renderer_init(u8 msaa);
 
-void walrus_deferred_renderer_set_camera(Walrus_DeferredRenderer const *renderer, Walrus_Camera const *camera);
+void walrus_deferred_renderer_set_camera(Walrus_Renderer const *renderer, Walrus_Camera const *camera);
 
 void walrus_deferred_renderer_submit_mesh(mat4 const world, Walrus_Mesh *mesh, Walrus_TransientBuffer const *weights);
 

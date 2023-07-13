@@ -16,14 +16,14 @@
 
 static Walrus_FrameGraph s_render_graph;
 
-ECS_COMPONENT_DECLARE(Walrus_DeferredRenderer);
+ECS_COMPONENT_DECLARE(Walrus_Renderer);
 ECS_COMPONENT_DECLARE(Walrus_RenderMesh);
 ECS_COMPONENT_DECLARE(Walrus_WeightResource);
 ECS_COMPONENT_DECLARE(Walrus_SkinResource);
 
 ECS_SYSTEM_DECLARE(weight_update);
 ECS_SYSTEM_DECLARE(skin_update);
-ECS_SYSTEM_DECLARE(deferred_renderer_run);
+ECS_SYSTEM_DECLARE(renderer_run);
 
 #define DEFERRED_LIGHTING_PASS "DeferredRenderPass"
 #define CULLING_PASS           "CullingPass"
@@ -139,17 +139,17 @@ static void transform_bound(mat4 const m, vec3 const min, vec3 const max, vec3 r
     glm_vec3_add(new_center, new_extends, res_max);
 }
 
-static void deferred_renderer_run(ecs_iter_t *it)
+static void renderer_run(ecs_iter_t *it)
 {
-    Walrus_DeferredRenderer *renderers = ecs_field(it, Walrus_DeferredRenderer, 1);
-    Walrus_Camera           *cameras   = ecs_field(it, Walrus_Camera, 2);
+    Walrus_Renderer *renderers = ecs_field(it, Walrus_Renderer, 1);
+    Walrus_Camera   *cameras   = ecs_field(it, Walrus_Camera, 2);
 
     for (i32 i = 0; i < it->count; ++i) {
         if (!renderers[i].active) {
             continue;
         }
         walrus_deferred_renderer_set_camera(&renderers[i], &cameras[i]);
-        walrus_fg_write_ptr(&s_render_graph, "DeferredRenderer", &renderers[i]);
+        walrus_fg_write_ptr(&s_render_graph, "Renderer", &renderers[i]);
         walrus_fg_write_ptr(&s_render_graph, "Camera", &cameras[i]);
         walrus_fg_execute(&s_render_graph, FINAL_PASS);
         walrus_rhi_set_debug(WR_RHI_DEBUG_STATS);
@@ -214,7 +214,7 @@ static void skin_update(ecs_iter_t *it)
 void walrus_render_system_init(void)
 {
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
-    ECS_COMPONENT_DEFINE(ecs, Walrus_DeferredRenderer);
+    ECS_COMPONENT_DEFINE(ecs, Walrus_Renderer);
     ECS_COMPONENT_DEFINE(ecs, Walrus_RenderMesh);
     ECS_COMPONENT_DEFINE(ecs, Walrus_WeightResource);
     ECS_COMPONENT_DEFINE(ecs, Walrus_SkinResource);
@@ -252,7 +252,7 @@ void walrus_render_system_init(void)
                                                 .callback = weight_update,
                                             });
 
-    ECS_SYSTEM_DEFINE(ecs, deferred_renderer_run, 0, Walrus_DeferredRenderer, Walrus_Camera);
+    ECS_SYSTEM_DEFINE(ecs, renderer_run, 0, Walrus_Renderer, Walrus_Camera);
 
     walrus_deferred_renderer_init(walrus_rhi_get_mssa());
 
@@ -281,5 +281,5 @@ void walrus_render_system_render(void)
 
     ecs_run(ecs, ecs_id(weight_update), 0, NULL);
     ecs_run(ecs, ecs_id(skin_update), 0, NULL);
-    ecs_run(ecs, ecs_id(deferred_renderer_run), 0, NULL);
+    ecs_run(ecs, ecs_id(renderer_run), 0, NULL);
 }
