@@ -21,7 +21,7 @@ static void controller_shutdown(void *controller)
     walrus_free(controller);
 }
 
-static void hello_world_ui(void)
+static void hello_world_ui(ecs_world_t *world, ecs_entity_t e)
 {
     igText("This is some useful text");
     igText("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO()->Framerate, igGetIO()->Framerate);
@@ -29,8 +29,19 @@ static void hello_world_ui(void)
     igInputInt("LOD", &lod, 1, 1, 0);
 }
 
-static void transform_ui(void)
+static void transform_ui(ecs_world_t *world, ecs_entity_t e)
 {
+    /* Walrus_TransformGuizmo *guizmo = ecs_get_mut(world, e, Walrus_TransformGuizmo); */
+    /* walrus_assert(ecs_has(world, e, Walrus_TransformGuizmo) && guizmo != NULL); */
+    /* if (igRadioButton_Bool("Translate", guizmo->op == TRANSLATE)) { */
+    /*     guizmo->op = TRANSLATE; */
+    /* } */
+    /* if (igRadioButton_Bool("Rotate", guizmo->op == ROTATE)) { */
+    /*     guizmo->op = ROTATE; */
+    /* } */
+    /* if (igRadioButton_Bool("Scale", guizmo->op == SCALE)) { */
+    /*     guizmo->op = SCALE; */
+    /* } */
 }
 
 Walrus_AppError on_init(Walrus_App *app)

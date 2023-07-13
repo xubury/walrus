@@ -16,7 +16,7 @@ typedef struct {
     ImGuiWindowFlags flags;
 } Walrus_EditorWindow;
 
-typedef void (*Walrus_ImGuiWidgetDrawFunc)(void);
+typedef void (*Walrus_ImGuiWidgetDrawFunc)(ecs_world_t *world, ecs_entity_t e);
 
 typedef struct {
     Walrus_ImGuiWidgetDrawFunc func;

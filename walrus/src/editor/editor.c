@@ -72,7 +72,7 @@ static void editor_window_ui(ecs_iter_t *it)
             while (ecs_filter_next(&child_it)) {
                 Walrus_EditorWidget *widgets = ecs_field(&child_it, Walrus_EditorWidget, 1);
                 for (i32 j = 0; j < child_it.count; ++j) {
-                    widgets[j].func();
+                    widgets[j].func(child_it.world, child_it.entities[j]);
                 }
             }
 
