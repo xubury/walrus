@@ -6,6 +6,7 @@
 ECS_COMPONENT_DECLARE(Walrus_TransformGuizmo);
 ECS_COMPONENT_DECLARE(Walrus_EditorWindow);
 ECS_COMPONENT_DECLARE(Walrus_EditorWidget);
+ECS_COMPONENT_DECLARE(Walrus_EntityObserver);
 
 ECS_SYSTEM_DECLARE(editor_window_ui);
 ECS_SYSTEM_DECLARE(viewport_editor_ui);
@@ -88,6 +89,7 @@ void walrus_editor_system_init(void)
     ECS_COMPONENT_DEFINE(ecs, Walrus_TransformGuizmo);
     ECS_COMPONENT_DEFINE(ecs, Walrus_EditorWindow);
     ECS_COMPONENT_DEFINE(ecs, Walrus_EditorWidget);
+    ECS_COMPONENT_DEFINE(ecs, Walrus_EntityObserver);
 
     ECS_SYSTEM_DEFINE(ecs, editor_window_ui, 0, Walrus_EditorWindow);
     ECS_SYSTEM_DEFINE(ecs, viewport_editor_ui, 0, Walrus_Renderer, Walrus_Camera);

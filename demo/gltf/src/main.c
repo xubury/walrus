@@ -21,31 +21,42 @@ static void controller_shutdown(void *controller)
     walrus_free(controller);
 }
 
-static void hello_world_ui(ecs_world_t *world, ecs_entity_t e)
+static void hello_world_ui(ecs_world_t *ecs, ecs_entity_t e)
 {
+    walrus_unused(ecs);
+    walrus_unused(e);
+
     igText("This is some useful text");
     igText("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO()->Framerate, igGetIO()->Framerate);
     static i32 lod = 0;
     igInputInt("LOD", &lod, 1, 1, 0);
 }
 
-static void transform_ui(ecs_world_t *world, ecs_entity_t e)
+static void transform_ui(ecs_world_t *ecs, ecs_entity_t e)
 {
-    /* Walrus_TransformGuizmo *guizmo = ecs_get_mut(world, e, Walrus_TransformGuizmo); */
-    /* walrus_assert(ecs_has(world, e, Walrus_TransformGuizmo) && guizmo != NULL); */
-    /* if (igRadioButton_Bool("Translate", guizmo->op == TRANSLATE)) { */
-    /*     guizmo->op = TRANSLATE; */
-    /* } */
-    /* if (igRadioButton_Bool("Rotate", guizmo->op == ROTATE)) { */
-    /*     guizmo->op = ROTATE; */
-    /* } */
-    /* if (igRadioButton_Bool("Scale", guizmo->op == SCALE)) { */
-    /*     guizmo->op = SCALE; */
-    /* } */
+    walrus_assert(ecs_has(ecs, e, Walrus_EntityObserver));
+
+    ecs_entity_t target = ecs_get(ecs, e, Walrus_EntityObserver)->entity;
+
+    walrus_assert(ecs_has(ecs, target, Walrus_TransformGuizmo));
+
+    Walrus_TransformGuizmo *guizmo = ecs_get_mut(ecs, target, Walrus_TransformGuizmo);
+
+    if (igRadioButton_Bool("Translate", guizmo->op == TRANSLATE)) {
+        guizmo->op = TRANSLATE;
+    }
+    if (igRadioButton_Bool("Rotate", guizmo->op == ROTATE)) {
+        guizmo->op = ROTATE;
+    }
+    if (igRadioButton_Bool("Scale", guizmo->op == SCALE)) {
+        guizmo->op = SCALE;
+    }
 }
 
 Walrus_AppError on_init(Walrus_App *app)
 {
+    walrus_unused(app);
+
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
 
     walrus_editor_system_init();
@@ -76,8 +87,10 @@ Walrus_AppError on_init(Walrus_App *app)
     ecs_entity_t window = ecs_set(ecs, 0, Walrus_EditorWindow, {.name = "hello world"});
     ecs_set(ecs, ecs_new_w_pair(ecs, EcsChildOf, window), Walrus_EditorWidget, {.func = hello_world_ui});
 
-    ecs_entity_t widget = ecs_new_w_pair(ecs, EcsChildOf, window);
+    ecs_entity_t observer = ecs_set(ecs, 0, Walrus_EntityObserver, {.entity = cubes});
+    ecs_entity_t widget   = ecs_new_w_pair(ecs, EcsChildOf, window);
     ecs_set(ecs, widget, Walrus_EditorWidget, {.func = transform_ui});
+    ecs_add_pair(ecs, widget, EcsIsA, observer);
 
     return WR_APP_SUCCESS;
 }

@@ -11,8 +11,8 @@ typedef struct {
 } Walrus_TransformGuizmo;
 
 typedef struct {
-    char name[256];
-    bool opened;
+    char             name[256];
+    bool             opened;
     ImGuiWindowFlags flags;
 } Walrus_EditorWindow;
 
@@ -22,9 +22,14 @@ typedef struct {
     Walrus_ImGuiWidgetDrawFunc func;
 } Walrus_EditorWidget;
 
+typedef struct {
+    ecs_entity_t entity;
+} Walrus_EntityObserver;
+
 extern ECS_COMPONENT_DECLARE(Walrus_TransformGuizmo);
 extern ECS_COMPONENT_DECLARE(Walrus_EditorWindow);
 extern ECS_COMPONENT_DECLARE(Walrus_EditorWidget);
+extern ECS_COMPONENT_DECLARE(Walrus_EntityObserver);
 
 void walrus_editor_system_init(void);
 void walrus_editor_system_render(void);
