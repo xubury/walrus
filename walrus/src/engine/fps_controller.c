@@ -52,7 +52,7 @@ void walrus_fps_controller_shutdown(Walrus_FpsController *controller)
     walrus_control_map_shutdown(&controller->map);
 }
 
-static void from_euler(vec3 axis, f32 angle, versor quat)
+static void axis_angles(vec3 axis, f32 angle, versor quat)
 {
     f32 ha = angle * 0.5f;
     f32 sa = sin(ha);
@@ -98,10 +98,10 @@ void walrus_fps_controller_tick(Walrus_ControllerEvent *event)
         vec3 euler;
         to_euler(transform->rot, euler);
         if (walrus_abs(euler[0] + glm_rad(fc->smooth_rotation[1])) < glm_rad(89.0)) {
-            from_euler(right, glm_rad(fc->smooth_rotation[1]), q);
+            axis_angles(right, glm_rad(fc->smooth_rotation[1]), q);
             glm_quat_mul(q, transform->rot, transform->rot);
         }
-        from_euler((vec3){0, 1, 0}, glm_rad(fc->smooth_rotation[0]), q);
+        axis_angles((vec3){0, 1, 0}, glm_rad(fc->smooth_rotation[0]), q);
         glm_quat_mul(q, transform->rot, transform->rot);
 
         walrus_transform_right(transform, fc->ground_transform[0]);
