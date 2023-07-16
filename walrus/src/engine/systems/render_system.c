@@ -1,7 +1,7 @@
 #include <engine/systems/render_system.h>
-#include <engine/systems/animator_system.h>
 #include <engine/systems/model_system.h>
 #include <engine/systems/transform_system.h>
+#include <engine/component.h>
 #include <engine/systems/pipelines/culling_pipeline.h>
 #include <engine/systems/pipelines/deferred_pipeline.h>
 #include <engine/systems/pipelines/hdr_pipeline.h>

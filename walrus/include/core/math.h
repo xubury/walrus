@@ -3,6 +3,8 @@
 #include "macro.h"
 #include "assert.h"
 
+#include <cglm/cglm.h>
+
 #define walrus_max(a, b) ((a) > (b) ? a : b)
 
 #define walrus_min(a, b) ((a) < (b) ? a : b)
@@ -202,3 +204,34 @@ WR_INLINE u64 walrus_nearest_pow(u64 num)
 
     return n + 1;
 }
+
+WR_INLINE void glm_to_quat(vec3 const euler, versor q)
+{
+    f32 cr = cos(euler[0] * 0.5);
+    f32 sr = sin(euler[0] * 0.5);
+    f32 cp = cos(euler[1] * 0.5);
+    f32 sp = sin(euler[1] * 0.5);
+    f32 cy = cos(euler[2] * 0.5);
+    f32 sy = sin(euler[2] * 0.5);
+
+    q[0] = cr * cp * cy + sr * sp * sy;
+    q[1] = sr * cp * cy - cr * sp * sy;
+    q[2] = cr * sp * cy + sr * cp * sy;
+    q[3] = cr * cp * sy - sr * sp * cy;
+}
+
+WR_INLINE void glm_to_euler(versor const quat, vec3 euler)
+{
+    f32 const sinr = 2.0 * (quat[3] * quat[0] + quat[1] * quat[2]);
+    f32 const cosr = 1 - 2.0 * (quat[0] * quat[0] + quat[1] * quat[1]);
+    euler[0]       = atan2(sinr, cosr);
+
+    f32 const sinp = sqrt(1 + 2.0 * (quat[3] * quat[1] - quat[0] * quat[2]));
+    f32 const cosp = sqrt(1 - 2.0 * (quat[3] * quat[1] - quat[0] * quat[2]));
+    euler[1]       = 2 * atan2(sinp, cosp) - M_PI / 2.0;
+
+    f32 const siny = 2.0 * (quat[3] * quat[2] + quat[0] * quat[1]);
+    f32 const cosy = 1 - 2.0 * (quat[1] * quat[1] + quat[2] * quat[2]);
+    euler[2]       = atan2(siny, cosy);
+}
+

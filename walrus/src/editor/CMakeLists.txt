@@ -1,4 +1,4 @@
-add_library(walrus_editor editor.c)
+add_library(walrus_editor editor.c component_panel.c)
 
 target_compile_options(walrus_editor PRIVATE -Wall -Wextra -Wundef -pedantic)
 

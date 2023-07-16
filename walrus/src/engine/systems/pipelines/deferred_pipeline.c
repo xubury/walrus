@@ -1,7 +1,6 @@
 #include <engine/systems/pipelines/deferred_pipeline.h>
 #include <engine/systems/render_system.h>
-#include <engine/systems/transform_system.h>
-#include <engine/deferred_renderer.h>
+#include <engine/component.h>
 #include <engine/engine.h>
 #include <core/macro.h>
 

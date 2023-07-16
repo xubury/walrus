@@ -1,6 +1,6 @@
 #include <engine/systems/pipelines/culling_pipeline.h>
 #include <engine/systems/render_system.h>
-#include <engine/systems/transform_system.h>
+#include <engine/component.h>
 #include <engine/engine.h>
 #include <engine/camera.h>
 

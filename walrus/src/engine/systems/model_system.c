@@ -1,6 +1,5 @@
 #include <engine/systems/model_system.h>
-#include <engine/systems/transform_system.h>
-#include <engine/systems/animator_system.h>
+#include <engine/component.h>
 #include <engine/engine.h>
 #include <engine/model.h>
 #include <core/hash.h>
