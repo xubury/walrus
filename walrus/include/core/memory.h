@@ -2,7 +2,12 @@
 
 #include "type.h"
 
+#include <core/platform.h>
+
 #include <malloc.h>
+#if WR_PLATFORM == WR_PLATFORM_POSIX
+#include <alloca.h>
+#endif
 
 // malloc memory
 void* walrus_malloc(u64 size);
