@@ -1,4 +1,4 @@
-#include <engine/control_map.h>
+#include <engine/input_map.h>
 #include <engine/event.h>
 #include <engine/engine.h>
 #include <core/memory.h>
@@ -49,18 +49,18 @@ static void mapping_free(void *ptr)
     walrus_free(mapping);
 }
 
-void walrus_control_map_init(Walrus_ControlMap *map)
+void walrus_input_map_init(Walrus_InputMap *map)
 {
     map->mapping = walrus_hash_table_create_full(walrus_str_hash, walrus_str_equal,
                                                  (Walrus_KeyDestroyFunc)walrus_str_free, mapping_free);
 }
 
-void walrus_control_map_shutdown(Walrus_ControlMap *map)
+void walrus_input_map_shutdown(Walrus_InputMap *map)
 {
     walrus_hash_table_destroy(map->mapping);
 }
 
-void walrus_control_add_axis_axis(Walrus_ControlMap *map, char const *name, u8 device, u8 axis, vec3 scale)
+void walrus_input_add_axis_axis(Walrus_InputMap *map, char const *name, u8 device, u8 axis, vec3 scale)
 {
     Mappings *mapping = NULL;
     if (walrus_hash_table_contains(map->mapping, name)) {
@@ -77,7 +77,7 @@ void walrus_control_add_axis_axis(Walrus_ControlMap *map, char const *name, u8 d
     walrus_array_append(mapping->axes, &am);
 }
 
-void walrus_control_add_axis_button(Walrus_ControlMap *map, char const *name, u8 device, u32 button, vec3 scale,
+void walrus_input_add_axis_button(Walrus_InputMap *map, char const *name, u8 device, u32 button, vec3 scale,
                                     bool down)
 {
     Mappings *mapping = NULL;
@@ -98,7 +98,7 @@ void walrus_control_add_axis_button(Walrus_ControlMap *map, char const *name, u8
     walrus_array_append(mapping->btns, &btn);
 }
 
-void walrus_control_add_action_button(Walrus_ControlMap *map, char const *name, u8 device, u32 button)
+void walrus_input_add_action_button(Walrus_InputMap *map, char const *name, u8 device, u32 button)
 {
     Mappings *mapping = NULL;
     if (walrus_hash_table_contains(map->mapping, name)) {
@@ -118,7 +118,7 @@ void walrus_control_add_action_button(Walrus_ControlMap *map, char const *name, 
     walrus_array_append(mapping->btns, &btn);
 }
 
-void walrus_control_bind_axis(Walrus_ControlMap *map, char const *name, Walrus_AxisCallback func)
+void walrus_input_bind_axis(Walrus_InputMap *map, char const *name, Walrus_AxisCallback func)
 {
     Mappings *mapping = NULL;
     if (walrus_hash_table_contains(map->mapping, name)) {
@@ -131,7 +131,7 @@ void walrus_control_bind_axis(Walrus_ControlMap *map, char const *name, Walrus_A
     mapping->axis_func = func;
 }
 
-void walrus_control_bind_action(Walrus_ControlMap *map, char const *name, Walrus_ActionCallback func)
+void walrus_input_bind_action(Walrus_InputMap *map, char const *name, Walrus_ActionCallback func)
 {
     Mappings *mapping = NULL;
     if (walrus_hash_table_contains(map->mapping, name)) {
@@ -144,7 +144,7 @@ void walrus_control_bind_action(Walrus_ControlMap *map, char const *name, Walrus
     mapping->action_func = func;
 }
 
-void walrus_control_unbind(Walrus_ControlMap *map, char const *name)
+void walrus_input_unbind(Walrus_InputMap *map, char const *name)
 {
     if (walrus_hash_table_contains(map->mapping, name)) {
         Mappings *mapping    = walrus_hash_table_lookup(map->mapping, name);
@@ -153,7 +153,7 @@ void walrus_control_unbind(Walrus_ControlMap *map, char const *name)
     }
 }
 
-void walrus_control_clear(Walrus_ControlMap *map, char const *name)
+void walrus_input_clear(Walrus_InputMap *map, char const *name)
 {
     walrus_hash_table_remove(map->mapping, name);
 }
@@ -256,7 +256,7 @@ void foreach_action_control(void const *key, void *value, void *userdata)
     }
 }
 
-void walrus_control_map_tick(Walrus_ControlMap *map, void *userdata)
+void walrus_input_map_tick(Walrus_InputMap *map, void *userdata)
 {
     walrus_hash_table_foreach(map->mapping, foreach_axis_control, userdata);
     walrus_hash_table_foreach(map->mapping, foreach_action_control, userdata);

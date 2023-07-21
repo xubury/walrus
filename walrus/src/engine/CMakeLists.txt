@@ -18,7 +18,6 @@ add_library(
   app.c
   batch_renderer.c
   camera.c
-  control_map.c
   deferred_renderer.c
   engine.c
   event.c
@@ -27,8 +26,9 @@ add_library(
   frame_graph.c
   geometry.c
   imgui.c
-  input_device.c
   input.c
+  input_device.c
+  input_map.c
   model.c
   shader_library.c
   thread_pool.c

@@ -13,15 +13,25 @@ static void controller_tick(ecs_iter_t *it)
                                         .transform  = &transforms[i],
                                         .delta_time = it->delta_time,
                                         .userdata   = controllers[i].userdata};
+
+        walrus_input_map_tick(&controllers[i].map, controllers[i].userdata);
         controllers[i].tick(&event);
     }
 }
 
-static void on_fps_controller_remove(ecs_iter_t *it)
+static void on_controller_add(ecs_iter_t *it)
 {
     Walrus_Controller *controller = ecs_field(it, Walrus_Controller, 1);
 
-    controller->shutdown(controller->userdata);
+    walrus_input_map_init(&controller->map);
+    controller->init(controller);
+}
+
+static void on_controller_remove(ecs_iter_t *it)
+{
+    Walrus_Controller *controller = ecs_field(it, Walrus_Controller, 1);
+
+    controller->shutdown(controller);
 }
 
 void walrus_controller_system_init(void)
@@ -30,5 +40,6 @@ void walrus_controller_system_init(void)
     ECS_COMPONENT_DEFINE(ecs, Walrus_Controller);
 
     ECS_SYSTEM(ecs, controller_tick, EcsOnUpdate, Walrus_Controller, Walrus_Transform);
-    ECS_OBSERVER(ecs, on_fps_controller_remove, EcsOnRemove, Walrus_Controller, Walrus_Transform);
+    ECS_OBSERVER(ecs, on_controller_add, EcsOnSet, Walrus_Controller, Walrus_Transform);
+    ECS_OBSERVER(ecs, on_controller_remove, EcsOnRemove, Walrus_Controller, Walrus_Transform);
 }
