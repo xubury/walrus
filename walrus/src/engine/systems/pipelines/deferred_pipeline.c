@@ -39,10 +39,14 @@ static void forward_lighting_pass(Walrus_FrameGraph *graph, Walrus_FrameNode con
 static void deferred_submit_static_mesh(ecs_iter_t *it)
 {
     Walrus_RenderMesh *meshes     = ecs_field(it, Walrus_RenderMesh, 1);
-    Walrus_Transform  *transforms = ecs_field(it, Walrus_Transform, 2);
+    Walrus_Material   *materials  = ecs_field(it, Walrus_Material, 2);
+    Walrus_Transform  *transforms = ecs_field(it, Walrus_Transform, 3);
 
     for (i32 i = 0; i < it->count; ++i) {
         if (meshes[i].culled) {
+            continue;
+        }
+        if (materials[i].alpha_mode == WR_ALPHA_MODE_BLEND) {
             continue;
         }
 
@@ -53,16 +57,22 @@ static void deferred_submit_static_mesh(ecs_iter_t *it)
         if (ecs_has(it->world, it->entities[i], Walrus_WeightResource)) {
             weights = &ecs_get(it->world, it->entities[i], Walrus_WeightResource)->weight_buffer;
         }
+        walrus_material_submit(&materials[i]);
         walrus_deferred_renderer_submit_mesh(world, meshes[i].mesh, weights);
     }
 }
 
 static void deferred_submit_skinned_mesh(ecs_iter_t *it)
 {
-    Walrus_RenderMesh *meshes = ecs_field(it, Walrus_RenderMesh, 1);
+    Walrus_RenderMesh   *meshes    = ecs_field(it, Walrus_RenderMesh, 1);
+    Walrus_Material     *materials = ecs_field(it, Walrus_Material, 2);
+    Walrus_SkinResource *skins     = ecs_field(it, Walrus_SkinResource, 3);
 
     for (i32 i = 0; i < it->count; ++i) {
         if (meshes[i].culled) {
+            continue;
+        }
+        if (materials[i].alpha_mode == WR_ALPHA_MODE_BLEND) {
             continue;
         }
 
@@ -76,18 +86,22 @@ static void deferred_submit_skinned_mesh(ecs_iter_t *it)
         if (ecs_has(it->world, it->entities[i], Walrus_WeightResource)) {
             weights = &ecs_get(it->world, it->entities[i], Walrus_WeightResource)->weight_buffer;
         }
-        walrus_deferred_renderer_submit_skinned_mesh(
-            p_world, meshes[i].mesh, &ecs_get(it->world, it->entities[i], Walrus_SkinResource)->joint_buffer, weights);
+        walrus_material_submit(&materials[i]);
+        walrus_deferred_renderer_submit_skinned_mesh(p_world, meshes[i].mesh, &skins[i].joint_buffer, weights);
     }
 }
 
 static void forward_submit_static_mesh(ecs_iter_t *it)
 {
     Walrus_RenderMesh *meshes     = ecs_field(it, Walrus_RenderMesh, 1);
-    Walrus_Transform  *transforms = ecs_field(it, Walrus_Transform, 2);
+    Walrus_Material   *materials  = ecs_field(it, Walrus_Material, 2);
+    Walrus_Transform  *transforms = ecs_field(it, Walrus_Transform, 3);
 
     for (i32 i = 0; i < it->count; ++i) {
         if (meshes[i].culled) {
+            continue;
+        }
+        if (materials[i].alpha_mode != WR_ALPHA_MODE_BLEND) {
             continue;
         }
 
@@ -98,16 +112,22 @@ static void forward_submit_static_mesh(ecs_iter_t *it)
         if (ecs_has(it->world, it->entities[i], Walrus_WeightResource)) {
             weights = &ecs_get(it->world, it->entities[i], Walrus_WeightResource)->weight_buffer;
         }
+        walrus_material_submit(&materials[i]);
         walrus_deferred_renderer_submit_mesh_ablend(world, meshes[i].mesh, weights);
     }
 }
 
 static void forward_submit_skinned_mesh(ecs_iter_t *it)
 {
-    Walrus_RenderMesh *meshes = ecs_field(it, Walrus_RenderMesh, 1);
+    Walrus_RenderMesh   *meshes    = ecs_field(it, Walrus_RenderMesh, 1);
+    Walrus_Material     *materials = ecs_field(it, Walrus_Material, 2);
+    Walrus_SkinResource *skins     = ecs_field(it, Walrus_SkinResource, 3);
 
     for (i32 i = 0; i < it->count; ++i) {
         if (meshes[i].culled) {
+            continue;
+        }
+        if (materials[i].alpha_mode != WR_ALPHA_MODE_BLEND) {
             continue;
         }
 
@@ -121,8 +141,8 @@ static void forward_submit_skinned_mesh(ecs_iter_t *it)
         if (ecs_has(it->world, it->entities[i], Walrus_WeightResource)) {
             weights = &ecs_get(it->world, it->entities[i], Walrus_WeightResource)->weight_buffer;
         }
-        walrus_deferred_renderer_submit_skinned_mesh_ablend(
-            p_world, meshes[i].mesh, &ecs_get(it->world, it->entities[i], Walrus_SkinResource)->joint_buffer, weights);
+        walrus_material_submit(&materials[i]);
+        walrus_deferred_renderer_submit_skinned_mesh_ablend(p_world, meshes[i].mesh, &skins[i].joint_buffer, weights);
     }
 }
 
@@ -133,20 +153,22 @@ Walrus_FramePipeline *walrus_deferred_pipeline_add(Walrus_FrameGraph *graph, cha
         ecs_system(ecs, {
                             .entity             = ecs_entity(ecs, {0}),
                             .query.filter.terms = {{.id = ecs_id(Walrus_RenderMesh)},
+                                                   {.id = ecs_id(Walrus_Material)},
                                                    {.id = ecs_id(Walrus_Transform)},
                                                    {.id = ecs_id(Walrus_SkinResource), .oper = EcsNot}},
                             .callback           = deferred_submit_static_mesh,
                         });
-    ECS_SYSTEM_DEFINE(ecs, deferred_submit_skinned_mesh, 0, Walrus_RenderMesh, Walrus_SkinResource);
+    ECS_SYSTEM_DEFINE(ecs, deferred_submit_skinned_mesh, 0, Walrus_RenderMesh, Walrus_Material, Walrus_SkinResource);
     ecs_id(forward_submit_static_mesh) =
         ecs_system(ecs, {
                             .entity             = ecs_entity(ecs, {0}),
                             .query.filter.terms = {{.id = ecs_id(Walrus_RenderMesh)},
+                                                   {.id = ecs_id(Walrus_Material)},
                                                    {.id = ecs_id(Walrus_Transform)},
                                                    {.id = ecs_id(Walrus_SkinResource), .oper = EcsNot}},
                             .callback           = forward_submit_static_mesh,
                         });
-    ECS_SYSTEM_DEFINE(ecs, forward_submit_skinned_mesh, 0, Walrus_RenderMesh, Walrus_SkinResource);
+    ECS_SYSTEM_DEFINE(ecs, forward_submit_skinned_mesh, 0, Walrus_RenderMesh, Walrus_Material, Walrus_SkinResource);
 
     Walrus_FramePipeline *deferred_pipeline = walrus_fg_add_pipeline(graph, name);
     walrus_fg_add_node(deferred_pipeline, gbuffer_pass, "GBuffer");

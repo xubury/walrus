@@ -30,18 +30,8 @@ typedef struct {
     Walrus_ProgramHandle copy_shader;
     Walrus_ProgramHandle hdr_shader;
 
-    Walrus_UniformHandle u_albedo;
-    Walrus_UniformHandle u_albedo_factor;
-    Walrus_UniformHandle u_emissive;
-    Walrus_UniformHandle u_emissive_factor;
-    Walrus_UniformHandle u_normal;
-    Walrus_UniformHandle u_normal_scale;
-    Walrus_UniformHandle u_alpha_cutoff;
-    Walrus_UniformHandle u_has_normal;
     Walrus_UniformHandle u_has_morph;
     Walrus_UniformHandle u_morph_texture;
-    Walrus_TextureHandle black_texture;
-    Walrus_TextureHandle white_texture;
 
     Walrus_UniformHandle u_gpos;
     Walrus_UniformHandle u_gnormal;
@@ -62,13 +52,6 @@ typedef struct {
 static RenderData *s_data = NULL;
 
 typedef enum {
-    ALBEDO = 0,
-    EMISSIVE,
-    NORMAL,
-    MORPH,
-} MaterialTexture;
-
-typedef enum {
     G_POS,
     G_NORMAL,
     G_TANGENT,
@@ -76,14 +59,6 @@ typedef enum {
     G_ALBEDO,
     G_EMISSIVE
 } GBufferTexture;
-
-static void setup_texture_uniforms(void)
-{
-    walrus_rhi_set_uniform(s_data->u_albedo, 0, sizeof(u32), &(u32){ALBEDO});
-    walrus_rhi_set_uniform(s_data->u_emissive, 0, sizeof(u32), &(u32){EMISSIVE});
-    walrus_rhi_set_uniform(s_data->u_normal, 0, sizeof(u32), &(u32){NORMAL});
-    walrus_rhi_set_uniform(s_data->u_morph_texture, 0, sizeof(u32), &(u32){MORPH});
-}
 
 void walrus_deferred_renderer_init(u8 msaa)
 {
@@ -99,16 +74,16 @@ void walrus_deferred_renderer_init(u8 msaa)
     s_data->quad_vertices = walrus_rhi_create_buffer(quad_vertices, sizeof(quad_vertices), 0);
     s_data->quad_indices  = walrus_rhi_create_buffer(quad_indices, sizeof(quad_indices), WR_RHI_BUFFER_INDEX);
 
-    s_data->u_albedo          = walrus_rhi_create_uniform("u_albedo", WR_RHI_UNIFORM_SAMPLER, 1);
-    s_data->u_albedo_factor   = walrus_rhi_create_uniform("u_albedo_factor", WR_RHI_UNIFORM_VEC4, 1);
-    s_data->u_emissive        = walrus_rhi_create_uniform("u_emissive", WR_RHI_UNIFORM_SAMPLER, 1);
-    s_data->u_emissive_factor = walrus_rhi_create_uniform("u_emissive_factor", WR_RHI_UNIFORM_VEC3, 1);
-    s_data->u_normal          = walrus_rhi_create_uniform("u_normal", WR_RHI_UNIFORM_SAMPLER, 1);
-    s_data->u_normal_scale    = walrus_rhi_create_uniform("u_normal_scale", WR_RHI_UNIFORM_FLOAT, 1);
-    s_data->u_alpha_cutoff    = walrus_rhi_create_uniform("u_alpha_cutoff", WR_RHI_UNIFORM_FLOAT, 1);
-    s_data->u_has_normal      = walrus_rhi_create_uniform("u_has_normal", WR_RHI_UNIFORM_BOOL, 1);
-    s_data->u_morph_texture   = walrus_rhi_create_uniform("u_morph_texture", WR_RHI_UNIFORM_SAMPLER, 1);
-    s_data->u_has_morph       = walrus_rhi_create_uniform("u_has_morph", WR_RHI_UNIFORM_BOOL, 1);
+    walrus_rhi_create_uniform("u_albedo", WR_RHI_UNIFORM_SAMPLER, 1);
+    walrus_rhi_create_uniform("u_albedo_factor", WR_RHI_UNIFORM_VEC4, 1);
+    walrus_rhi_create_uniform("u_emissive", WR_RHI_UNIFORM_SAMPLER, 1);
+    walrus_rhi_create_uniform("u_emissive_factor", WR_RHI_UNIFORM_VEC3, 1);
+    walrus_rhi_create_uniform("u_normal", WR_RHI_UNIFORM_SAMPLER, 1);
+    walrus_rhi_create_uniform("u_normal_scale", WR_RHI_UNIFORM_FLOAT, 1);
+    walrus_rhi_create_uniform("u_alpha_cutoff", WR_RHI_UNIFORM_FLOAT, 1);
+
+    s_data->u_morph_texture = walrus_rhi_create_uniform("u_morph_texture", WR_RHI_UNIFORM_SAMPLER, 1);
+    s_data->u_has_morph     = walrus_rhi_create_uniform("u_has_morph", WR_RHI_UNIFORM_BOOL, 1);
 
     s_data->u_gpos       = walrus_rhi_create_uniform("u_gpos", WR_RHI_UNIFORM_SAMPLER, 1);
     s_data->u_gnormal    = walrus_rhi_create_uniform("u_gnormal", WR_RHI_UNIFORM_SAMPLER, 1);
@@ -120,7 +95,6 @@ void walrus_deferred_renderer_init(u8 msaa)
     s_data->u_color_buffer = walrus_rhi_create_uniform("u_color_buffer", WR_RHI_UNIFORM_SAMPLER, 1);
     s_data->u_depth_buffer = walrus_rhi_create_uniform("u_depth_buffer", WR_RHI_UNIFORM_SAMPLER, 1);
 
-
     s_data->gbuffer_shader      = walrus_shader_library_load("gbuffer.shader");
     s_data->gbuffer_skin_shader = walrus_shader_library_load("gbuffer_skin.shader");
     s_data->deferred_shader     = walrus_shader_library_load("deferred_lighting.shader");
@@ -128,13 +102,6 @@ void walrus_deferred_renderer_init(u8 msaa)
     s_data->forward_skin_shader = walrus_shader_library_load("forward_lighting_skin.shader");
     s_data->copy_shader         = walrus_shader_library_load("copy.shader");
     s_data->hdr_shader          = walrus_shader_library_load("hdr.shader");
-
-    u32 rgba              = 0;
-    s_data->black_texture = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 0, 0, &rgba);
-    rgba                  = 0xffffffff;
-    s_data->white_texture = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 0, 0, &rgba);
-
-    setup_texture_uniforms();
 
     u64 flags            = (u64)(walrus_u32cnttz(msaa) + 1) << WR_RHI_TEXTURE_RT_MSAA_SHIFT;
     s_data->depth_buffer = walrus_rhi_create_texture(
@@ -193,53 +160,12 @@ void walrus_deferred_renderer_init(u8 msaa)
 
 static void setup_primitive(Walrus_MeshPrimitive const *prim)
 {
-    Walrus_MeshMaterial *material = prim->material;
-    if (material) {
-        u64 flags = WR_RHI_STATE_DEFAULT;
-        if (!material->double_sided) {
-            flags |= WR_RHI_STATE_CULL_CW;
-        }
-        u32 alpha_cutoff = 0.f;
-        if (material->alpha_mode == WR_ALPHA_MODE_BLEND) {
-            flags |= WR_RHI_STATE_BLEND_ALPHA;
-        }
-        else if (material->alpha_mode == WR_ALPHA_MODE_MASK) {
-            alpha_cutoff = material->alpha_cutoff;
-        }
-        walrus_rhi_set_state(flags, 0);
-
-        walrus_rhi_set_uniform(s_data->u_alpha_cutoff, 0, sizeof(f32), &alpha_cutoff);
-
-        if (material->albedo) {
-            walrus_rhi_set_texture(ALBEDO, material->albedo->handle);
-        }
-        else {
-            walrus_rhi_set_texture(ALBEDO, s_data->black_texture);
-        }
-        walrus_rhi_set_uniform(s_data->u_albedo_factor, 0, sizeof(vec4), material->albedo_factor);
-
-        if (material->emissive) {
-            walrus_rhi_set_texture(EMISSIVE, material->emissive->handle);
-        }
-        else {
-            walrus_rhi_set_texture(EMISSIVE, s_data->white_texture);
-        }
-
-        bool has_normal = material->normal != NULL;
-        walrus_rhi_set_uniform(s_data->u_has_normal, 0, sizeof(bool), &has_normal);
-        walrus_rhi_set_uniform(s_data->u_normal_scale, 0, sizeof(f32), &material->normal_scale);
-        if (has_normal) {
-            walrus_rhi_set_texture(NORMAL, material->normal->handle);
-        }
-        else {
-            walrus_rhi_set_texture(NORMAL, s_data->black_texture);
-        }
-        walrus_rhi_set_uniform(s_data->u_emissive_factor, 0, sizeof(vec3), material->emissive_factor);
-    }
     bool has_morph = prim->morph_target.id != WR_INVALID_HANDLE;
     walrus_rhi_set_uniform(s_data->u_has_morph, 0, sizeof(bool), &has_morph);
     if (has_morph) {
-        walrus_rhi_set_texture(MORPH, prim->morph_target);
+        u32 unit = walrus_rhi_get_caps()->max_texture_unit - 1;
+        walrus_rhi_set_uniform(s_data->u_morph_texture, 0, sizeof(u32), &unit);
+        walrus_rhi_set_texture(unit, prim->morph_target);
     }
     if (prim->indices.buffer.id != WR_INVALID_HANDLE) {
         if (prim->indices.index32) {
@@ -286,9 +212,6 @@ void walrus_deferred_renderer_submit_mesh(mat4 const world, Walrus_Mesh *mesh, W
 
     for (u32 i = 0; i < mesh->num_primitives; ++i) {
         Walrus_MeshPrimitive *prim = &mesh->primitives[i];
-        if (prim->material && prim->material->alpha_mode == WR_ALPHA_MODE_BLEND) {
-            continue;
-        }
         setup_primitive(prim);
         walrus_rhi_submit(0, s_data->gbuffer_shader, 0, WR_RHI_DISCARD_ALL);
     }
@@ -308,9 +231,6 @@ void walrus_deferred_renderer_submit_skinned_mesh(mat4 const world, Walrus_Mesh 
     for (u32 i = 0; i < mesh->num_primitives; ++i) {
         Walrus_MeshPrimitive *prim = &mesh->primitives[i];
 
-        if (prim->material && prim->material->alpha_mode == WR_ALPHA_MODE_BLEND) {
-            continue;
-        }
         setup_primitive(prim);
         walrus_rhi_submit(0, s_data->gbuffer_skin_shader, 0, WR_RHI_DISCARD_ALL);
     }
@@ -328,9 +248,6 @@ void walrus_deferred_renderer_submit_mesh_ablend(mat4 const world, Walrus_Mesh *
     for (u32 i = 0; i < mesh->num_primitives; ++i) {
         Walrus_MeshPrimitive *prim = &mesh->primitives[i];
 
-        if (prim->material && prim->material->alpha_mode != WR_ALPHA_MODE_BLEND) {
-            continue;
-        }
         setup_primitive(prim);
         walrus_rhi_submit(1, s_data->forward_shader, 0, WR_RHI_DISCARD_ALL);
     }
@@ -349,9 +266,6 @@ void walrus_deferred_renderer_submit_skinned_mesh_ablend(mat4 const world, Walru
 
     for (u32 i = 0; i < mesh->num_primitives; ++i) {
         Walrus_MeshPrimitive *prim = &mesh->primitives[i];
-        if (prim->material && prim->material->alpha_mode != WR_ALPHA_MODE_BLEND) {
-            continue;
-        }
         setup_primitive(prim);
         walrus_rhi_submit(1, s_data->forward_skin_shader, 0, WR_RHI_DISCARD_ALL);
     }

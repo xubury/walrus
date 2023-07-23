@@ -2,6 +2,7 @@
 
 #include <rhi/type.h>
 #include <core/transform.h>
+#include <engine/material.h>
 
 typedef struct {
     Walrus_BufferHandle buffer;
@@ -17,17 +18,6 @@ typedef struct {
     bool                index32;
 } Walrus_MeshIndices;
 
-typedef struct {
-    Walrus_TextureHandle handle;
-    bool                 srgb;
-} Walrus_Texture;
-
-typedef enum {
-    WR_ALPHA_MODE_OPAQUE,
-    WR_ALPHA_MODE_MASK,
-    WR_ALPHA_MODE_BLEND,
-} Walrus_AlphaMode;
-
 typedef enum {
     WR_MESH_ALBEDO,
     WR_MESH_ALBEDO_FACTOR,
@@ -41,29 +31,10 @@ typedef enum {
     WR_MESH_EMISSIVE_FACTOR,
     WR_MESH_OCCLUSION,
 
+    WR_MESH_ALPHA_CUTOFF,
+
     WR_MESH_PROPERTY_COUNT
 } Walrus_MeshMaterialProperty;
-
-extern char const *walrus_mesh_property_names[WR_MESH_PROPERTY_COUNT];
-
-typedef struct {
-    Walrus_Texture  *albedo;
-    vec4             albedo_factor;
-    Walrus_Texture  *normal;
-    f32              normal_scale;
-    Walrus_Texture  *metallic_roughness;
-    f32              metallic_factor;
-    f32              roughness_factor;
-    Walrus_Texture  *specular_glossiness;
-    vec3             specular_factor;
-    f32              glossiness_factor;
-    Walrus_Texture  *emissive;
-    vec3             emissive_factor;
-    Walrus_Texture  *occlusion;
-    Walrus_AlphaMode alpha_mode;
-    f32              alpha_cutoff;
-    bool             double_sided;
-} Walrus_MeshMaterial;
 
 typedef struct {
     Walrus_PrimitiveStream streams[WR_RHI_MAX_VERTEX_STREAM];
@@ -71,7 +42,7 @@ typedef struct {
 
     Walrus_MeshIndices indices;
 
-    Walrus_MeshMaterial *material;
+    Walrus_Material *material;
     Walrus_TextureHandle morph_target;
 } Walrus_MeshPrimitive;
 
@@ -158,14 +129,11 @@ typedef struct {
 
     Walrus_BufferHandle tangent_buffer;
 
-    Walrus_Texture *textures;
-    u32             num_textures;
-
     Walrus_Mesh *meshes;
     u32          num_meshes;
 
-    Walrus_MeshMaterial *materials;
-    u32                  num_materials;
+    Walrus_Material *materials;
+    u32              num_materials;
 
     Walrus_ModelNode *nodes;
     u32               num_nodes;

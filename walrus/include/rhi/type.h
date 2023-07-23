@@ -187,4 +187,5 @@ typedef struct {
     u32 ssbo_align;
     u32 ubo_align;
     u32 max_msaa;
+    u32 max_texture_unit;
 } Walrus_RhiCapabilities;

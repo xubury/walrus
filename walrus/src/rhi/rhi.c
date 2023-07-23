@@ -1579,7 +1579,7 @@ void walrus_rhi_destroy_texture(Walrus_TextureHandle handle)
 
 void walrus_rhi_set_texture(u8 unit, Walrus_TextureHandle texture)
 {
-    if (unit >= WR_RHI_MAX_TEXTURE_SAMPLERS) {
+    if (unit >= s_ctx->caps.max_texture_unit) {
         s_ctx->err = WR_RHI_TEXTURE_UNIT_ERROR;
         return;
     }

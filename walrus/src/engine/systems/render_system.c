@@ -18,6 +18,7 @@ static Walrus_FrameGraph s_render_graph;
 
 ECS_COMPONENT_DECLARE(Walrus_Renderer);
 ECS_COMPONENT_DECLARE(Walrus_RenderMesh);
+ECS_COMPONENT_DECLARE(Walrus_Material);
 ECS_COMPONENT_DECLARE(Walrus_WeightResource);
 ECS_COMPONENT_DECLARE(Walrus_SkinResource);
 
@@ -66,7 +67,12 @@ static void on_model_add(ecs_iter_t *it)
                 ecs_add_pair(it->world, mesh, EcsIsA, skins[skin_id]);
             }
 
+            Walrus_Material *material = node->mesh->primitives[0].material;
             ecs_set(it->world, mesh, Walrus_RenderMesh, {.mesh = node->mesh, .culled = false});
+            ecs_set(it->world, mesh, Walrus_Material,
+                    {.alpha_mode   = material->alpha_mode,
+                     .double_sided = material->double_sided,
+                     .properties   = material->properties});
             ecs_set(it->world, mesh, Walrus_Transform, {0});
             ecs_set(it->world, mesh, Walrus_LocalTransform,
                     {.trans = {transform->trans[0], transform->trans[1], transform->trans[2]},
@@ -216,6 +222,7 @@ void walrus_render_system_init(void)
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
     ECS_COMPONENT_DEFINE(ecs, Walrus_Renderer);
     ECS_COMPONENT_DEFINE(ecs, Walrus_RenderMesh);
+    ECS_COMPONENT_DEFINE(ecs, Walrus_Material);
     ECS_COMPONENT_DEFINE(ecs, Walrus_WeightResource);
     ECS_COMPONENT_DEFINE(ecs, Walrus_SkinResource);
 

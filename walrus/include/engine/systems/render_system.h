@@ -5,6 +5,7 @@
 #include <flecs.h>
 
 extern ECS_COMPONENT_DECLARE(Walrus_RenderMesh);
+extern ECS_COMPONENT_DECLARE(Walrus_Material);
 extern ECS_COMPONENT_DECLARE(Walrus_WeightResource);
 extern ECS_COMPONENT_DECLARE(Walrus_SkinResource);
 
