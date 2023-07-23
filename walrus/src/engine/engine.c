@@ -10,6 +10,7 @@
 #include <engine/systems/animator_system.h>
 #include <engine/systems/render_system.h>
 #include <engine/systems/model_system.h>
+#include <engine/systems/editor_system.h>
 #include <rhi/rhi.h>
 #include <core/type.h>
 #include <core/sys.h>
@@ -249,6 +250,7 @@ static void engine_frame(void)
     }
 
     walrus_render_system_render();
+    walrus_editor_system_render();
     if (app->render) {
         app->render(app);
     }
@@ -324,6 +326,7 @@ static void systems_init(void)
     walrus_model_system_init();
     walrus_render_system_init();
     walrus_animator_system_init();
+    walrus_editor_system_init();
 }
 
 static void systems_shutdown(void)

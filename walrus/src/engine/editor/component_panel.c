@@ -1,5 +1,5 @@
-#include <editor/component_panel.h>
-#include <editor/editor.h>
+#include <engine/editor/component_panel.h>
+#include <engine/editor.h>
 #include <engine/component.h>
 #include <core/math.h>
 

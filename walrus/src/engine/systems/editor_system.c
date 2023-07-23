@@ -1,4 +1,4 @@
-#include <editor/editor.h>
+#include <engine/systems/editor_system.h>
 #include <engine/engine.h>
 #include <engine/systems/transform_system.h>
 #include <engine/systems/render_system.h>

@@ -267,13 +267,13 @@ void walrus_model_material_init_default(Walrus_Material *material)
 
     walrus_material_set_float(material, s_property_names[WR_MESH_ALPHA_CUTOFF], 0);
 
-    walrus_material_set_texture_color(material, s_property_names[WR_MESH_ALBEDO], "black");
+    walrus_material_set_texture_color(material, s_property_names[WR_MESH_ALBEDO], WR_COLOR_TEXTURE_BLACK);
     walrus_material_set_vec4(material, s_property_names[WR_MESH_ALBEDO_FACTOR], (vec4){0, 0, 0, 0});
 
-    walrus_material_set_texture_color(material, s_property_names[WR_MESH_EMISSIVE], "white");
+    walrus_material_set_texture_color(material, s_property_names[WR_MESH_EMISSIVE], WR_COLOR_TEXTURE_WHITE);
     walrus_material_set_vec3(material, s_property_names[WR_MESH_EMISSIVE_FACTOR], (vec3){0, 0, 0});
 
-    walrus_material_set_texture_color(material, s_property_names[WR_MESH_NORMAL], "black");
+    walrus_material_set_texture_color(material, s_property_names[WR_MESH_NORMAL], WR_COLOR_TEXTURE_BLACK);
     walrus_material_set_float(material, s_property_names[WR_MESH_NORMAL_SCALE], 1.0);
 }
 

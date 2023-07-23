@@ -30,6 +30,3 @@ extern ECS_COMPONENT_DECLARE(Walrus_TransformGuizmo);
 extern ECS_COMPONENT_DECLARE(Walrus_EditorWindow);
 extern ECS_COMPONENT_DECLARE(Walrus_EditorWidget);
 extern ECS_COMPONENT_DECLARE(Walrus_EntityObserver);
-
-void walrus_editor_system_init(void);
-void walrus_editor_system_render(void);

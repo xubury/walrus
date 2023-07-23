@@ -8,12 +8,14 @@ add_library(
   systems/animator_system.c
   systems/camera_system.c
   systems/controller_system.c
+  systems/editor_system.c
   systems/model_system.c
   systems/render_system.c
   systems/transform_system.c
   systems/pipelines/culling_pipeline.c
   systems/pipelines/deferred_pipeline.c
   systems/pipelines/hdr_pipeline.c
+  editor/component_panel.c
   animator.c
   app.c
   batch_renderer.c

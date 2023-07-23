@@ -87,15 +87,17 @@ static void gen_default_textures(void)
     }
 }
 
-void walrus_material_set_texture_color(Walrus_Material *material, char const *name, char const *type)
+void walrus_material_set_texture_color(Walrus_Material *material, char const *name, Walrus_ColorTextureType type)
 {
     gen_default_textures();
 
-    if (strcmp(type, "white") == 0) {
-        walrus_material_set_texture(material, name, white, false);
-    }
-    else if (strcmp(type, "black") == 0) {
-        walrus_material_set_texture(material, name, black, false);
+    switch (type) {
+        case WR_COLOR_TEXTURE_BLACK:
+            walrus_material_set_texture(material, name, black, false);
+            break;
+        case WR_COLOR_TEXTURE_WHITE:
+            walrus_material_set_texture(material, name, white, false);
+            break;
     }
 }
 

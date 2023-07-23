@@ -7,8 +7,8 @@
 #include <engine/imgui.h>
 #include <engine/fps_controller.h>
 #include <engine/component.h>
-#include <editor/editor.h>
-#include <editor/component_panel.h>
+#include <engine/editor.h>
+#include <engine/editor/component_panel.h>
 #include <engine/systems/model_system.h>
 
 static void controller_init(Walrus_Controller *controller)
@@ -39,8 +39,6 @@ Walrus_AppError on_init(Walrus_App *app)
     walrus_unused(app);
 
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
-
-    walrus_editor_system_init();
 
     ecs_entity_t camera = ecs_new_id(ecs);
     ecs_set(ecs, camera, Walrus_Transform, {.rot = {0, 0, 0, 1}, .trans = {0, 2, 5}, .scale = {1, 1, 1}});
@@ -75,8 +73,6 @@ Walrus_AppError on_init(Walrus_App *app)
 void on_render(Walrus_App *app)
 {
     walrus_unused(app);
-
-    walrus_editor_system_render();
 }
 
 void on_event(Walrus_App *app, Walrus_Event *e)
