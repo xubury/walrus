@@ -1,3 +1,9 @@
+#pragma vertex
+
+#include "mesh.glsl"
+
+#pragma fragment
+
 layout(location = 0) out vec3 out_pos;
 layout(location = 1) out vec3 out_normal;
 layout(location = 2) out vec3 out_tangent;

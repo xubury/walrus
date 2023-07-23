@@ -1,3 +1,9 @@
+#pragma vertex
+
+#include "mesh.glsl"
+
+#pragma fragment
+
 #include "lighting.glsl"
 
 out vec4 fragcolor;

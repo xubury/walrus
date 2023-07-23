@@ -29,6 +29,7 @@ add_library(
   input.c
   input_device.c
   input_map.c
+  material.c
   model.c
   shader_library.c
   thread_pool.c

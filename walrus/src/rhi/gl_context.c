@@ -370,11 +370,6 @@ static void init_ctx(Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *c
         gl_ctx->framebuffers[i].fbo[1] = 0;
     }
 
-    gl_ctx->msaa_fbo = 0;
-    memset(gl_ctx->msaa_rbos, 0, sizeof(gl_ctx->msaa_rbos));
-    set_render_context_size(info->resolution.width, info->resolution.height, info->resolution.flags);
-    glGenVertexArrays(1, &gl_ctx->vao);
-
     GLint var;
     glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &var);
     caps->ssbo_align = var;
@@ -387,6 +382,12 @@ static void init_ctx(Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *c
     caps->max_msaa   = var;
 
     glDepthRangef(0, 1);
+
+    gl_ctx->msaa_fbo = 0;
+    memset(gl_ctx->msaa_rbos, 0, sizeof(gl_ctx->msaa_rbos));
+    glGenVertexArrays(1, &gl_ctx->vao);
+
+    set_render_context_size(info->resolution.width, info->resolution.height, info->resolution.flags);
 }
 
 static void shutdown_ctx(void)

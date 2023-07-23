@@ -52,7 +52,7 @@ static char *str_storage_realloc(void *ptr, u64 len)
 {
     u64 capacity = len + 1;
     if (ptr) {
-        len = walrus_min(len, ((StringHeader *)(ptr))->len);
+        len = walrus_min(len, get_const_header(ptr)->len);
     }
     else {
         len = 0;
@@ -135,6 +135,8 @@ void walrus_str_nappend(char **pdst, char const *src, u64 src_len)
     if (!check_str_valid(dst)) {
         return;
     }
+
+    src_len = walrus_min(src_len, walrus_str_len(src));
 
     StringHeader const *dst_header = get_const_header(dst);
     u64 const           dst_len    = dst_header->len;

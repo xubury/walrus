@@ -28,6 +28,24 @@ typedef enum {
     WR_ALPHA_MODE_BLEND,
 } Walrus_AlphaMode;
 
+typedef enum {
+    WR_MESH_ALBEDO,
+    WR_MESH_ALBEDO_FACTOR,
+    WR_MESH_NORMAL,
+    WR_MESH_NORMAL_SCALE,
+    WR_MESH_METALLIC_ROUGHNESS,
+    WR_MESH_METALLIC_ROUGHNESS_FACTOR,
+    WR_MESH_SPECULAR_GLOSSINESS,
+    WR_MESH_SPECULAR_GLOSSINESS_FACTOR,
+    WR_MESH_EMISSIVE,
+    WR_MESH_EMISSIVE_FACTOR,
+    WR_MESH_OCCLUSION,
+
+    WR_MESH_PROPERTY_COUNT
+} Walrus_MeshMaterialProperty;
+
+extern char const *walrus_mesh_property_names[WR_MESH_PROPERTY_COUNT];
+
 typedef struct {
     Walrus_Texture  *albedo;
     vec4             albedo_factor;

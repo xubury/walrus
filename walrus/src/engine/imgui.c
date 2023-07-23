@@ -80,22 +80,14 @@ void walrus_imgui_init(void)
 
     s_ctx->layout = walrus_rhi_create_vertex_layout(&layout);
 
-    s_ctx->texture_shader = walrus_rhi_create_program(
-        (Walrus_ShaderHandle[]){walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_imgui.glsl"),
-                                walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_imgui.glsl")},
-        2, true);
-    s_ctx->image_shader = walrus_rhi_create_program(
-        (Walrus_ShaderHandle[]){walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_imgui.glsl"),
-                                walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_imgui_lod.glsl")},
-        2, true);
+    s_ctx->texture_shader = walrus_shader_library_load("imgui.shader");
+    s_ctx->image_shader   = walrus_shader_library_load("imgui_image.shader");
 
     s_ctx->timestamp = walrus_sysclock(WR_SYS_CLOCK_UNIT_MICROSEC);
 }
 
 void walrus_imgui_shutdown(void)
 {
-    walrus_rhi_destroy_program(s_ctx->texture_shader);
-    walrus_rhi_destroy_program(s_ctx->image_shader);
     walrus_rhi_destroy_vertex_layout(s_ctx->layout);
     walrus_rhi_destroy_uniform(s_ctx->u_lod);
     walrus_rhi_destroy_uniform(s_ctx->u_texture);

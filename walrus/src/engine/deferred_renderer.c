@@ -120,24 +120,14 @@ void walrus_deferred_renderer_init(u8 msaa)
     s_data->u_color_buffer = walrus_rhi_create_uniform("u_color_buffer", WR_RHI_UNIFORM_SAMPLER, 1);
     s_data->u_depth_buffer = walrus_rhi_create_uniform("u_depth_buffer", WR_RHI_UNIFORM_SAMPLER, 1);
 
-    Walrus_ShaderHandle vs_mesh         = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_mesh.glsl");
-    Walrus_ShaderHandle vs_skinned_mesh = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_skinned_mesh.glsl");
-    Walrus_ShaderHandle vs_quad         = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_quad.glsl");
-    Walrus_ShaderHandle fs_gbuffer      = walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_gbuffer.glsl");
-    Walrus_ShaderHandle fs_deferred = walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_deferred_lighting.glsl");
-    Walrus_ShaderHandle fs_forwrad  = walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_forward_lighting.glsl");
-    Walrus_ShaderHandle fs_copy     = walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_copy.glsl");
-    Walrus_ShaderHandle fs_hdr      = walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_hdr.glsl");
 
-    s_data->gbuffer_shader = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_mesh, fs_gbuffer}, 2, true);
-    s_data->gbuffer_skin_shader =
-        walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_skinned_mesh, fs_gbuffer}, 2, true);
-    s_data->deferred_shader = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_quad, fs_deferred}, 2, true);
-    s_data->forward_shader  = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_mesh, fs_forwrad}, 2, true);
-    s_data->forward_skin_shader =
-        walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_skinned_mesh, fs_forwrad}, 2, true);
-    s_data->copy_shader = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_quad, fs_copy}, 2, true);
-    s_data->hdr_shader  = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_quad, fs_hdr}, 2, true);
+    s_data->gbuffer_shader      = walrus_shader_library_load("gbuffer.shader");
+    s_data->gbuffer_skin_shader = walrus_shader_library_load("gbuffer_skin.shader");
+    s_data->deferred_shader     = walrus_shader_library_load("deferred_lighting.shader");
+    s_data->forward_shader      = walrus_shader_library_load("forward_lighting.shader");
+    s_data->forward_skin_shader = walrus_shader_library_load("forward_lighting_skin.shader");
+    s_data->copy_shader         = walrus_shader_library_load("copy.shader");
+    s_data->hdr_shader          = walrus_shader_library_load("hdr.shader");
 
     u32 rgba              = 0;
     s_data->black_texture = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 0, 0, &rgba);

@@ -20,9 +20,8 @@ typedef struct {
 } ShaderLibary;
 
 typedef struct {
-    char               *name;
-    Walrus_ShaderType   type;
-    Walrus_ShaderHandle handle;
+    char                *full_path;
+    Walrus_ProgramHandle handle;
 } ShaderRef;
 
 static ShaderLibary *s_library;
@@ -30,8 +29,8 @@ static ShaderLibary *s_library;
 WR_INLINE void shader_destroy(void *ptr)
 {
     ShaderRef *ref = ptr;
-    walrus_str_free(ref->name);
-    walrus_rhi_destroy_shader(ref->handle);
+    walrus_rhi_destroy_program(ref->handle);
+    walrus_str_free(ref->full_path);
     walrus_free(ref);
 }
 
@@ -50,7 +49,96 @@ void walrus_shader_library_shutdown(void)
     s_library = NULL;
 }
 
-Walrus_ShaderHandle walrus_shader_library_load(Walrus_ShaderType type, char const *path)
+static u64 find_directive(char const *shader, char const *type)
+{
+    char f[64] = "#pragma ";
+    if (type) {
+        snprintf(f, 64, "#pragma %s", type);
+    }
+    char *pra = strstr(shader, f);
+    if (pra == NULL) {
+        return WR_STRING_INVALID_POS;
+    }
+
+    if (type == NULL || strncmp(pra + strlen("#pragma "), type, strlen(type)) == 0) {
+        return pra - shader;
+    }
+
+    return WR_STRING_INVALID_POS;
+}
+
+static void find_shader(char const *shader, char const *type, i32 *start, u64 *len)
+{
+    u64 d   = find_directive(shader, type);
+    u64 max = walrus_str_len(shader);
+
+    if (d != WR_STRING_INVALID_POS) {
+        shader += d;
+
+        u64 begin  = walrus_str_first_of(shader, '\n');
+        u64 next_d = find_directive(shader + begin, NULL);
+        *start     = begin + d;
+        *len       = walrus_min(next_d, max - *start);
+    }
+}
+
+static void shader_compile(ShaderRef *ref)
+{
+    FILE *file = fopen(ref->full_path, "rb");
+    char  error[256];
+    if (file) {
+        u64 size = 0;
+        if (fseek(file, 0, SEEK_END) == 0) {
+            size = ftell(file);
+        }
+        fseek(file, 0, SEEK_SET);
+        char *source = walrus_str_alloc(size);
+        fread(source, 1, size, file);
+        walrus_str_skip(source, size);
+        if (source != NULL) {
+            struct {
+                i32 start;
+                u64 len;
+            } v, f;
+            u64 header = find_directive(source, NULL);
+            find_shader(source, "vertex", &v.start, &v.len);
+            find_shader(source, "fragment", &f.start, &f.len);
+            char *vertex = walrus_str_alloc(header + v.len);
+            char *frag   = walrus_str_alloc(header + f.len);
+
+            walrus_str_skip(vertex, header + v.len);
+            walrus_str_skip(frag, header + f.len);
+
+            memcpy(vertex, source, header);
+            memcpy(vertex + header, source + v.start, v.len);
+            memcpy(frag, source, header);
+            memcpy(frag + header, source + f.start, f.len);
+
+            char *vertex_final = stb_include_string(vertex, NULL, s_library->dir, ref->full_path, error);
+            char *frag_final   = stb_include_string(frag, NULL, s_library->dir, ref->full_path, error);
+
+            ref->handle = walrus_rhi_create_program(
+                (Walrus_ShaderHandle[]){walrus_rhi_create_shader(WR_RHI_SHADER_VERTEX, vertex_final),
+                                        walrus_rhi_create_shader(WR_RHI_SHADER_FRAGMENT, frag_final)},
+                2, true);
+            walrus_str_free(vertex);
+            walrus_str_free(frag);
+            free(vertex_final);
+            free(frag_final);
+        }
+        else {
+            walrus_error("fail to parse shader file \"%s\", error: %s", ref->full_path, error);
+        }
+        walrus_str_free(source);
+
+        fclose(file);
+    }
+    else {
+        walrus_error("fail to fopen: %s", ref->full_path);
+    }
+}
+
+Walrus_ProgramHandle walrus_shader_library_load(char const *path)
 {
     char full_path[256];
     snprintf(full_path, sizeof(full_path), "%s/%s", s_library->dir, path);
@@ -66,49 +154,25 @@ Walrus_ShaderHandle walrus_shader_library_load(Walrus_ShaderType type, char cons
     }
 
     if (walrus_hash_table_contains(s_library->shader_map, full_path)) {
-        char const *name[WR_RHI_SHADER_COUNT] = {
-            "Compute shader",
-            "Vertex shader",
-            "Geometry shader",
-            "Fragment shader",
-        };
         ref = walrus_hash_table_lookup(s_library->shader_map, full_path);
-        if (ref->type != type) {
-            walrus_error("Mimatched type shader is loaded, type \"%s\" should be \"%s\"", name[type], name[ref->type]);
-        }
     }
     else {
-        FILE *file = fopen(full_path, "rb");
-        char  error[256];
-        if (file) {
-            u64 size = 0;
-            if (fseek(file, 0, SEEK_END) == 0) {
-                size = ftell(file);
-            }
-            fseek(file, 0, SEEK_SET);
-            char *source = walrus_str_alloc(size);
-            fread(source, 1, size, file);
-            walrus_str_skip(source, size);
-            char *final = stb_include_string(source, NULL, s_library->dir, full_path, error);
-            if (final != NULL) {
-                ref         = walrus_new(ShaderRef, 1);
-                ref->name   = walrus_str_dup(full_path);
-                ref->type   = type;
-                ref->handle = walrus_rhi_create_shader(type, final);
-                walrus_hash_table_insert(s_library->shader_map, ref->name, ref);
-                free(final);
-            }
-            else {
-                walrus_error("fail to parse shader file \"%s\", error: %s", full_path, error);
-            }
-            walrus_str_free(source);
-
-            fclose(file);
-        }
-        else {
-            walrus_error("fail to fopen: %s", full_path);
-        }
+        ref            = walrus_new(ShaderRef, 1);
+        ref->full_path = walrus_str_dup(full_path);
+        walrus_hash_table_insert(s_library->shader_map, ref->full_path, ref);
+        shader_compile(ref);
     }
 
-    return ref ? ref->handle : (Walrus_ShaderHandle){WR_INVALID_HANDLE};
+    return ref ? ref->handle : (Walrus_ProgramHandle){WR_INVALID_HANDLE};
+}
+
+void walrus_shader_library_recompile(char const *path)
+{
+    char full_path[256];
+    snprintf(full_path, sizeof(full_path), "%s/%s", s_library->dir, path);
+    if (walrus_hash_table_contains(s_library->shader_map, full_path)) {
+        ShaderRef *ref = walrus_hash_table_lookup(s_library->shader_map, full_path);
+        walrus_rhi_destroy_program(ref->handle);
+        shader_compile(ref);
+    }
 }

@@ -220,6 +220,18 @@ static Walrus_LayoutComponent s_components[cgltf_component_type_max_enum] = {
 
 static u32 s_component_num[cgltf_type_max_enum] = {0, 1, 2, 3, 4, 4, 1, 1};
 
+char const *walrus_mesh_property_names[WR_MESH_PROPERTY_COUNT] = {"Albedo",
+                                                                  "AlbedoFactor",
+                                                                  "Normal",
+                                                                  "NormalScale",
+                                                                  "MetallicRoughness",
+                                                                  "MetallicRoughnessFactor",
+                                                                  "SpecularGlossiness",
+                                                                  "SpecularGlossinessFactor",
+                                                                  "Emissive",
+                                                                  "EmissiveFactor",
+                                                                  "Occlusion"};
+
 static void model_reset(Walrus_Model *model)
 {
     model->num_nodes = 0;

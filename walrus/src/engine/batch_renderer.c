@@ -75,12 +75,8 @@ void walrus_batch_render_init(void)
     s_renderer->white_texture = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 1, 0, &data);
     s_renderer->u_textures    = walrus_rhi_create_uniform("u_textures", WR_RHI_UNIFORM_SAMPLER, 16);
 
-    Walrus_ShaderHandle vs_quad   = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_quad_batch.glsl");
-    Walrus_ShaderHandle fs_quad   = walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_quad_batch.glsl");
-    s_renderer->quad_shader       = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_quad, fs_quad}, 2, true);
-    Walrus_ShaderHandle vs_circle = walrus_shader_library_load(WR_RHI_SHADER_VERTEX, "vs_circle_batch.glsl");
-    Walrus_ShaderHandle fs_circle = walrus_shader_library_load(WR_RHI_SHADER_FRAGMENT, "fs_circle_batch.glsl");
-    s_renderer->circle_shader     = walrus_rhi_create_program((Walrus_ShaderHandle[]){vs_circle, fs_circle}, 2, true);
+    s_renderer->quad_shader   = walrus_shader_library_load("quad_batch.shader");
+    s_renderer->circle_shader = walrus_shader_library_load("circle_batch.shader");
 
     Walrus_VertexLayout layout;
     walrus_vertex_layout_begin(&layout);
@@ -127,7 +123,6 @@ void walrus_batch_render_init(void)
 
 void walrus_batch_render_shutdown(void)
 {
-    walrus_rhi_destroy_program(s_renderer->quad_shader);
     walrus_free(s_renderer);
 }
 

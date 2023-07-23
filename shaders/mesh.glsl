@@ -22,7 +22,7 @@ vec3 sample_morph_texture(int layer)
 {
     vec3 morph = vec3(0);
     if (u_has_morph) {
-        ivec3 size = textureSize(u_morph_texture, 0); 
+        ivec3 size = textureSize(u_morph_texture, 0);
         if (layer < size.z) {
             ivec3 img_coord = ivec3(gl_VertexID, 0, layer);
             for (; img_coord.y < size.y; ++img_coord.y) {
