@@ -68,6 +68,9 @@ static void on_model_add(ecs_iter_t *it)
             }
 
             Walrus_Material *material = node->mesh->primitives[0].material;
+            if (material == NULL) {
+                material = &walrus_model_system_get()->default_material;
+            }
             ecs_set(it->world, mesh, Walrus_RenderMesh, {.mesh = node->mesh, .culled = false});
             ecs_set(it->world, mesh, Walrus_Material,
                     {.alpha_mode   = material->alpha_mode,
@@ -158,7 +161,7 @@ static void renderer_run(ecs_iter_t *it)
         walrus_fg_write_ptr(&s_render_graph, "Renderer", &renderers[i]);
         walrus_fg_write_ptr(&s_render_graph, "Camera", &cameras[i]);
         walrus_fg_execute(&s_render_graph, FINAL_PASS);
-        walrus_rhi_set_debug(WR_RHI_DEBUG_STATS);
+        /* walrus_rhi_set_debug(WR_RHI_DEBUG_STATS); */
     }
     walrus_rhi_touch(0);
 }

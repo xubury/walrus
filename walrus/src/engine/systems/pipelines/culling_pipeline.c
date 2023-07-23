@@ -3,6 +3,7 @@
 #include <engine/component.h>
 #include <engine/engine.h>
 #include <engine/camera.h>
+#include <core/macro.h>
 
 ECS_SYSTEM_DECLARE(cull_test_static_mesh);
 ECS_SYSTEM_DECLARE(cull_test_skinned_mesh);
@@ -51,13 +52,13 @@ static void cull_test_static_mesh(ecs_iter_t *it)
 
 static void culling_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
 {
+    walrus_unused(node);
+
     ecs_world_t   *ecs    = walrus_engine_vars()->ecs;
     Walrus_Camera *camera = walrus_fg_read_ptr(graph, "Camera");
 
     ecs_run(ecs, ecs_id(cull_test_static_mesh), 0, camera);
     ecs_run(ecs, ecs_id(cull_test_skinned_mesh), 0, camera);
-
-    walrus_trace("render index: %d name: %s", node->index, node->name);
 }
 
 Walrus_FramePipeline *walrus_culling_pipeline_add(Walrus_FrameGraph *graph, char const *name)

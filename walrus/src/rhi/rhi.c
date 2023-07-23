@@ -1145,6 +1145,12 @@ Walrus_ProgramHandle walrus_rhi_create_program(Walrus_ShaderHandle* shaders, u32
             shader_dec_ref(shaders[i]);
         }
     }
+    else {
+        s_ctx->program_refs[handle.id].num = num;
+        for (u32 i = 0; i < num; ++i) {
+            s_ctx->program_refs[handle.id].shaders[i] = shaders[i];
+        }
+    }
 
     return handle;
 }
@@ -1158,6 +1164,9 @@ void walrus_rhi_destroy_program(Walrus_ProgramHandle handle)
 
     CommandBuffer* cmdbuf = get_command_buffer(COMMAND_DESTROY_PROGRAM);
     command_buffer_write(cmdbuf, Walrus_ProgramHandle, &handle);
+    for (u32 i = 0; i < s_ctx->program_refs[handle.id].num; ++i) {
+        shader_dec_ref(s_ctx->program_refs[handle.id].shaders[i]);
+    }
 }
 
 static u16 get_uniform_size(Walrus_UniformType type)

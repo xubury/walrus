@@ -48,6 +48,8 @@ void walrus_material_shutdown(Walrus_Material *material);
 void walrus_material_submit(Walrus_Material *material);
 
 void walrus_material_set_texture(Walrus_Material *material, char const *name, Walrus_TextureHandle texture, bool srgb);
+void walrus_material_set_texture_color(Walrus_Material *material, char const *name, char const *type);
+
 void walrus_material_set_bool(Walrus_Material *material, char const *name, bool value);
 void walrus_material_set_float(Walrus_Material *material, char const *name, f32 value);
 void walrus_material_set_vec3(Walrus_Material *material, char const *name, vec3 value);

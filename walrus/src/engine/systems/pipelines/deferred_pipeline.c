@@ -11,29 +11,29 @@ ECS_SYSTEM_DECLARE(forward_submit_skinned_mesh);
 
 static void gbuffer_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
 {
+    walrus_unused(graph);
+    walrus_unused(node);
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
 
     ecs_run(ecs, ecs_id(deferred_submit_static_mesh), 0, NULL);
     ecs_run(ecs, ecs_id(deferred_submit_skinned_mesh), 0, NULL);
-
-    walrus_trace("render index: %d name: %s", node->index, node->name);
 }
 
 static void deferred_lighting_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
 {
     walrus_unused(graph);
+    walrus_unused(node);
     walrus_deferred_renderer_lighting();
-    walrus_trace("render index: %d name: %s", node->index, node->name);
 }
 
 static void forward_lighting_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
 {
+    walrus_unused(graph);
+    walrus_unused(node);
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
 
     ecs_run(ecs, ecs_id(forward_submit_static_mesh), 0, NULL);
     ecs_run(ecs, ecs_id(forward_submit_skinned_mesh), 0, NULL);
-
-    walrus_trace("render index: %d name: %s", node->index, node->name);
 }
 
 static void deferred_submit_static_mesh(ecs_iter_t *it)

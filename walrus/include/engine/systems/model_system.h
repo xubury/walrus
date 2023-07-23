@@ -11,11 +11,18 @@ typedef struct {
     i32         *ref_count;
 } Walrus_ModelRef;
 
+typedef struct {
+    Walrus_HashTable *model_table;
+    Walrus_Material   default_material;
+} Walrus_ModelSystem;
+
 extern ECS_COMPONENT_DECLARE(Walrus_ModelRef);
 
 void walrus_model_system_init(void);
 
 void walrus_model_system_shutdown(void);
+
+Walrus_ModelSystem *walrus_model_system_get(void);
 
 void walrus_model_system_load_from_file(char const *name, char const *filename);
 

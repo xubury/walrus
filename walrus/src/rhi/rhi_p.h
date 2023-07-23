@@ -80,6 +80,11 @@ typedef struct {
 } ShaderRef;
 
 typedef struct {
+    u32                 num;
+    Walrus_ShaderHandle shaders[3];
+} ProgramRef;
+
+typedef struct {
     Walrus_BackBufferRatio ratio;
     Walrus_TextureHandle   handle;
     u32                    width;
@@ -128,6 +133,7 @@ typedef struct {
     Walrus_HandleAlloc *programs;
     Walrus_HashTable   *shader_map;
     ShaderRef           shader_refs[WR_RHI_MAX_SHADERS];
+    ProgramRef          program_refs[WR_RHI_MAX_PROGRAMS];
 
     Walrus_HandleAlloc *uniforms;
     UniformRef          uniform_refs[WR_RHI_MAX_UNIFORMS];

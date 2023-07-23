@@ -1,4 +1,5 @@
 #include <engine/model.h>
+#include <engine/systems/model_system.h>
 #include <engine/thread_pool.h>
 #include <core/memory.h>
 #include <core/hash.h>
@@ -257,42 +258,27 @@ static void model_reset(Walrus_Model *model)
     model->num_skins = 0;
 }
 
-static Walrus_TextureHandle black_texture = {WR_INVALID_HANDLE};
-static Walrus_TextureHandle white_texture = {WR_INVALID_HANDLE};
-static Walrus_Material      default_material;
-
-static void material_init_default(Walrus_Material *material)
+void walrus_model_material_init_default(Walrus_Material *material)
 {
-    walrus_material_init(material);
-
     material->double_sided = true;
     material->alpha_mode   = WR_ALPHA_MODE_OPAQUE;
 
+    walrus_material_init(material);
+
     walrus_material_set_float(material, s_property_names[WR_MESH_ALPHA_CUTOFF], 0);
 
-    walrus_material_set_texture(material, s_property_names[WR_MESH_ALBEDO], black_texture, true);
+    walrus_material_set_texture_color(material, s_property_names[WR_MESH_ALBEDO], "black");
     walrus_material_set_vec4(material, s_property_names[WR_MESH_ALBEDO_FACTOR], (vec4){0, 0, 0, 0});
 
-    walrus_material_set_texture(material, s_property_names[WR_MESH_EMISSIVE], white_texture, true);
+    walrus_material_set_texture_color(material, s_property_names[WR_MESH_EMISSIVE], "white");
     walrus_material_set_vec3(material, s_property_names[WR_MESH_EMISSIVE_FACTOR], (vec3){0, 0, 0});
 
-    walrus_material_set_texture(material, s_property_names[WR_MESH_NORMAL], black_texture, true);
+    walrus_material_set_texture_color(material, s_property_names[WR_MESH_NORMAL], "black");
     walrus_material_set_float(material, s_property_names[WR_MESH_NORMAL_SCALE], 1.0);
 }
 
 static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
 {
-    u32 rgba = 0;
-    if (black_texture.id == WR_INVALID_HANDLE) {
-        black_texture = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 0, 0, &rgba);
-    }
-    rgba = 0xffffffff;
-    if (white_texture.id == WR_INVALID_HANDLE) {
-        white_texture = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 0, 0, &rgba);
-
-        material_init_default(&default_material);
-    }
-
     // allocate resource
     model->num_buffers = gltf->buffers_count;
     model->buffers     = resource_new(Walrus_BufferHandle, model->num_buffers);
@@ -322,7 +308,7 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
             model->meshes[i].primitives[j].indices.num_indices = 0;
             model->meshes[i].primitives[j].indices.index32     = false;
 
-            model->meshes[i].primitives[j].material = &default_material;
+            model->meshes[i].primitives[j].material = NULL;
         }
     }
 
@@ -330,7 +316,7 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
     model->materials     = resource_new(Walrus_Material, model->num_materials);
     for (u32 i = 0; i < model->num_materials; ++i) {
         Walrus_Material *material = &model->materials[i];
-        material_init_default(material);
+        walrus_model_material_init_default(material);
     }
 
     model->num_nodes = gltf->nodes_count;
@@ -1028,8 +1014,6 @@ static void model_init(Walrus_Model *model, Walrus_Image *images, cgltf_data *gl
     buffers_init(model, gltf);
 
     materials_init(model, images, gltf);
-
-    /* textures_init(model, images, gltf); */
 
     meshes_init(model, gltf);
 

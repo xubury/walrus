@@ -125,6 +125,7 @@ bool walrus_str_skip(char *str, u64 len)
 
 void walrus_str_append(char **pdst, char const *src)
 {
+    walrus_assert(check_str_valid(*pdst));
     u64 const src_len = walrus_str_len(src);
     walrus_str_nappend(pdst, src, src_len);
 }

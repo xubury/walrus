@@ -6,6 +6,8 @@
 #include <core/memory.h>
 #include <rhi/rhi.h>
 
+#include <string.h>
+
 Walrus_MaterialProperty *property_create(char const *name, Walrus_MaterialPropertyType type)
 {
     Walrus_MaterialProperty *p = walrus_new(Walrus_MaterialProperty, 1);
@@ -67,6 +69,34 @@ void walrus_material_set_texture(Walrus_Material *material, char const *name, Wa
         walrus_hash_table_insert(material->properties, p->name, p);
     }
     p->texture = (Walrus_Texture){.handle = texture, .srgb = srgb};
+}
+
+static Walrus_TextureHandle black = {WR_INVALID_HANDLE};
+static Walrus_TextureHandle white = {WR_INVALID_HANDLE};
+
+// generate default texture if needed
+static void gen_default_textures(void)
+{
+    u32 value = 0;
+    if (black.id == WR_INVALID_HANDLE) {
+        black = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 0, 0, &value);
+    }
+    value = 0xffffffff;
+    if (white.id == WR_INVALID_HANDLE) {
+        white = walrus_rhi_create_texture2d(1, 1, WR_RHI_FORMAT_RGB8, 0, 0, &value);
+    }
+}
+
+void walrus_material_set_texture_color(Walrus_Material *material, char const *name, char const *type)
+{
+    gen_default_textures();
+
+    if (strcmp(type, "white") == 0) {
+        walrus_material_set_texture(material, name, white, false);
+    }
+    else if (strcmp(type, "black") == 0) {
+        walrus_material_set_texture(material, name, black, false);
+    }
 }
 
 void walrus_material_set_bool(Walrus_Material *material, char const *name, bool value)

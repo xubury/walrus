@@ -42,7 +42,7 @@ typedef struct {
 
     Walrus_MeshIndices indices;
 
-    Walrus_Material *material;
+    Walrus_Material     *material;
     Walrus_TextureHandle morph_target;
 } Walrus_MeshPrimitive;
 
@@ -163,3 +163,5 @@ typedef void (*NodeSubmitCallback)(Walrus_Model const *model, Walrus_ModelNode c
 Walrus_ModelResult walrus_model_load_from_file(Walrus_Model *model, char const *filename);
 
 void walrus_model_shutdown(Walrus_Model *model);
+
+void walrus_model_material_init_default(Walrus_Material *material);

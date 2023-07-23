@@ -10,11 +10,7 @@
 
 ECS_COMPONENT_DECLARE(Walrus_ModelRef);
 
-typedef struct {
-    Walrus_HashTable *model_table;
-} ModelSystem;
-
-static ModelSystem s_system;
+static Walrus_ModelSystem s_system;
 
 void model_destroy(void *ptr)
 {
@@ -61,11 +57,19 @@ void walrus_model_system_init(void)
                                                         .filter.terms = {{.id = ecs_id(Walrus_ModelRef)}}});
 
     s_system.model_table = walrus_hash_table_create_full(walrus_str_hash, walrus_str_equal, NULL, model_destroy);
+
+    walrus_model_material_init_default(&s_system.default_material);
 }
 
 void walrus_model_system_shutdown(void)
 {
+    walrus_material_shutdown(&s_system.default_material);
     walrus_hash_table_destroy(s_system.model_table);
+}
+
+Walrus_ModelSystem *walrus_model_system_get(void)
+{
+    return &s_system;
 }
 
 void walrus_model_system_load_from_file(char const *name, char const *filename)
