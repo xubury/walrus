@@ -39,6 +39,22 @@ char *walrus_str_dup(char const *str)
     return walrus_str_substr(str, 0, walrus_str_len(str));
 }
 
+char *walrus_str_join(char const *str1, char const *str2)
+{
+    u64 const len1 = walrus_str_len(str1);
+    u64 const len2 = walrus_str_len(str2);
+    return walrus_str_njoin(str1, len1, str2, len2);
+}
+
+char *walrus_str_njoin(char const *str1, u64 len1, char const *str2, u64 len2)
+{
+    char *new_str = walrus_str_alloc(len1 + len2);
+    memcpy(new_str, str1, len1);
+    memcpy(new_str + len1, str2, len2);
+    walrus_str_skip(new_str, len1 + len2);
+    return new_str;
+}
+
 char *walrus_str_substr(char const *str, u32 start, u64 len)
 {
     char *alloc_str = walrus_str_alloc(len);

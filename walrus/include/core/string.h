@@ -14,6 +14,12 @@ bool walrus_str_equal(void const *s1, void const *s2);
 // Allocate from a null-termiate string
 char *walrus_str_dup(char const *str);
 
+// Join two null-termiate string
+char *walrus_str_join(char const *str1, char const *str2);
+
+// Join two string with len
+char *walrus_str_njoin(char const *str1, u64 len1, char const *str2, u64 len2);
+
 // Allocate a substr from a null-termiate string
 char *walrus_str_substr(char const *str, u32 start, u64 len);
 
