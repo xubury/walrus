@@ -179,6 +179,66 @@ static void forward_submit_static_mesh(ecs_iter_t *it)
     }
 }
 
+static void render_data_free(void *userdata)
+{
+    walrus_unused(userdata);
+    walrus_rhi_destroy_uniform(s_data->u_gpos);
+    walrus_rhi_destroy_uniform(s_data->u_gnormal);
+    walrus_rhi_destroy_uniform(s_data->u_gtangnent);
+    walrus_rhi_destroy_uniform(s_data->u_gbitangent);
+    walrus_rhi_destroy_uniform(s_data->u_galbedo);
+    walrus_rhi_destroy_uniform(s_data->u_gemissive);
+
+    walrus_rhi_destroy_framebuffer(s_data->gbuffer);
+
+    walrus_free(s_data);
+}
+
+static void render_data_create(Walrus_FrameGraph *graph)
+{
+    s_data = walrus_new(DeferredRenderData, 1);
+
+    s_data->u_gpos       = walrus_rhi_create_uniform("u_gpos", WR_RHI_UNIFORM_SAMPLER, 1);
+    s_data->u_gnormal    = walrus_rhi_create_uniform("u_gnormal", WR_RHI_UNIFORM_SAMPLER, 1);
+    s_data->u_gtangnent  = walrus_rhi_create_uniform("u_gtangent", WR_RHI_UNIFORM_SAMPLER, 1);
+    s_data->u_gbitangent = walrus_rhi_create_uniform("u_gbitangent", WR_RHI_UNIFORM_SAMPLER, 1);
+    s_data->u_galbedo    = walrus_rhi_create_uniform("u_galbedo", WR_RHI_UNIFORM_SAMPLER, 1);
+    s_data->u_gemissive  = walrus_rhi_create_uniform("u_gemissive", WR_RHI_UNIFORM_SAMPLER, 1);
+
+    s_data->gbuffer_shader      = walrus_shader_library_load("gbuffer.shader");
+    s_data->gbuffer_skin_shader = walrus_shader_library_load("gbuffer_skin.shader");
+    s_data->forward_shader      = walrus_shader_library_load("forward_lighting.shader");
+    s_data->forward_skin_shader = walrus_shader_library_load("forward_lighting_skin.shader");
+    s_data->deferred_shader     = walrus_shader_library_load("deferred_lighting.shader");
+
+    u64 flags = (u64)(walrus_u32cnttz(walrus_rhi_get_mssa()) + 1) << WR_RHI_TEXTURE_RT_MSAA_SHIFT;
+
+    Walrus_TextureHandle depth_buffer = {walrus_fg_read(graph, "DepthBuffer")};
+    {
+        Walrus_Attachment  attachments[7] = {0};
+        Walrus_PixelFormat formats[6]     = {
+            WR_RHI_FORMAT_RGB32F,  // pos
+            WR_RHI_FORMAT_RGB32F,  // normal
+            WR_RHI_FORMAT_RGB32F,  // tangent
+            WR_RHI_FORMAT_RGB32F,  // bitangent
+            WR_RHI_FORMAT_RGBA8,   // albedo
+            WR_RHI_FORMAT_RGB8     // emissive
+        };
+
+        attachments[walrus_count_of(attachments) - 1].handle = depth_buffer;
+
+        for (u32 i = 0; i < walrus_count_of(formats); ++i) {
+            attachments[i].handle = walrus_rhi_create_texture(
+                &(Walrus_TextureCreateInfo){
+                    .ratio = WR_RHI_RATIO_EQUAL, .format = formats[i], .num_mipmaps = 1, .flags = flags},
+                NULL);
+            attachments[i].access = WR_RHI_ACCESS_WRITE;
+        }
+
+        s_data->gbuffer = walrus_rhi_create_framebuffer(attachments, walrus_count_of(attachments));
+    }
+}
+
 static void forward_submit_skinned_mesh(ecs_iter_t *it)
 {
     Walrus_RenderMesh   *meshes    = ecs_field(it, Walrus_RenderMesh, 1);
@@ -234,51 +294,11 @@ Walrus_FramePipeline *walrus_deferred_pipeline_add(Walrus_FrameGraph *graph, cha
                         });
     ECS_SYSTEM_DEFINE(ecs, forward_submit_skinned_mesh, 0, Walrus_RenderMesh, Walrus_Material, Walrus_SkinResource);
 
-    Walrus_FramePipeline *deferred_pipeline = walrus_fg_add_pipeline(graph, name);
+    render_data_create(graph);
+
+    Walrus_FramePipeline *deferred_pipeline = walrus_fg_add_pipeline_full(graph, name, render_data_free, NULL);
     walrus_fg_add_node(deferred_pipeline, gbuffer_pass, "GBuffer");
     walrus_fg_add_node(deferred_pipeline, lighting_pass, "Lighting");
-
-    s_data = walrus_new(DeferredRenderData, 1);
-
-    s_data->u_gpos       = walrus_rhi_create_uniform("u_gpos", WR_RHI_UNIFORM_SAMPLER, 1);
-    s_data->u_gnormal    = walrus_rhi_create_uniform("u_gnormal", WR_RHI_UNIFORM_SAMPLER, 1);
-    s_data->u_gtangnent  = walrus_rhi_create_uniform("u_gtangent", WR_RHI_UNIFORM_SAMPLER, 1);
-    s_data->u_gbitangent = walrus_rhi_create_uniform("u_gbitangent", WR_RHI_UNIFORM_SAMPLER, 1);
-    s_data->u_galbedo    = walrus_rhi_create_uniform("u_galbedo", WR_RHI_UNIFORM_SAMPLER, 1);
-    s_data->u_gemissive  = walrus_rhi_create_uniform("u_gemissive", WR_RHI_UNIFORM_SAMPLER, 1);
-
-    s_data->gbuffer_shader      = walrus_shader_library_load("gbuffer.shader");
-    s_data->gbuffer_skin_shader = walrus_shader_library_load("gbuffer_skin.shader");
-    s_data->forward_shader      = walrus_shader_library_load("forward_lighting.shader");
-    s_data->forward_skin_shader = walrus_shader_library_load("forward_lighting_skin.shader");
-    s_data->deferred_shader     = walrus_shader_library_load("deferred_lighting.shader");
-
-    u64 flags = (u64)(walrus_u32cnttz(walrus_rhi_get_mssa()) + 1) << WR_RHI_TEXTURE_RT_MSAA_SHIFT;
-
-    Walrus_TextureHandle depth_buffer = {walrus_fg_read(graph, "DepthBuffer")};
-    {
-        Walrus_Attachment  attachments[7] = {0};
-        Walrus_PixelFormat formats[6]     = {
-            WR_RHI_FORMAT_RGB32F,  // pos
-            WR_RHI_FORMAT_RGB32F,  // normal
-            WR_RHI_FORMAT_RGB32F,  // tangent
-            WR_RHI_FORMAT_RGB32F,  // bitangent
-            WR_RHI_FORMAT_RGBA8,   // albedo
-            WR_RHI_FORMAT_RGB8     // emissive
-        };
-
-        attachments[walrus_count_of(attachments) - 1].handle = depth_buffer;
-
-        for (u32 i = 0; i < walrus_count_of(formats); ++i) {
-            attachments[i].handle = walrus_rhi_create_texture(
-                &(Walrus_TextureCreateInfo){
-                    .ratio = WR_RHI_RATIO_EQUAL, .format = formats[i], .num_mipmaps = 1, .flags = flags},
-                NULL);
-            attachments[i].access = WR_RHI_ACCESS_WRITE;
-        }
-
-        s_data->gbuffer = walrus_rhi_create_framebuffer(attachments, walrus_count_of(attachments));
-    }
 
     return deferred_pipeline;
 }

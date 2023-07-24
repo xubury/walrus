@@ -19,6 +19,8 @@ typedef struct {
 
 void walrus_renderer_init(void);
 
+void walrus_renderer_shutdown(void);
+
 void walrus_renderer_submit_mesh(u16 view_id, Walrus_ProgramHandle shader, mat4 const world,
                                  Walrus_MeshPrimitive const *mesh);
 

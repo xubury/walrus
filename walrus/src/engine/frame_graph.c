@@ -18,6 +18,9 @@ void pipeline_free(void *ptr)
     walrus_list_free(pipeline->command_list);
     walrus_array_destroy(pipeline->prevs);
     walrus_array_destroy(pipeline->nodes);
+    if (pipeline->destroy_func) {
+        pipeline->destroy_func(pipeline->userdata);
+    }
     walrus_free(pipeline);
 }
 
@@ -36,11 +39,19 @@ void walrus_fg_shutdown(Walrus_FrameGraph *graph)
 
 Walrus_FramePipeline *walrus_fg_add_pipeline(Walrus_FrameGraph *graph, char const *name)
 {
+    return walrus_fg_add_pipeline_full(graph, name, NULL, NULL);
+}
+
+Walrus_FramePipeline *walrus_fg_add_pipeline_full(Walrus_FrameGraph *graph, char const *name,
+                                                  Walrus_PipelineDestroyCallback callback, void *userdata)
+{
     Walrus_FramePipeline *pipeline = walrus_malloc(sizeof(Walrus_FramePipeline));
     pipeline->name                 = walrus_str_dup(name);
     pipeline->prevs                = walrus_array_create(sizeof(Walrus_FramePipeline *), 0);
     pipeline->command_list         = walrus_list_alloc();
     pipeline->nodes                = walrus_array_create_full(sizeof(Walrus_FrameNode), 0, node_free);
+    pipeline->destroy_func         = callback;
+    pipeline->userdata             = userdata;
 
     walrus_hash_table_insert(graph->pipelines, pipeline->name, pipeline);
     return pipeline;

@@ -54,6 +54,11 @@ void walrus_renderer_init(void)
     s_data->u_has_morph     = walrus_rhi_create_uniform("u_has_morph", WR_RHI_UNIFORM_BOOL, 1);
 }
 
+void walrus_renderer_shutdown(void)
+{
+    walrus_free(s_data);
+}
+
 static void setup_primitive(Walrus_MeshPrimitive const *prim)
 {
     bool has_morph = prim->morph_target.id != WR_INVALID_HANDLE;

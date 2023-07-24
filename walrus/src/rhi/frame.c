@@ -206,13 +206,14 @@ bool free_handle_queue_internal(Walrus_Handle *queue, u32 *num, Walrus_Handle x)
 
 #define free_handle_reset(q) \
     q.num = 0;               \
-    memset(q.queue, 0xff, sizeof(q.queue));
+    memset(q.queue, 0, sizeof(q.queue));
 
 void frame_reset_all_free_handles(RenderFrame *frame)
 {
     free_handle_reset(frame->queue_buffer);
     free_handle_reset(frame->queue_layout);
     free_handle_reset(frame->queue_texture);
+    free_handle_reset(frame->queue_frame_buffer);
     free_handle_reset(frame->queue_shader);
     free_handle_reset(frame->queue_program);
     free_handle_reset(frame->queue_uniform);

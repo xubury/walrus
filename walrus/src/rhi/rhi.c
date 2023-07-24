@@ -283,6 +283,8 @@ static void free_all_handles(RenderFrame* frame)
     queue_free(s_ctx->shaders, frame->queue_shader);
     queue_free(s_ctx->programs, frame->queue_program);
     queue_free(s_ctx->uniforms, frame->queue_uniform);
+    queue_free(s_ctx->textures, frame->queue_texture);
+    queue_free(s_ctx->framebuffers, frame->queue_frame_buffer);
 }
 
 static void frame_swap(void)
@@ -1691,7 +1693,7 @@ void walrus_rhi_destroy_framebuffer(Walrus_FramebufferHandle handle)
     if (handle.id == WR_INVALID_HANDLE) {
         return;
     }
-    walrus_assert(free_handle_queue(s_ctx->submit_frame->queue_texture, handle));
+    walrus_assert(free_handle_queue(s_ctx->submit_frame->queue_frame_buffer, handle));
 
     CommandBuffer* cmdbuf = get_command_buffer(COMMAND_DESTROY_FRAMEBUFFER);
     command_buffer_write(cmdbuf, Walrus_TextureHandle, &handle);

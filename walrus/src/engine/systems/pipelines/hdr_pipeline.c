@@ -67,20 +67,14 @@ static void final_pass(Walrus_FrameGraph *graph, Walrus_FrameNode const *node)
     ++(*view_id);
 }
 
-Walrus_FramePipeline *walrus_hdr_pipeline_add(Walrus_FrameGraph *graph, char const *name)
+static void render_data_create(void)
 {
-    s_data = walrus_new(HdrRenderData, 1);
-
-    Walrus_FramePipeline *pipeline = walrus_fg_add_pipeline(graph, name);
-    walrus_fg_add_node(pipeline, hdr_pass, "HDR");
-    walrus_fg_add_node(pipeline, final_pass, "Final");
-
+    s_data                 = walrus_new(HdrRenderData, 1);
     s_data->u_color_buffer = walrus_rhi_create_uniform("u_color_buffer", WR_RHI_UNIFORM_SAMPLER, 1);
     s_data->u_depth_buffer = walrus_rhi_create_uniform("u_depth_buffer", WR_RHI_UNIFORM_SAMPLER, 1);
 
-    s_data->copy_shader = walrus_shader_library_load("copy.shader");
-    s_data->hdr_shader  = walrus_shader_library_load("hdr.shader");
-
+    s_data->copy_shader          = walrus_shader_library_load("copy.shader");
+    s_data->hdr_shader           = walrus_shader_library_load("hdr.shader");
     Walrus_Attachment attachment = {0};
     attachment.handle            = walrus_rhi_create_texture(
         &(Walrus_TextureCreateInfo){
@@ -88,6 +82,26 @@ Walrus_FramePipeline *walrus_hdr_pipeline_add(Walrus_FrameGraph *graph, char con
         NULL);
     attachment.access  = WR_RHI_ACCESS_WRITE;
     s_data->hdr_buffer = walrus_rhi_create_framebuffer(&attachment, 1);
+}
+
+static void render_data_free(void*userdata)
+{
+    walrus_unused(userdata);
+    walrus_rhi_destroy_uniform(s_data->u_color_buffer);
+    walrus_rhi_destroy_uniform(s_data->u_depth_buffer);
+
+    walrus_rhi_destroy_framebuffer(s_data->hdr_buffer);
+
+    walrus_free(s_data);
+}
+
+Walrus_FramePipeline *walrus_hdr_pipeline_add(Walrus_FrameGraph *graph, char const *name)
+{
+    Walrus_FramePipeline *pipeline = walrus_fg_add_pipeline_full(graph, name, render_data_free, NULL);
+    walrus_fg_add_node(pipeline, hdr_pass, "HDR");
+    walrus_fg_add_node(pipeline, final_pass, "Final");
+
+    render_data_create();
 
     return pipeline;
 }

@@ -275,6 +275,7 @@ void walrus_render_system_init(void)
     ECS_SYSTEM_DEFINE(ecs, renderer_run, 0, Walrus_Renderer, Walrus_Camera);
 
     walrus_renderer_init();
+
     u64 flags = (u64)(walrus_u32cnttz(walrus_rhi_get_mssa()) + 1) << WR_RHI_TEXTURE_RT_MSAA_SHIFT;
 
     Walrus_Attachment attachments[2] = {0};
@@ -311,6 +312,7 @@ void walrus_render_system_init(void)
 void walrus_render_system_shutdown(void)
 {
     walrus_fg_shutdown(&s_render_graph);
+    walrus_renderer_shutdown();
 }
 
 void walrus_render_system_render(void)
