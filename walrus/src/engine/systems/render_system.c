@@ -49,40 +49,44 @@ static void on_model_add(ecs_iter_t *it)
 
     for (u32 i = 0; i < model->num_nodes; ++i) {
         Walrus_ModelNode *node = &model->nodes[i];
-        ecs_entity_t      mesh = ecs_new_w_pair(it->world, EcsChildOf, entity);
         if (node->mesh) {
             Walrus_Transform const *transform = &node->world_transform;
 
+            ecs_entity_t weight = 0;
             if (node->mesh->num_weights > 0) {
-                ecs_entity_t weight = ecs_new_w_pair(it->world, EcsChildOf, entity);
+                weight = ecs_new_w_pair(it->world, EcsChildOf, entity);
                 ecs_set(it->world, weight, Walrus_WeightResource,
                         {
                             .node = node,
                         });
-                ecs_add_pair(it->world, mesh, EcsIsA, weight);
             }
 
-            if (node->skin) {
-                u32 skin_id = node->skin - &model->skins[0];
-                ecs_add_pair(it->world, mesh, EcsIsA, skins[skin_id]);
+            for (u32 j = 0; j < node->mesh->num_primitives; ++j) {
+                Walrus_Material *material = node->mesh->primitives[j].material;
+                ecs_entity_t     mesh     = ecs_new_w_pair(it->world, EcsChildOf, entity);
+                if (material == NULL) {
+                    material = &walrus_model_system_get()->default_material;
+                }
+                if (node->skin) {
+                    u32 skin_id = node->skin - &model->skins[0];
+                    ecs_add_pair(it->world, mesh, EcsIsA, skins[skin_id]);
+                }
+                if (weight) {
+                    ecs_add_pair(it->world, mesh, EcsIsA, weight);
+                }
+                ecs_set(it->world, mesh, Walrus_RenderMesh, {.mesh = &node->mesh->primitives[j], .culled = false});
+                ecs_set(it->world, mesh, Walrus_Material,
+                        {.alpha_mode   = material->alpha_mode,
+                         .double_sided = material->double_sided,
+                         .properties   = material->properties});
+                ecs_set(it->world, mesh, Walrus_Transform,
+                        {.trans = {0, 0, 0}, .rot = {0, 0, 0, 1}, .scale = {1, 1, 1}});
+                ecs_set(it->world, mesh, Walrus_LocalTransform,
+                        {.trans = {transform->trans[0], transform->trans[1], transform->trans[2]},
+                         .rot   = {transform->rot[0], transform->rot[1], transform->rot[2], transform->rot[3]},
+                         .scale = {transform->scale[0], transform->scale[1], transform->scale[2]}});
+                walrus_transform_mul(&worlds[0], transform, ecs_get_mut(it->world, mesh, Walrus_Transform));
             }
-
-            Walrus_Material *material = node->mesh->primitives[0].material;
-            if (material == NULL) {
-                material = &walrus_model_system_get()->default_material;
-            }
-            ecs_set(it->world, mesh, Walrus_RenderMesh, {.mesh = node->mesh, .culled = false});
-            ecs_set(it->world, mesh, Walrus_Material,
-                    {.alpha_mode   = material->alpha_mode,
-                     .double_sided = material->double_sided,
-                     .properties   = material->properties});
-            ecs_set(it->world, mesh, Walrus_Transform, {0});
-            ecs_set(it->world, mesh, Walrus_LocalTransform,
-                    {.trans = {transform->trans[0], transform->trans[1], transform->trans[2]},
-                     .rot   = {transform->rot[0], transform->rot[1], transform->rot[2], transform->rot[3]},
-                     .scale = {transform->scale[0], transform->scale[1], transform->scale[2]}});
-
-            walrus_transform_mul(&worlds[0], transform, ecs_get_mut(it->world, mesh, Walrus_Transform));
         }
     }
     walrus_free(skins);

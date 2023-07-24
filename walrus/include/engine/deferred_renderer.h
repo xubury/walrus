@@ -21,16 +21,17 @@ void walrus_deferred_renderer_init(u8 msaa);
 
 void walrus_deferred_renderer_set_camera(Walrus_Renderer const *renderer, Walrus_Camera const *camera);
 
-void walrus_deferred_renderer_submit_mesh(mat4 const world, Walrus_Mesh *mesh, Walrus_TransientBuffer const *weights);
+void walrus_deferred_renderer_submit_mesh(mat4 const world, Walrus_MeshPrimitive const *mesh,
+                                          Walrus_TransientBuffer const *weights);
 
-void walrus_deferred_renderer_submit_skinned_mesh(mat4 const world, Walrus_Mesh *mesh,
+void walrus_deferred_renderer_submit_skinned_mesh(mat4 const world, Walrus_MeshPrimitive const *mesh,
                                                   Walrus_TransientBuffer const *joints,
                                                   Walrus_TransientBuffer const *weights);
 
-void walrus_deferred_renderer_submit_mesh_ablend(mat4 const world, Walrus_Mesh *mesh,
+void walrus_deferred_renderer_submit_mesh_ablend(mat4 const world, Walrus_MeshPrimitive const *mesh,
                                                  Walrus_TransientBuffer const *weights);
 
-void walrus_deferred_renderer_submit_skinned_mesh_ablend(mat4 const world, Walrus_Mesh *mesh,
+void walrus_deferred_renderer_submit_skinned_mesh_ablend(mat4 const world, Walrus_MeshPrimitive const *mesh,
                                                          Walrus_TransientBuffer const *joints,
                                                          Walrus_TransientBuffer const *weights);
 

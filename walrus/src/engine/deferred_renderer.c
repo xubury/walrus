@@ -202,7 +202,8 @@ void walrus_deferred_renderer_set_camera(Walrus_Renderer const *renderer, Walrus
     walrus_rhi_set_framebuffer(3, (Walrus_FramebufferHandle){WR_INVALID_HANDLE});
 }
 
-void walrus_deferred_renderer_submit_mesh(mat4 const world, Walrus_Mesh *mesh, Walrus_TransientBuffer const *weights)
+void walrus_deferred_renderer_submit_mesh(mat4 const world, Walrus_MeshPrimitive const *mesh,
+                                          Walrus_TransientBuffer const *weights)
 {
     walrus_rhi_set_transform(world);
 
@@ -210,14 +211,11 @@ void walrus_deferred_renderer_submit_mesh(mat4 const world, Walrus_Mesh *mesh, W
         walrus_rhi_set_transient_buffer(0, weights);
     }
 
-    for (u32 i = 0; i < mesh->num_primitives; ++i) {
-        Walrus_MeshPrimitive *prim = &mesh->primitives[i];
-        setup_primitive(prim);
-        walrus_rhi_submit(0, s_data->gbuffer_shader, 0, WR_RHI_DISCARD_ALL);
-    }
+    setup_primitive(mesh);
+    walrus_rhi_submit(0, s_data->gbuffer_shader, 0, WR_RHI_DISCARD_ALL);
 }
 
-void walrus_deferred_renderer_submit_skinned_mesh(mat4 const world, Walrus_Mesh *mesh,
+void walrus_deferred_renderer_submit_skinned_mesh(mat4 const world, Walrus_MeshPrimitive const *mesh,
                                                   Walrus_TransientBuffer const *joints,
                                                   Walrus_TransientBuffer const *weights)
 {
@@ -227,16 +225,11 @@ void walrus_deferred_renderer_submit_skinned_mesh(mat4 const world, Walrus_Mesh 
     if (weights) {
         walrus_rhi_set_transient_buffer(1, weights);
     }
-
-    for (u32 i = 0; i < mesh->num_primitives; ++i) {
-        Walrus_MeshPrimitive *prim = &mesh->primitives[i];
-
-        setup_primitive(prim);
-        walrus_rhi_submit(0, s_data->gbuffer_skin_shader, 0, WR_RHI_DISCARD_ALL);
-    }
+    setup_primitive(mesh);
+    walrus_rhi_submit(0, s_data->gbuffer_skin_shader, 0, WR_RHI_DISCARD_ALL);
 }
 
-void walrus_deferred_renderer_submit_mesh_ablend(mat4 const world, Walrus_Mesh *mesh,
+void walrus_deferred_renderer_submit_mesh_ablend(mat4 const world, Walrus_MeshPrimitive const *mesh,
                                                  Walrus_TransientBuffer const *weights)
 {
     walrus_rhi_set_transform(world);
@@ -244,16 +237,11 @@ void walrus_deferred_renderer_submit_mesh_ablend(mat4 const world, Walrus_Mesh *
     if (weights) {
         walrus_rhi_set_transient_buffer(0, weights);
     }
-
-    for (u32 i = 0; i < mesh->num_primitives; ++i) {
-        Walrus_MeshPrimitive *prim = &mesh->primitives[i];
-
-        setup_primitive(prim);
-        walrus_rhi_submit(1, s_data->forward_shader, 0, WR_RHI_DISCARD_ALL);
-    }
+    setup_primitive(mesh);
+    walrus_rhi_submit(1, s_data->forward_shader, 0, WR_RHI_DISCARD_ALL);
 }
 
-void walrus_deferred_renderer_submit_skinned_mesh_ablend(mat4 const world, Walrus_Mesh *mesh,
+void walrus_deferred_renderer_submit_skinned_mesh_ablend(mat4 const world, Walrus_MeshPrimitive const *mesh,
                                                          Walrus_TransientBuffer const *joints,
                                                          Walrus_TransientBuffer const *weights)
 {
@@ -264,11 +252,8 @@ void walrus_deferred_renderer_submit_skinned_mesh_ablend(mat4 const world, Walru
         walrus_rhi_set_transient_buffer(1, weights);
     }
 
-    for (u32 i = 0; i < mesh->num_primitives; ++i) {
-        Walrus_MeshPrimitive *prim = &mesh->primitives[i];
-        setup_primitive(prim);
-        walrus_rhi_submit(1, s_data->forward_skin_shader, 0, WR_RHI_DISCARD_ALL);
-    }
+    setup_primitive(mesh);
+    walrus_rhi_submit(1, s_data->forward_skin_shader, 0, WR_RHI_DISCARD_ALL);
 }
 
 void walrus_deferred_renderer_lighting(void)

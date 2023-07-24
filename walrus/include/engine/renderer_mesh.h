@@ -3,7 +3,7 @@
 #include <engine/model.h>
 
 typedef struct {
-    Walrus_Mesh *mesh;
+    Walrus_MeshPrimitive *mesh;
 
     bool culled;
 } Walrus_RenderMesh;

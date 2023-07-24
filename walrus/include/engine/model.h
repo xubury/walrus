@@ -24,9 +24,11 @@ typedef enum {
     WR_MESH_NORMAL,
     WR_MESH_NORMAL_SCALE,
     WR_MESH_METALLIC_ROUGHNESS,
-    WR_MESH_METALLIC_ROUGHNESS_FACTOR,
+    WR_MESH_METALLIC_FACTOR,
+    WR_MESH_ROUGHNESS_FACTOR,
     WR_MESH_SPECULAR_GLOSSINESS,
-    WR_MESH_SPECULAR_GLOSSINESS_FACTOR,
+    WR_MESH_SPECULAR_FACTOR,
+    WR_MESH_GLOSSINESS_FACTOR,
     WR_MESH_EMISSIVE,
     WR_MESH_EMISSIVE_FACTOR,
     WR_MESH_OCCLUSION,
@@ -44,6 +46,9 @@ typedef struct {
 
     Walrus_Material     *material;
     Walrus_TextureHandle morph_target;
+
+    vec3 min;
+    vec3 max;
 } Walrus_MeshPrimitive;
 
 typedef struct {
@@ -52,9 +57,6 @@ typedef struct {
 
     f32 *weights;
     u32  num_weights;
-
-    vec3 min;
-    vec3 max;
 } Walrus_Mesh;
 
 typedef struct Walrus_ModelNode Walrus_ModelNode;

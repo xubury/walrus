@@ -226,9 +226,11 @@ static char const *s_property_names[WR_MESH_PROPERTY_COUNT] = {"u_albedo",
                                                                "u_normal",
                                                                "u_normal_scale",
                                                                "u_metallic_roughness",
-                                                               "u_metallic_roughness_factor",
+                                                               "u_metallic_factor",
+                                                               "u_roughness_factor",
                                                                "u_specular_glossiness",
-                                                               "u_specular_glossiness_factor",
+                                                               "u_specular_factor",
+                                                               "u_glossiness_factor",
                                                                "u_emissive",
                                                                "u_emissive_factor",
                                                                "u_occlusion",
@@ -298,9 +300,6 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
         model->meshes[i].num_weights = mesh->weights_count;
         model->meshes[i].weights     = resource_new(f32, mesh->weights_count);
 
-        glm_vec3_copy((vec3){FLT_MAX, FLT_MAX, FLT_MAX}, model->meshes[i].min);
-        glm_vec3_copy((vec3){-FLT_MAX, -FLT_MAX, -FLT_MAX}, model->meshes[i].max);
-
         for (u32 j = 0; j < mesh->primitives_count; ++j) {
             model->meshes[i].primitives[j].num_streams         = 0;
             model->meshes[i].primitives[j].indices.buffer.id   = WR_INVALID_HANDLE;
@@ -309,6 +308,9 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
             model->meshes[i].primitives[j].indices.index32     = false;
 
             model->meshes[i].primitives[j].material = NULL;
+
+            glm_vec3_copy((vec3){FLT_MAX, FLT_MAX, FLT_MAX}, model->meshes[i].primitives[j].min);
+            glm_vec3_copy((vec3){-FLT_MAX, -FLT_MAX, -FLT_MAX}, model->meshes[i].primitives[j].max);
         }
     }
 
@@ -499,8 +501,10 @@ static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
                     has_tangent = true;
                 }
                 if (attribute->type == cgltf_attribute_type_position) {
-                    glm_vec3_minv(model->meshes[i].min, attribute->data->min, model->meshes[i].min);
-                    glm_vec3_maxv(model->meshes[i].max, attribute->data->max, model->meshes[i].max);
+                    glm_vec3_minv(model->meshes[i].primitives[j].min, attribute->data->min,
+                                  model->meshes[i].primitives[j].min);
+                    glm_vec3_maxv(model->meshes[i].primitives[j].max, attribute->data->max,
+                                  model->meshes[i].primitives[j].max);
                 }
                 Walrus_VertexLayout     layout;
                 cgltf_accessor         *accessor    = attribute->data;
@@ -819,27 +823,40 @@ static void images_shutdown(Walrus_Image *images, u32 num_images)
     }
 }
 
-static u64 set_texture(Walrus_Material *material, cgltf_texture *texture, Walrus_Image *image, char const *name,
-                       bool srgb)
+static Walrus_TextureHandle set_texture(Walrus_HashTable *texture_set, Walrus_Material *material, cgltf_data *gltf,
+                                        cgltf_texture *texture, Walrus_Image *images, char const *name, bool srgb)
 {
-    u64 flags = WR_RHI_SAMPLER_LINEAR;
-    if (texture->sampler) {
-        flags = convert_min_filter(texture->sampler->min_filter) | convert_mag_filter(texture->sampler->mag_filter) |
-                convert_wrap_s(texture->sampler->wrap_s) | convert_wrap_t(texture->sampler->wrap_t);
+    Walrus_TextureHandle handle = {WR_INVALID_HANDLE};
+    Walrus_Image        *image  = &images[texture->image - &gltf->images[0]];
+    if (walrus_hash_table_contains(texture_set, texture)) {
+        handle.id = walrus_ptr_to_val(walrus_hash_table_lookup(texture_set, texture));
     }
-    if (srgb) flags |= WR_RHI_TEXTURE_SRGB;
+    else {
+        u64 flags = WR_RHI_SAMPLER_LINEAR;
+        if (texture->sampler) {
+            flags = convert_min_filter(texture->sampler->min_filter) |
+                    convert_mag_filter(texture->sampler->mag_filter) | convert_wrap_s(texture->sampler->wrap_s) |
+                    convert_wrap_t(texture->sampler->wrap_t);
+        }
+        if (srgb) flags |= WR_RHI_TEXTURE_SRGB;
 
-    Walrus_TextureHandle handle =
-        walrus_rhi_create_texture2d(image->width, image->height, WR_RHI_FORMAT_RGBA8, 0, flags, image->data);
-    walrus_rhi_frame();
+        handle = walrus_rhi_create_texture2d(image->width, image->height, WR_RHI_FORMAT_RGBA8, 0, flags, image->data);
+        walrus_hash_table_insert(texture_set, texture, walrus_val_to_ptr(handle.id));
+        walrus_rhi_frame();
+    }
+
     walrus_material_set_texture(material, name, handle, srgb);
-    return flags;
+
+    return handle;
 }
 
 static void materials_init(Walrus_Model *model, Walrus_Image *images, cgltf_data *gltf)
 {
     static Walrus_AlphaMode mode[cgltf_alpha_mode_max_enum] = {WR_ALPHA_MODE_OPAQUE, WR_ALPHA_MODE_MASK,
                                                                WR_ALPHA_MODE_BLEND};
+
+    Walrus_HashTable *texture_set = walrus_hash_table_create(walrus_direct_hash, walrus_direct_equal);
+
     for (u32 i = 0; i < model->num_materials; ++i) {
         cgltf_material *material         = &gltf->materials[i];
         model->materials[i].double_sided = material->double_sided;
@@ -850,62 +867,64 @@ static void materials_init(Walrus_Model *model, Walrus_Image *images, cgltf_data
                                       material->alpha_cutoff);
         }
         if (material->normal_texture.texture) {
-            set_texture(&model->materials[i], material->normal_texture.texture,
-                        &images[material->normal_texture.texture->image - &gltf->images[0]],
+            set_texture(texture_set, &model->materials[i], gltf, material->normal_texture.texture, images,
                         s_property_names[WR_MESH_NORMAL], false);
             walrus_material_set_float(&model->materials[i], s_property_names[WR_MESH_NORMAL_SCALE],
                                       material->normal_texture.scale);
         }
 
         if (material->emissive_texture.texture) {
-            set_texture(&model->materials[i], material->emissive_texture.texture,
-                        &images[material->emissive_texture.texture->image - &gltf->images[0]],
+            set_texture(texture_set, &model->materials[i], gltf, material->emissive_texture.texture, images,
                         s_property_names[WR_MESH_EMISSIVE], true);
         }
         walrus_material_set_vec3(&model->materials[i], s_property_names[WR_MESH_EMISSIVE_FACTOR],
                                  material->emissive_factor);
 
-        /* if (material->occlusion_texture.texture) { */
-        /*     model->materials[i].occlusion = &model->textures[material->occlusion_texture.texture -
-         * &gltf->textures[0]]; */
-        /*     model->materials[i].occlusion->srgb = false; */
-        /* } */
+        if (material->occlusion_texture.texture) {
+            set_texture(texture_set, &model->materials[i], gltf, material->occlusion_texture.texture, images,
+                        s_property_names[WR_MESH_OCCLUSION], false);
+        }
 
         if (material->has_pbr_metallic_roughness) {
             cgltf_pbr_metallic_roughness *metallic_roughness = &material->pbr_metallic_roughness;
             if (metallic_roughness->base_color_texture.texture) {
-                set_texture(&model->materials[i], metallic_roughness->base_color_texture.texture,
-                            &images[metallic_roughness->base_color_texture.texture->image - &gltf->images[0]],
-                            s_property_names[WR_MESH_ALBEDO], true);
+                set_texture(texture_set, &model->materials[i], gltf, metallic_roughness->base_color_texture.texture,
+                            images, s_property_names[WR_MESH_ALBEDO], true);
             }
             walrus_material_set_vec4(&model->materials[i], s_property_names[WR_MESH_ALBEDO_FACTOR],
                                      metallic_roughness->base_color_factor);
-            /* model->materials[i].metallic_factor  = metallic_roughness->metallic_factor; */
-            /* model->materials[i].roughness_factor = metallic_roughness->roughness_factor; */
-            /* if (metallic_roughness->metallic_roughness_texture.texture) { */
-            /*     model->materials[i].metallic_roughness = */
-            /*         &model->textures[metallic_roughness->metallic_roughness_texture.texture - &gltf->textures[0]]; */
-            /*     model->materials[i].metallic_roughness->srgb = false; */
-            /* } */
+            walrus_material_set_float(&model->materials[i], s_property_names[WR_MESH_METALLIC_FACTOR],
+                                      metallic_roughness->metallic_factor);
+            walrus_material_set_float(&model->materials[i], s_property_names[WR_MESH_ROUGHNESS_FACTOR],
+                                      metallic_roughness->roughness_factor);
+            if (metallic_roughness->metallic_roughness_texture.texture) {
+                set_texture(texture_set, &model->materials[i], gltf,
+                            metallic_roughness->metallic_roughness_texture.texture, images,
+                            s_property_names[WR_MESH_METALLIC_ROUGHNESS], false);
+            }
         }
         if (material->has_pbr_specular_glossiness) {
             cgltf_pbr_specular_glossiness *specular_glossiness = &material->pbr_specular_glossiness;
-            /* model->materials[i].specular_glossiness = */
-            /*     &model->textures[specular_glossiness->specular_glossiness_texture.texture - &gltf->textures[0]]; */
-            /* model->materials[i].specular_glossiness->srgb = true; */
+            if (specular_glossiness->specular_glossiness_texture.texture) {
+                set_texture(texture_set, &model->materials[i], gltf,
+                            specular_glossiness->specular_glossiness_texture.texture, images,
+                            s_property_names[WR_MESH_METALLIC_ROUGHNESS], true);
+            }
 
             if (specular_glossiness->diffuse_texture.texture) {
-                set_texture(&model->materials[i], specular_glossiness->diffuse_texture.texture,
-                            &images[specular_glossiness->diffuse_texture.texture->image - &gltf->images[0]],
-                            s_property_names[WR_MESH_ALBEDO], true);
+                set_texture(texture_set, &model->materials[i], gltf, specular_glossiness->diffuse_texture.texture,
+                            images, s_property_names[WR_MESH_ALBEDO], true);
             }
             walrus_material_set_vec4(&model->materials[i], s_property_names[WR_MESH_ALBEDO_FACTOR],
                                      specular_glossiness->diffuse_factor);
-
-            /* glm_vec3_copy(specular_glossiness->specular_factor, model->materials[i].specular_factor); */
-            /* model->materials[i].glossiness_factor = specular_glossiness->glossiness_factor; */
+            walrus_material_set_vec3(&model->materials[i], s_property_names[WR_MESH_SPECULAR_FACTOR],
+                                     specular_glossiness->specular_factor);
+            walrus_material_set_float(&model->materials[i], s_property_names[WR_MESH_GLOSSINESS_FACTOR],
+                                      specular_glossiness->glossiness_factor);
         }
     }
+
+    walrus_hash_table_destroy(texture_set);
 }
 
 static void buffers_init(Walrus_Model *model, cgltf_data *gltf)
