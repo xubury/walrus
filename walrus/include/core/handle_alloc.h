@@ -2,7 +2,7 @@
 
 #include "type.h"
 
-#define WR_INVALID_HANDLE UINT32_MAX
+#define WR_INVALID_HANDLE 0
 
 typedef u32 Walrus_Handle;
 

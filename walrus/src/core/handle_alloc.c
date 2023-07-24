@@ -22,7 +22,7 @@ static void reset(Walrus_HandleAlloc *alloc)
     Walrus_Handle *dense  = get_dense_ptr(alloc);
     Walrus_Handle *sparse = get_sparse_ptr(alloc);
     for (Walrus_Handle i = 0; i < alloc->max_handles; ++i) {
-        dense[i]  = i;
+        dense[i]  = i + 1;
         sparse[i] = alloc->max_handles;
     }
 }
