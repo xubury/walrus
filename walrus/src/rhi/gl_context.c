@@ -381,7 +381,7 @@ static void init_ctx(Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *c
     gl_ctx->max_msaa = var;
     caps->max_msaa   = var;
 
-    glGetIntegerv(GL_MAX_TEXTURE_UNITS, &var);
+    glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &var);
     caps->max_texture_unit = var;
 
     glDepthRangef(0, 1);
