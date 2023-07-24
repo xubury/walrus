@@ -12,15 +12,16 @@ out vec2 v_uv;
 out vec3 v_tangent;
 out vec3 v_bitangent;
 
-layout(std430, binding = 0) buffer JointsSSBO
+layout(std430, binding = 0) buffer WeightsSSBO
+{
+    float morph_weights[];
+};
+
+layout(std430, binding = 1) buffer JointsSSBO
 {
     mat4 ssbo_joints[];
 };
 
-layout(std430, binding = 1) buffer WeightsSSBO
-{
-    float morph_weights[];
-};
 
 uniform bool u_has_morph;
 uniform sampler2DArray u_morph_texture;

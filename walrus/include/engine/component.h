@@ -4,7 +4,7 @@
 
 #include <core/transform.h>
 #include <engine/animator.h>
-#include <engine/deferred_renderer.h>
+#include <engine/renderer.h>
 #include <engine/camera.h>
 #include <engine/controller.h>
 

@@ -20,7 +20,6 @@ add_library(
   app.c
   batch_renderer.c
   camera.c
-  deferred_renderer.c
   engine.c
   event.c
   font.c
@@ -33,6 +32,7 @@ add_library(
   input_map.c
   material.c
   model.c
+  renderer.c
   shader_library.c
   thread_pool.c
   window.c)

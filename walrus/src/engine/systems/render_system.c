@@ -29,7 +29,8 @@ ECS_SYSTEM_DECLARE(renderer_run);
 #define DEFERRED_LIGHTING_PASS "DeferredRenderPass"
 #define CULLING_PASS           "CullingPass"
 #define HDR_PASS               "HDRPass"
-#define FINAL_PASS             "Final"
+
+static Walrus_FramebufferHandle s_backrt;
 
 static void on_model_add(ecs_iter_t *it)
 {
@@ -161,10 +162,15 @@ static void renderer_run(ecs_iter_t *it)
         if (!renderers[i].active) {
             continue;
         }
-        walrus_deferred_renderer_set_camera(&renderers[i], &cameras[i]);
+        u16 view_slot = 0;
+
+        walrus_fg_write(&s_render_graph, "ColorBuffer", walrus_rhi_get_texture(s_backrt, 0).id);
+        walrus_fg_write(&s_render_graph, "DepthBuffer", walrus_rhi_get_texture(s_backrt, 1).id);
+        walrus_fg_write(&s_render_graph, "BackRT", s_backrt.id);
         walrus_fg_write_ptr(&s_render_graph, "Renderer", &renderers[i]);
         walrus_fg_write_ptr(&s_render_graph, "Camera", &cameras[i]);
-        walrus_fg_execute(&s_render_graph, FINAL_PASS);
+        walrus_fg_write_ptr(&s_render_graph, "ViewSlot", &view_slot);
+        walrus_fg_execute(&s_render_graph, HDR_PASS);
         /* walrus_rhi_set_debug(WR_RHI_DEBUG_STATS); */
     }
     walrus_rhi_touch(0);
@@ -268,18 +274,36 @@ void walrus_render_system_init(void)
 
     ECS_SYSTEM_DEFINE(ecs, renderer_run, 0, Walrus_Renderer, Walrus_Camera);
 
-    walrus_deferred_renderer_init(walrus_rhi_get_mssa());
+    walrus_renderer_init();
+    u64 flags = (u64)(walrus_u32cnttz(walrus_rhi_get_mssa()) + 1) << WR_RHI_TEXTURE_RT_MSAA_SHIFT;
+
+    Walrus_Attachment attachments[2] = {0};
+
+    attachments[0].handle = walrus_rhi_create_texture(
+        &(Walrus_TextureCreateInfo){
+            .ratio = WR_RHI_RATIO_EQUAL, .format = WR_RHI_FORMAT_RGBA8, .num_mipmaps = 1, .flags = flags},
+        NULL);
+    attachments[0].access = WR_RHI_ACCESS_WRITE;
+    attachments[1].handle = walrus_rhi_create_texture(
+        &(Walrus_TextureCreateInfo){
+            .ratio = WR_RHI_RATIO_EQUAL, .format = WR_RHI_FORMAT_DEPTH24, .num_mipmaps = 1, .flags = flags},
+        NULL);
+    attachments[1].access = WR_RHI_ACCESS_WRITE;
+
+    s_backrt = walrus_rhi_create_framebuffer(attachments, walrus_count_of(attachments));
 
     walrus_fg_init(&s_render_graph);
+
+    walrus_fg_write(&s_render_graph, "ColorBuffer", walrus_rhi_get_texture(s_backrt, 0).id);
+    walrus_fg_write(&s_render_graph, "DepthBuffer", walrus_rhi_get_texture(s_backrt, 1).id);
+    walrus_fg_write(&s_render_graph, "BackRT", s_backrt.id);
 
     Walrus_FramePipeline *culling_pipeline  = walrus_culling_pipeline_add(&s_render_graph, CULLING_PASS);
     Walrus_FramePipeline *deferred_pipeline = walrus_deferred_pipeline_add(&s_render_graph, DEFERRED_LIGHTING_PASS);
     Walrus_FramePipeline *hdr_pipeline      = walrus_hdr_pipeline_add(&s_render_graph, HDR_PASS);
-    Walrus_FramePipeline *final_pipeline    = walrus_fg_add_pipeline(&s_render_graph, FINAL_PASS);
 
     walrus_fg_connect_pipeline(culling_pipeline, deferred_pipeline);
     walrus_fg_connect_pipeline(deferred_pipeline, hdr_pipeline);
-    walrus_fg_connect_pipeline(hdr_pipeline, final_pipeline);
 
     walrus_fg_compile(&s_render_graph);
 }

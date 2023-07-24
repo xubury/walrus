@@ -2,6 +2,7 @@
 #include <engine/engine.h>
 #include <engine/systems/transform_system.h>
 #include <engine/systems/render_system.h>
+#include <engine/renderer.h>
 
 ECS_COMPONENT_DECLARE(Walrus_TransformGuizmo);
 ECS_COMPONENT_DECLARE(Walrus_EditorWindow);

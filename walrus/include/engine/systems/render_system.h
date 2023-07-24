@@ -1,6 +1,5 @@
 #pragma once
 
-#include <engine/deferred_renderer.h>
 #include <engine/renderer_mesh.h>
 #include <flecs.h>
 

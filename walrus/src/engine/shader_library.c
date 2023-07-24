@@ -165,8 +165,6 @@ static void shader_compile(Walrus_Shader *ref)
 
 Walrus_ProgramHandle walrus_shader_library_load(char const *path)
 {
-    char full_path[256];
-    format_path(full_path, sizeof(full_path), path);
     Walrus_Shader *shader = NULL;
     if (walrus_hash_table_contains(s_library->shader_map, path)) {
         shader = walrus_hash_table_lookup(s_library->shader_map, path);
