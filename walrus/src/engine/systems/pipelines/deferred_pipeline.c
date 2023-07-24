@@ -213,7 +213,6 @@ static void render_data_create(Walrus_FrameGraph *graph)
 
     u64 flags = (u64)(walrus_u32cnttz(walrus_rhi_get_mssa()) + 1) << WR_RHI_TEXTURE_RT_MSAA_SHIFT;
 
-    Walrus_TextureHandle depth_buffer = {walrus_fg_read(graph, "DepthBuffer")};
     {
         Walrus_Attachment  attachments[7] = {0};
         Walrus_PixelFormat formats[6]     = {
@@ -225,7 +224,8 @@ static void render_data_create(Walrus_FrameGraph *graph)
             WR_RHI_FORMAT_RGB8     // emissive
         };
 
-        attachments[walrus_count_of(attachments) - 1].handle = depth_buffer;
+        attachments[walrus_count_of(attachments) - 1].handle =
+            (Walrus_TextureHandle){walrus_fg_read(graph, "DepthBuffer")};
 
         for (u32 i = 0; i < walrus_count_of(formats); ++i) {
             attachments[i].handle = walrus_rhi_create_texture(
