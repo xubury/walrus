@@ -19,7 +19,8 @@ typedef struct {
     mat3 ground_transform;
 } Walrus_FpsController;
 
-void walrus_fps_controller_init(Walrus_FpsController *controller, Walrus_InputMap *map, f32 speed, vec2 rotation_speed,
-                                f32 smoothness);
+void walrus_fps_controller_init(Walrus_Controller *controller);
 
 void walrus_fps_controller_tick(Walrus_ControllerEvent *event);
+
+void walrus_fps_controller_shutdown(Walrus_Controller *controller);

@@ -24,14 +24,19 @@ static void on_controller_add(ecs_iter_t *it)
     Walrus_Controller *controller = ecs_field(it, Walrus_Controller, 1);
 
     walrus_input_map_init(&controller->map);
-    controller->init(controller);
+    if (controller->init) {
+        controller->init(controller);
+    }
 }
 
 static void on_controller_remove(ecs_iter_t *it)
 {
     Walrus_Controller *controller = ecs_field(it, Walrus_Controller, 1);
 
-    controller->shutdown(controller);
+    if (controller->shutdown) {
+        controller->shutdown(controller);
+    }
+    walrus_input_map_shutdown(&controller->map);
 }
 
 void walrus_controller_system_init(void)

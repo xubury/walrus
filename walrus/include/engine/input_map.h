@@ -9,7 +9,7 @@ typedef void (*Walrus_AxisCallback)(vec3 value, void *userdata);
 typedef void (*Walrus_ActionCallback)(void *userdata);
 
 typedef struct {
-    Walrus_HashTable *mapping;
+    Walrus_HashTable *table;
 } Walrus_InputMap;
 
 void walrus_input_map_init(Walrus_InputMap *map);

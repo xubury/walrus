@@ -11,18 +11,6 @@
 #include <engine/editor/component_panel.h>
 #include <engine/systems/model_system.h>
 
-static void controller_init(Walrus_Controller *controller)
-{
-    Walrus_FpsController *fc = walrus_new(Walrus_FpsController, 1);
-    walrus_fps_controller_init(fc, &controller->map, 10.0, (vec2){3.0, 3.0}, 20.0);
-    controller->userdata = fc;
-}
-
-static void controller_shutdown(Walrus_Controller *controller)
-{
-    walrus_free(controller->userdata);
-}
-
 static void hello_world_ui(ecs_world_t *ecs, ecs_entity_t e)
 {
     walrus_unused(ecs);
@@ -43,7 +31,9 @@ Walrus_AppError on_init(Walrus_App *app)
     ecs_entity_t camera = ecs_new_id(ecs);
     ecs_set(ecs, camera, Walrus_Transform, {.rot = {0, 0, 0, 1}, .trans = {0, 2, 5}, .scale = {1, 1, 1}});
     ecs_set(ecs, camera, Walrus_Controller,
-            {.tick = walrus_fps_controller_tick, .init = controller_init, .shutdown = controller_shutdown});
+            {.tick     = walrus_fps_controller_tick,
+             .init     = walrus_fps_controller_init,
+             .shutdown = walrus_fps_controller_shutdown});
     ecs_set(ecs, camera, Walrus_Camera,
             {.fov = glm_rad(45.0), .aspect = 1440.0 / 900, .near_z = 0.01, .far_z = 1000.0});
     ecs_set(ecs, camera, Walrus_Renderer,
