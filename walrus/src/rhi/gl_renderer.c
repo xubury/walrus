@@ -19,7 +19,7 @@ GLenum glew_init(void);
 
 void wajs_setup_gl_context(void);
 
-GlContext *gl_ctx = NULL;
+GlRenderer *gl_renderer = NULL;
 
 typedef struct {
     u32 draw_calls;
@@ -209,7 +209,7 @@ static void commit(GlProgram const *program)
 
         Walrus_UniformHandle handle;
         memcpy(&handle, uniform_buffer_read(buffer, sizeof(Walrus_UniformHandle)), sizeof(Walrus_UniformHandle));
-        void *data = gl_ctx->uniforms[handle.id];
+        void *data = gl_renderer->uniforms[handle.id];
 
         Walrus_UniformType type;
         u32                loc;
@@ -293,18 +293,19 @@ static void set_predefineds(GlProgram const *prog, RenderFrame const *frame, Ren
 
 static void create_msaa_fbo(u32 width, u32 height, u8 msaa)
 {
-    if (gl_ctx->msaa_fbo == 0 && msaa > 1) {
-        glGenFramebuffers(1, &gl_ctx->msaa_fbo);
-        glGenRenderbuffers(2, gl_ctx->msaa_rbos);
+    if (gl_renderer->msaa_fbo == 0 && msaa > 1) {
+        glGenFramebuffers(1, &gl_renderer->msaa_fbo);
+        glGenRenderbuffers(2, gl_renderer->msaa_rbos);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, gl_ctx->msaa_fbo);
-        glBindRenderbuffer(GL_RENDERBUFFER, gl_ctx->msaa_rbos[0]);
+        glBindFramebuffer(GL_FRAMEBUFFER, gl_renderer->msaa_fbo);
+        glBindRenderbuffer(GL_RENDERBUFFER, gl_renderer->msaa_rbos[0]);
         glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaa, GL_RGBA8, width, height);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, gl_ctx->msaa_rbos[0]);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, gl_renderer->msaa_rbos[0]);
 
-        glBindRenderbuffer(GL_RENDERBUFFER, gl_ctx->msaa_rbos[1]);
+        glBindRenderbuffer(GL_RENDERBUFFER, gl_renderer->msaa_rbos[1]);
         glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaa, GL_DEPTH24_STENCIL8, width, height);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, gl_ctx->msaa_rbos[1]);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
+                                  gl_renderer->msaa_rbos[1]);
 
         walrus_assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
     }
@@ -312,30 +313,30 @@ static void create_msaa_fbo(u32 width, u32 height, u8 msaa)
 
 static void destroy_msaa_fbo(void)
 {
-    if (gl_ctx->msaa_fbo != 0) {
-        glDeleteFramebuffers(1, &gl_ctx->msaa_fbo);
-        gl_ctx->msaa_fbo = 0;
-        if (gl_ctx->msaa_rbos[0] != 0) {
-            glDeleteRenderbuffers(2, gl_ctx->msaa_rbos);
-            gl_ctx->msaa_rbos[0] = 0;
-            gl_ctx->msaa_rbos[1] = 0;
+    if (gl_renderer->msaa_fbo != 0) {
+        glDeleteFramebuffers(1, &gl_renderer->msaa_fbo);
+        gl_renderer->msaa_fbo = 0;
+        if (gl_renderer->msaa_rbos[0] != 0) {
+            glDeleteRenderbuffers(2, gl_renderer->msaa_rbos);
+            gl_renderer->msaa_rbos[0] = 0;
+            gl_renderer->msaa_rbos[1] = 0;
         }
     }
 }
 
 static void set_render_context_size(u32 width, u32 height, u32 flags)
 {
-    gl_ctx->resolution.width  = width;
-    gl_ctx->resolution.height = height;
-    gl_ctx->resolution.flags  = flags;
+    gl_renderer->resolution.width  = width;
+    gl_renderer->resolution.height = height;
+    gl_renderer->resolution.flags  = flags;
 
     destroy_msaa_fbo();
     u32 msaa = (flags & WR_RHI_RESOLUTION_MSAA_MASK) >> WR_RHI_RESOLUTION_MSAA_SHIFT;
-    msaa     = walrus_min(gl_ctx->max_msaa, msaa == 0 ? 0 : 1 << msaa);
+    msaa     = walrus_min(gl_renderer->max_msaa, msaa == 0 ? 0 : 1 << msaa);
     create_msaa_fbo(width, height, msaa);
 }
 
-static void init_ctx(Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *caps)
+static void gl_init(Renderer *renderer, Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *caps)
 {
 #if WR_PLATFORM != WR_PLATFORM_WASM
     GLenum err = glew_init();
@@ -345,29 +346,30 @@ static void init_ctx(Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *c
 #else
     wajs_setup_gl_context();
 #endif
-    gl_ctx = walrus_malloc(sizeof(GlContext));
 
-    gl_ctx->uniform_registry = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
+    gl_renderer = poly_cast(renderer, GlRenderer);
 
-    for (u32 i = 0; i < walrus_count_of(gl_ctx->buffers); ++i) {
-        gl_ctx->buffers[i].id = 0;
+    gl_renderer->uniform_registry = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
+
+    for (u32 i = 0; i < walrus_count_of(gl_renderer->buffers); ++i) {
+        gl_renderer->buffers[i].id = 0;
     }
 
-    for (u32 i = 0; i < walrus_count_of(gl_ctx->shaders); ++i) {
-        gl_ctx->shaders[i] = 0;
+    for (u32 i = 0; i < walrus_count_of(gl_renderer->shaders); ++i) {
+        gl_renderer->shaders[i] = 0;
     }
 
-    for (u32 i = 0; i < walrus_count_of(gl_ctx->programs); ++i) {
-        gl_ctx->programs[i].id = 0;
+    for (u32 i = 0; i < walrus_count_of(gl_renderer->programs); ++i) {
+        gl_renderer->programs[i].id = 0;
     }
 
-    for (u32 i = 0; i < walrus_count_of(gl_ctx->textures); ++i) {
-        gl_ctx->textures[i].id = 0;
+    for (u32 i = 0; i < walrus_count_of(gl_renderer->textures); ++i) {
+        gl_renderer->textures[i].id = 0;
     }
 
-    for (u32 i = 0; i < walrus_count_of(gl_ctx->framebuffers); ++i) {
-        gl_ctx->framebuffers[i].fbo[0] = 0;
-        gl_ctx->framebuffers[i].fbo[1] = 0;
+    for (u32 i = 0; i < walrus_count_of(gl_renderer->framebuffers); ++i) {
+        gl_renderer->framebuffers[i].fbo[0] = 0;
+        gl_renderer->framebuffers[i].fbo[1] = 0;
     }
 
     GLint var;
@@ -378,62 +380,59 @@ static void init_ctx(Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *c
     caps->ubo_align = var;
 
     glGetIntegerv(GL_MAX_SAMPLES, &var);
-    gl_ctx->max_msaa = var;
-    caps->max_msaa   = var;
+    gl_renderer->max_msaa = var;
+    caps->max_msaa        = var;
 
     glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &var);
     caps->max_texture_unit = var;
 
     glDepthRangef(0, 1);
 
-    gl_ctx->msaa_fbo = 0;
-    memset(gl_ctx->msaa_rbos, 0, sizeof(gl_ctx->msaa_rbos));
-    glGenVertexArrays(1, &gl_ctx->vao);
+    gl_renderer->msaa_fbo = 0;
+    memset(gl_renderer->msaa_rbos, 0, sizeof(gl_renderer->msaa_rbos));
+    glGenVertexArrays(1, &gl_renderer->vao);
 
     set_render_context_size(info->resolution.width, info->resolution.height, info->resolution.flags);
 }
 
-static void shutdown_ctx(void)
+static void gl_shutdown(void)
 {
-    if (gl_ctx) {
-        walrus_hash_table_destroy(gl_ctx->uniform_registry);
-        destroy_msaa_fbo();
-        glDeleteVertexArrays(1, &gl_ctx->vao);
-        walrus_free(gl_ctx);
-        gl_ctx = NULL;
-    }
+    walrus_hash_table_destroy(gl_renderer->uniform_registry);
+    destroy_msaa_fbo();
+    glDeleteVertexArrays(1, &gl_renderer->vao);
 }
 
 static void gl_uniform_create(Walrus_UniformHandle handle, const char *name, u32 size)
 {
-    gl_ctx->uniforms[handle.id]      = walrus_malloc0(size);
-    gl_ctx->uniform_names[handle.id] = walrus_str_dup(name);
-    walrus_hash_table_insert(gl_ctx->uniform_registry, gl_ctx->uniform_names[handle.id], walrus_val_to_ptr(handle.id));
+    gl_renderer->uniforms[handle.id]      = walrus_malloc0(size);
+    gl_renderer->uniform_names[handle.id] = walrus_str_dup(name);
+    walrus_hash_table_insert(gl_renderer->uniform_registry, gl_renderer->uniform_names[handle.id],
+                             walrus_val_to_ptr(handle.id));
 }
 
 static void gl_uniform_destroy(Walrus_UniformHandle handle)
 {
-    walrus_hash_table_remove(gl_ctx->uniform_registry, gl_ctx->uniform_names[handle.id]);
-    walrus_free(gl_ctx->uniforms[handle.id]);
-    walrus_str_free(gl_ctx->uniform_names[handle.id]);
+    walrus_hash_table_remove(gl_renderer->uniform_registry, gl_renderer->uniform_names[handle.id]);
+    walrus_free(gl_renderer->uniforms[handle.id]);
+    walrus_str_free(gl_renderer->uniform_names[handle.id]);
 
-    gl_ctx->uniforms[handle.id]      = NULL;
-    gl_ctx->uniform_names[handle.id] = NULL;
+    gl_renderer->uniforms[handle.id]      = NULL;
+    gl_renderer->uniform_names[handle.id] = NULL;
 }
 
 static void gl_uniform_resize(Walrus_UniformHandle handle, u32 size)
 {
-    walrus_realloc(gl_ctx->uniforms[handle.id], size);
+    walrus_realloc(gl_renderer->uniforms[handle.id], size);
 }
 
 static void gl_uniform_update(Walrus_UniformHandle handle, u32 offset, u32 size, void const *data)
 {
-    memcpy((u8 *)gl_ctx->uniforms[handle.id] + offset, data, size);
+    memcpy((u8 *)gl_renderer->uniforms[handle.id] + offset, data, size);
 }
 
 static void gl_vertex_layout_create(Walrus_LayoutHandle handle, Walrus_VertexLayout const *layout)
 {
-    memcpy(&gl_ctx->vertex_layouts[handle.id], layout, sizeof(Walrus_VertexLayout));
+    memcpy(&gl_renderer->vertex_layouts[handle.id], layout, sizeof(Walrus_VertexLayout));
 }
 
 static void gl_vertex_layout_destroy(Walrus_LayoutHandle handle)
@@ -451,23 +450,23 @@ static void gl_buffer_create(Walrus_BufferHandle handle, void const *data, u64 s
 
     glBindBuffer(target, 0);
 
-    gl_ctx->buffers[handle.id].id     = vbo;
-    gl_ctx->buffers[handle.id].size   = size;
-    gl_ctx->buffers[handle.id].target = target;
-    gl_ctx->buffers[handle.id].flags  = flags;
+    gl_renderer->buffers[handle.id].id     = vbo;
+    gl_renderer->buffers[handle.id].size   = size;
+    gl_renderer->buffers[handle.id].target = target;
+    gl_renderer->buffers[handle.id].flags  = flags;
 }
 
 static void gl_buffer_destroy(Walrus_BufferHandle handle)
 {
-    glDeleteBuffers(1, &gl_ctx->buffers[handle.id].id);
-    gl_ctx->buffers[handle.id].id   = 0;
-    gl_ctx->buffers[handle.id].size = 0;
+    glDeleteBuffers(1, &gl_renderer->buffers[handle.id].id);
+    gl_renderer->buffers[handle.id].id   = 0;
+    gl_renderer->buffers[handle.id].size = 0;
 }
 
 static void gl_buffer_update(Walrus_BufferHandle handle, u64 offset, u64 size, void const *data)
 {
-    GLenum target = gl_ctx->buffers[handle.id].target;
-    GLint  id     = gl_ctx->buffers[handle.id].id;
+    GLenum target = gl_renderer->buffers[handle.id].target;
+    GLint  id     = gl_renderer->buffers[handle.id].id;
     glBindBuffer(target, id);
     glBufferSubData(target, offset, size, data);
     glBindBuffer(target, 0);
@@ -497,43 +496,43 @@ static void bind_vertex_attributes(Walrus_VertexLayout const *layout, u64 offset
 
 static u32 set_framebuffer(Walrus_FramebufferHandle handle, u32 height, u32 flags)
 {
-    if (handle.id != WR_INVALID_HANDLE && handle.id != gl_ctx->fbo.id) {
-        GlFramebuffer *fb = &gl_ctx->framebuffers[handle.id];
+    if (handle.id != WR_INVALID_HANDLE && handle.id != gl_renderer->fbo.id) {
+        GlFramebuffer *fb = &gl_renderer->framebuffers[handle.id];
         gl_framebuffer_resolve(fb);
-        if (gl_ctx->discards != WR_RHI_CLEAR_NONE) {
-            gl_framebuffer_discard(fb, gl_ctx->discards);
-            gl_ctx->discards = WR_RHI_CLEAR_NONE;
+        if (gl_renderer->discards != WR_RHI_CLEAR_NONE) {
+            gl_framebuffer_discard(fb, gl_renderer->discards);
+            gl_renderer->discards = WR_RHI_CLEAR_NONE;
         }
     }
 
     if (handle.id != WR_INVALID_HANDLE) {
-        GlFramebuffer *fb   = &gl_ctx->framebuffers[handle.id];
-        gl_ctx->current_fbo = fb->fbo[0];
-        height              = fb->height;
+        GlFramebuffer *fb        = &gl_renderer->framebuffers[handle.id];
+        gl_renderer->current_fbo = fb->fbo[0];
+        height                   = fb->height;
     }
     else {
-        gl_ctx->current_fbo = gl_ctx->msaa_fbo;
+        gl_renderer->current_fbo = gl_renderer->msaa_fbo;
     }
-    glBindFramebuffer(GL_FRAMEBUFFER, gl_ctx->current_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, gl_renderer->current_fbo);
 
-    gl_ctx->fbo      = handle;
-    gl_ctx->discards = flags;
+    gl_renderer->fbo      = handle;
+    gl_renderer->discards = flags;
 
     return height;
 }
 
 static void update_resolution(Walrus_Resolution *res)
 {
-    if (res->width != gl_ctx->resolution.width || res->height != gl_ctx->resolution.height ||
-        res->flags != gl_ctx->resolution.flags) {
+    if (res->width != gl_renderer->resolution.width || res->height != gl_renderer->resolution.height ||
+        res->flags != gl_renderer->resolution.flags) {
         set_render_context_size(res->width, res->height, res->flags);
 
-        for (u32 i = 0; i < walrus_count_of(gl_ctx->framebuffers); ++i) {
-            gl_framebuffer_post_reset(&gl_ctx->framebuffers[i]);
+        for (u32 i = 0; i < walrus_count_of(gl_renderer->framebuffers); ++i) {
+            gl_framebuffer_post_reset(&gl_renderer->framebuffers[i]);
         }
-        gl_ctx->current_fbo = 0;
+        gl_renderer->current_fbo = 0;
 
-        glBindFramebuffer(GL_FRAMEBUFFER, gl_ctx->current_fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, gl_renderer->current_fbo);
     }
 }
 
@@ -555,7 +554,7 @@ static void submit(RenderFrame *frame)
     Sortkey sortkey;
     frame_sort(frame);
 
-    glBindVertexArray(gl_ctx->vao);
+    glBindVertexArray(gl_renderer->vao);
 
     u16             view_id      = UINT16_MAX;
     const ViewRect *view_scissor = NULL;
@@ -655,7 +654,7 @@ static void submit(RenderFrame *frame)
                 was_compute = true;
             }
             RenderCompute const *compute = &render_item->compute;
-            GlProgram           *program = &gl_ctx->programs[sortkey.program.id];
+            GlProgram           *program = &gl_renderer->programs[sortkey.program.id];
             glUseProgram(program->id);
 
             u32 const  max_compute_bindings = WR_RHI_MAX_TEXTURE_SAMPLERS;
@@ -663,7 +662,7 @@ static void submit(RenderFrame *frame)
             for (u32 unit = 0; unit < max_compute_bindings; ++unit) {
                 Binding const *bind = &render_bind->bindings[unit];
                 if (bind->id != WR_INVALID_HANDLE) {
-                    GlTexture *texture = &gl_ctx->textures[bind->id];
+                    GlTexture *texture = &gl_renderer->textures[bind->id];
                     switch (bind->type) {
                         case WR_RHI_BIND_TEXTURE: {
                             glBindTextureUnit(unit, texture->id);
@@ -681,7 +680,7 @@ static void submit(RenderFrame *frame)
             for (u32 binding = 0; binding < WR_RHI_MAX_UNIFORM_BINDINGS; ++binding) {
                 BlockBinding const *bind = &render_bind->block_bindings[binding];
                 if (bind->handle.id != WR_INVALID_HANDLE) {
-                    GlBuffer *buffer = &gl_ctx->buffers[bind->handle.id];
+                    GlBuffer *buffer = &gl_renderer->buffers[bind->handle.id];
                     if (buffer->flags & WR_RHI_BUFFER_UNIFORM_BLOCK) {
                         glBindBufferRange(GL_UNIFORM_BUFFER, binding, buffer->id, bind->offset, bind->size);
                     }
@@ -854,7 +853,7 @@ static void submit(RenderFrame *frame)
         if (program_changed) {
             current_prog = sortkey.program;
             if (current_prog.id != WR_INVALID_HANDLE) {
-                glUseProgram(gl_ctx->programs[current_prog.id].id);
+                glUseProgram(gl_renderer->programs[current_prog.id].id);
             }
             else {
                 glUseProgram(0);
@@ -862,7 +861,7 @@ static void submit(RenderFrame *frame)
         }
 
         if (current_prog.id != WR_INVALID_HANDLE) {
-            GlProgram const *program = &gl_ctx->programs[current_prog.id];
+            GlProgram const *program = &gl_renderer->programs[current_prog.id];
 
             bool const constants_changed = draw->uniform_begin < draw->uniform_end;
             if (program_changed || constants_changed) {
@@ -876,7 +875,7 @@ static void submit(RenderFrame *frame)
                 if (program_changed || bind->id != current->id || bind->type != current->type ||
                     bind->sampler_flags != current->sampler_flags) {
                     if (bind->id != WR_INVALID_HANDLE) {
-                        GlTexture const *texture = &gl_ctx->textures[bind->id];
+                        GlTexture const *texture = &gl_renderer->textures[bind->id];
                         switch (bind->type) {
                             case WR_RHI_BIND_TEXTURE: {
                                 glActiveTexture(GL_TEXTURE0 + unit);
@@ -897,7 +896,7 @@ static void submit(RenderFrame *frame)
             for (u32 binding = 0; binding < WR_RHI_MAX_UNIFORM_BINDINGS; ++binding) {
                 BlockBinding const *bind = &render_bind->block_bindings[binding];
                 if (bind->handle.id != WR_INVALID_HANDLE) {
-                    GlBuffer *buffer = &gl_ctx->buffers[bind->handle.id];
+                    GlBuffer *buffer = &gl_renderer->buffers[bind->handle.id];
                     if (buffer->flags & WR_RHI_BUFFER_UNIFORM_BLOCK) {
                         glBindBufferRange(GL_UNIFORM_BUFFER, binding, buffer->id, bind->offset, bind->size);
                     }
@@ -946,7 +945,7 @@ static void submit(RenderFrame *frame)
                 current_state.index_buffer = draw->index_buffer;
 
                 if (draw->index_buffer.id != WR_INVALID_HANDLE) {
-                    GlBuffer const *ib = &gl_ctx->buffers[draw->index_buffer.id];
+                    GlBuffer const *ib = &gl_renderer->buffers[draw->index_buffer.id];
                     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->id);
                 }
                 else {
@@ -965,11 +964,11 @@ static void submit(RenderFrame *frame)
                     VertexStream const *stream = &draw->streams[id];
 
                     if (stream->handle.id != WR_INVALID_HANDLE) {
-                        GlBuffer const *vb = &gl_ctx->buffers[stream->handle.id];
+                        GlBuffer const *vb = &gl_renderer->buffers[stream->handle.id];
 
                         Walrus_LayoutHandle const layout_handle = stream->layout_handle;
                         if (layout_handle.id != WR_INVALID_HANDLE) {
-                            Walrus_VertexLayout const *layout = &gl_ctx->vertex_layouts[layout_handle.id];
+                            Walrus_VertexLayout const *layout = &gl_renderer->vertex_layouts[layout_handle.id];
 
                             num_vertices = walrus_min(num_vertices, vb->size / layout->stride);
                         }
@@ -979,8 +978,8 @@ static void submit(RenderFrame *frame)
             bool const instance_valid =
                 draw->instance_buffer.id != WR_INVALID_HANDLE && draw->instance_layout.id != WR_INVALID_HANDLE;
             if (instance_valid && num_instances == UINT32_MAX) {
-                Walrus_VertexLayout const *layout          = &gl_ctx->vertex_layouts[draw->instance_layout.id];
-                GlBuffer const            *instance_buffer = &gl_ctx->buffers[draw->instance_buffer.id];
+                Walrus_VertexLayout const *layout          = &gl_renderer->vertex_layouts[draw->instance_layout.id];
+                GlBuffer const            *instance_buffer = &gl_renderer->buffers[draw->instance_buffer.id];
                 num_instances = walrus_min(num_instances, instance_buffer->size / layout->stride);
             }
             if (bind_attributes && draw->stream_mask != UINT16_MAX) {
@@ -994,22 +993,22 @@ static void submit(RenderFrame *frame)
                     id += ntz;
                     VertexStream const *stream = &draw->streams[id];
                     if (stream->handle.id != WR_INVALID_HANDLE) {
-                        GlBuffer const *vb = &gl_ctx->buffers[stream->handle.id];
+                        GlBuffer const *vb = &gl_renderer->buffers[stream->handle.id];
 
                         Walrus_LayoutHandle const layout_handle = stream->layout_handle;
                         if (layout_handle.id != WR_INVALID_HANDLE) {
                             glBindBuffer(GL_ARRAY_BUFFER, vb->id);
-                            Walrus_VertexLayout const *layout = &gl_ctx->vertex_layouts[layout_handle.id];
+                            Walrus_VertexLayout const *layout = &gl_renderer->vertex_layouts[layout_handle.id];
                             bind_vertex_attributes(layout, stream->offset);
                             glBindBuffer(GL_ARRAY_BUFFER, 0);
                         }
                     }
                 }
                 if (instance_valid) {
-                    GlBuffer const *instance_buffer = &gl_ctx->buffers[draw->instance_buffer.id];
+                    GlBuffer const *instance_buffer = &gl_renderer->buffers[draw->instance_buffer.id];
                     glBindBuffer(GL_ARRAY_BUFFER, instance_buffer->id);
 
-                    Walrus_VertexLayout const *layout = &gl_ctx->vertex_layouts[draw->instance_layout.id];
+                    Walrus_VertexLayout const *layout = &gl_renderer->vertex_layouts[draw->instance_layout.id];
                     bind_vertex_attributes(layout, draw->instance_offset);
                     glBindBuffer(GL_ARRAY_BUFFER, 0);
                 }
@@ -1020,7 +1019,7 @@ static void submit(RenderFrame *frame)
                 static GLenum const index_type[5] = {GL_ZERO, GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT, GL_ZERO,
                                                      GL_UNSIGNED_INT};
 
-                GlBuffer const *ib = &gl_ctx->buffers[draw->index_buffer.id];
+                GlBuffer const *ib = &gl_renderer->buffers[draw->index_buffer.id];
 
                 u32 num_indices = draw->num_indices;
                 if (num_indices == UINT32_MAX) {
@@ -1047,54 +1046,28 @@ static void submit(RenderFrame *frame)
     }
 
     glBindVertexArray(0);
-    if (gl_ctx->msaa_fbo != 0) {
+    if (gl_renderer->msaa_fbo != 0) {
         glDisable(GL_SCISSOR_TEST);
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_ctx->msaa_fbo);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_renderer->msaa_fbo);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-        glBlitFramebuffer(0, 0, gl_ctx->resolution.width, gl_ctx->resolution.height, 0, 0, gl_ctx->resolution.width,
-                          gl_ctx->resolution.height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+        glBlitFramebuffer(0, 0, gl_renderer->resolution.width, gl_renderer->resolution.height, 0, 0,
+                          gl_renderer->resolution.width, gl_renderer->resolution.height, GL_COLOR_BUFFER_BIT,
+                          GL_LINEAR);
         glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     }
 }
 
-static void init_api(RhiRenderer *renderer)
-{
-    renderer->submit_fn = submit;
-
-    renderer->shader_create_fn  = gl_shader_create;
-    renderer->shader_destroy_fn = gl_shader_destroy;
-
-    renderer->program_create_fn  = gl_program_create;
-    renderer->program_destroy_fn = gl_program_destroy;
-
-    renderer->uniform_create_fn  = gl_uniform_create;
-    renderer->uniform_destroy_fn = gl_uniform_destroy;
-    renderer->uniform_resize_fn  = gl_uniform_resize;
-    renderer->uniform_update_fn  = gl_uniform_update;
-
-    renderer->vertex_layout_create_fn  = gl_vertex_layout_create;
-    renderer->vertex_layout_destroy_fn = gl_vertex_layout_destroy;
-
-    renderer->buffer_create_fn  = gl_buffer_create;
-    renderer->buffer_destroy_fn = gl_buffer_destroy;
-    renderer->buffer_update_fn  = gl_buffer_update;
-
-    renderer->texture_create_fn  = gl_texture_create;
-    renderer->texture_destroy_fn = gl_texture_destroy;
-    renderer->texture_resize_fn  = gl_texture_resize;
-
-    renderer->framebuffer_create_fn  = gl_framebuffer_create;
-    renderer->framebuffer_destroy_fn = gl_framebuffer_destroy;
-}
-
-void gl_backend_init(Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *caps, RhiRenderer *renderer)
-{
-    init_ctx(info, caps);
-    init_api(renderer);
-}
-
-void gl_backend_shutdown(void)
-{
-    shutdown_ctx();
-}
+POLY_DEFINE_DERIVED(Renderer, GlRenderer, gl_create, POLY_IMPL(init, gl_init), POLY_IMPL(shutdown, gl_shutdown),
+                    POLY_IMPL(submit, submit), POLY_IMPL(create_shader, gl_shader_create),
+                    POLY_IMPL(destroy_shader, gl_shader_destroy), POLY_IMPL(create_program, gl_program_create),
+                    POLY_IMPL(destroy_program, gl_program_destroy), POLY_IMPL(create_uniform, gl_uniform_create),
+                    POLY_IMPL(destroy_uniform, gl_uniform_destroy), POLY_IMPL(resize_uniform, gl_uniform_resize),
+                    POLY_IMPL(update_uniform, gl_uniform_update),
+                    POLY_IMPL(create_vertex_layout, gl_vertex_layout_create),
+                    POLY_IMPL(destroy_vertex_layout, gl_vertex_layout_destroy),
+                    POLY_IMPL(create_buffer, gl_buffer_create), POLY_IMPL(destroy_buffer, gl_buffer_destroy),
+                    POLY_IMPL(update_buffer, gl_buffer_update), POLY_IMPL(create_texture, gl_texture_create),
+                    POLY_IMPL(destroy_texture, gl_texture_destroy), POLY_IMPL(resize_texture, gl_texture_resize),
+                    POLY_IMPL(create_framebuffer, gl_framebuffer_create),
+                    POLY_IMPL(destroy_framebuffer, gl_framebuffer_destroy))

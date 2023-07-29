@@ -27,20 +27,15 @@ typedef struct {
     Walrus_Array *btns;
     Walrus_Array *axes;
 
-    Walrus_AxisCallback   axis_func;
-    Walrus_ActionCallback action_func;
-
     char *name;
 } Mappings;
 
 static Mappings *mapping_create(char const *name)
 {
-    Mappings *m    = walrus_new(Mappings, 1);
-    m->name        = walrus_str_dup(name);
-    m->btns        = walrus_array_create(sizeof(ButtonMapping), 0);
-    m->axes        = walrus_array_create(sizeof(AxisMapping), 0);
-    m->axis_func   = NULL;
-    m->action_func = NULL;
+    Mappings *m = walrus_new(Mappings, 1);
+    m->name     = walrus_str_dup(name);
+    m->btns     = walrus_array_create(sizeof(ButtonMapping), 0);
+    m->axes     = walrus_array_create(sizeof(AxisMapping), 0);
     return m;
 }
 
@@ -119,56 +114,20 @@ void walrus_input_add_action_button(Walrus_InputMap *map, char const *name, u8 d
     walrus_array_append(m->btns, &btn);
 }
 
-void walrus_input_bind_axis(Walrus_InputMap *map, char const *name, Walrus_AxisCallback func)
-{
-    Mappings *m = NULL;
-    if (walrus_hash_table_contains(map->table, name)) {
-        m = walrus_hash_table_lookup(map->table, name);
-    }
-    else {
-        m = mapping_create(name);
-        walrus_hash_table_insert(map->table, m->name, m);
-    }
-    m->axis_func = func;
-}
-
-void walrus_input_bind_action(Walrus_InputMap *map, char const *name, Walrus_ActionCallback func)
-{
-    Mappings *m = NULL;
-    if (walrus_hash_table_contains(map->table, name)) {
-        m = walrus_hash_table_lookup(map->table, name);
-    }
-    else {
-        m = mapping_create(name);
-        walrus_hash_table_insert(map->table, m->name, m);
-    }
-    m->action_func = func;
-}
-
-void walrus_input_unbind(Walrus_InputMap *map, char const *name)
-{
-    if (walrus_hash_table_contains(map->table, name)) {
-        Mappings *m    = walrus_hash_table_lookup(map->table, name);
-        m->action_func = NULL;
-        m->axis_func   = NULL;
-    }
-}
-
 void walrus_input_clear(Walrus_InputMap *map, char const *name)
 {
     walrus_hash_table_remove(map->table, name);
 }
 
-void foreach_axis_control(void const *key, void *value, void *userdata)
+bool walrus_input_get_axis(Walrus_InputMap *map, char const *name, vec3 scale)
 {
-    walrus_unused(key);
-    Walrus_Input   *input = walrus_engine_vars()->input;
-    Mappings const *m     = value;
-    if (m->axis_func == NULL) {
-        return;
+    if (!walrus_hash_table_contains(map->table, name)) {
+        return false;
     }
 
-    u32 num_btns = walrus_array_len(m->btns);
+    Walrus_Input *input    = walrus_engine_vars()->input;
+    Mappings     *m        = walrus_hash_table_lookup(map->table, name);
+    u32           num_btns = walrus_array_len(m->btns);
     for (u32 i = 0; i < num_btns; ++i) {
         bool                trigger = false;
         Walrus_InputDevice *device  = NULL;
@@ -195,7 +154,8 @@ void foreach_axis_control(void const *key, void *value, void *userdata)
             }
         }
         if (trigger) {
-            m->axis_func(btn->scale, userdata);
+            glm_vec3_copy(btn->scale, scale);
+            return true;
         }
     }
     u32 num_axes = walrus_array_len(m->axes);
@@ -216,21 +176,22 @@ void foreach_axis_control(void const *key, void *value, void *userdata)
         }
         if (trigger) {
             glm_vec3_mul(rel, axis->scale, rel);
-            m->axis_func(rel, userdata);
+            glm_vec3_copy(rel, scale);
+            return true;
         }
     }
+    return false;
 }
 
-void foreach_action_control(void const *key, void *value, void *userdata)
+bool walrus_input_get_action(Walrus_InputMap *map, char const *name)
 {
-    walrus_unused(key);
-    Walrus_Input   *input = walrus_engine_vars()->input;
-    Mappings const *m     = value;
-    if (m->action_func == NULL) {
-        return;
+    if (!walrus_hash_table_contains(map->table, name)) {
+        return false;
     }
 
-    u32 size = walrus_array_len(m->btns);
+    Walrus_Input *input = walrus_engine_vars()->input;
+    Mappings     *m     = walrus_hash_table_lookup(map->table, name);
+    u32           size  = walrus_array_len(m->btns);
     for (u32 i = 0; i < size; ++i) {
         bool                trigger = false;
         Walrus_InputDevice *device  = NULL;
@@ -252,13 +213,9 @@ void foreach_action_control(void const *key, void *value, void *userdata)
             trigger = walrus_input_pressed(device, btn->button);
         }
         if (trigger) {
-            m->action_func(userdata);
+            return true;
         }
     }
-}
 
-void walrus_input_map_tick(Walrus_InputMap *map, void *userdata)
-{
-    walrus_hash_table_foreach(map->table, foreach_axis_control, userdata);
-    walrus_hash_table_foreach(map->table, foreach_action_control, userdata);
+    return false;
 }

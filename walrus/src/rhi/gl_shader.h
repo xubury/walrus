@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gl_context.h"
+#include "gl_renderer.h"
 
 void gl_shader_create(Walrus_ShaderType type, Walrus_ShaderHandle handle, char const *source);
 

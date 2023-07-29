@@ -78,6 +78,8 @@ typedef struct {
     GlFramebuffer framebuffers[WR_RHI_MAX_FRAMEBUFFERS];
 
     GLuint max_msaa;
-} GlContext;
+} GlRenderer;
 
-extern GlContext *gl_ctx;
+extern GlRenderer *gl_renderer;
+
+POLY_DECLARE_DERIVED(Renderer, GlRenderer, gl_create)

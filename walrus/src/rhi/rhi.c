@@ -1,5 +1,6 @@
 #include <rhi/rhi.h>
 #include "rhi_p.h"
+#include "gl_renderer.h"
 #include <core/assert.h>
 #include <core/math.h>
 #include <core/memory.h>
@@ -22,8 +23,8 @@ static UniformAttribute const s_predefineds[PREDEFINED_COUNT] = {
     {WR_RHI_UNIFORM_MAT4, "u_model", 1},
 };
 
-static RhiContext*  s_ctx      = NULL;
-static RhiRenderer* s_renderer = NULL;
+static RhiContext* s_ctx      = NULL;
+static Renderer*   s_renderer = NULL;
 
 static void handles_init(RhiContext* ctx)
 {
@@ -90,7 +91,7 @@ void renderer_uniform_updates(UniformBuffer* uniform, u32 begin, u32 end)
         u32         size   = uniform_buffer_read_value(uniform);
         void const* data   = uniform_buffer_read(uniform, size);
         if (type < WR_RHI_UNIFORM_COUNT) {
-            s_renderer->uniform_update_fn(handle, offset, size, data);
+            POLY_FUNC(s_renderer, update_uniform)(handle, offset, size, data);
         }
     }
 }
@@ -220,23 +221,24 @@ static const u32 pixel_size[WR_RHI_FORMAT_COUNT] = {
 
 void renderer_create(Walrus_RhiCreateInfo const* info)
 {
-    s_renderer = walrus_malloc(sizeof(RhiRenderer));
+    s_renderer = walrus_malloc(sizeof(Renderer));
 
     if (info->flags & WR_RHI_FLAG_OPENGL) {
-        gl_backend_init(info, &s_ctx->caps, s_renderer);
+        static GlRenderer gl_renderer = {0};
+        *s_renderer = gl_create(&gl_renderer);
     }
     else {
         walrus_assert_msg(false, "No render backend specifed");
     }
+
+    POLY_FUNC(s_renderer, init)(s_renderer, info, &s_ctx->caps);
 }
 
 void renderer_destroy(void)
 {
-    walrus_free(s_renderer);
+    POLY_FUNC(s_renderer, shutdown)();
 
-    if (s_ctx->info.flags & WR_RHI_FLAG_OPENGL) {
-        gl_backend_shutdown();
-    }
+    walrus_free(s_renderer);
 
     s_renderer = NULL;
 }
@@ -385,13 +387,13 @@ static void render_exec_command(CommandBuffer* buffer)
                 Walrus_VertexLayout layout;
                 command_buffer_read(buffer, Walrus_VertexLayout, &layout);
 
-                s_renderer->vertex_layout_create_fn(handle, &layout);
+                POLY_FUNC(s_renderer, create_vertex_layout)(handle, &layout);
             } break;
             case COMMAND_DESTROY_VERTEX_LAYOUT: {
                 Walrus_LayoutHandle handle;
                 command_buffer_read(buffer, Walrus_LayoutHandle, &handle);
 
-                s_renderer->vertex_layout_destroy_fn(handle);
+                POLY_FUNC(s_renderer, destroy_vertex_layout)(handle);
             } break;
             case COMMAND_CREATE_BUFFER: {
                 Walrus_BufferHandle handle;
@@ -403,7 +405,7 @@ static void render_exec_command(CommandBuffer* buffer)
                 u16 flags;
                 command_buffer_read(buffer, u16, &flags);
 
-                s_renderer->buffer_create_fn(handle, data, size, flags);
+                POLY_FUNC(s_renderer, create_buffer)(handle, data, size, flags);
 
                 if (data) {
                     walrus_free(data);
@@ -413,7 +415,7 @@ static void render_exec_command(CommandBuffer* buffer)
                 Walrus_BufferHandle handle;
 
                 command_buffer_read(buffer, Walrus_BufferHandle, &handle);
-                s_renderer->buffer_destroy_fn(handle);
+                POLY_FUNC(s_renderer, destroy_buffer)(handle);
             } break;
             case COMMAND_UPDATE_BUFFER: {
                 Walrus_BufferHandle handle;
@@ -425,7 +427,7 @@ static void render_exec_command(CommandBuffer* buffer)
                 void* data;
                 command_buffer_read(buffer, void*, &data);
 
-                s_renderer->buffer_update_fn(handle, offset, size, data);
+                POLY_FUNC(s_renderer, update_buffer)(handle, offset, size, data);
 
                 if (data) {
                     walrus_free(data);
@@ -440,7 +442,7 @@ static void render_exec_command(CommandBuffer* buffer)
                 char* source;
                 command_buffer_read(buffer, char*, &source);
 
-                s_renderer->shader_create_fn(type, handle, source);
+                POLY_FUNC(s_renderer, create_shader)(type, handle, source);
 
                 if (source) {
                     walrus_free(source);
@@ -450,7 +452,7 @@ static void render_exec_command(CommandBuffer* buffer)
                 Walrus_ShaderHandle handle;
                 command_buffer_read(buffer, Walrus_ShaderHandle, &handle);
 
-                s_renderer->shader_destroy_fn(handle);
+                POLY_FUNC(s_renderer, destroy_shader)(handle);
             } break;
             case COMMAND_CREATE_PROGRAM: {
                 Walrus_ProgramHandle handle;
@@ -460,7 +462,7 @@ static void render_exec_command(CommandBuffer* buffer)
                 Walrus_ShaderHandle* shaders = walrus_new(Walrus_ShaderHandle, num);
                 command_buffer_read_data(buffer, shaders, sizeof(Walrus_ShaderHandle) * num);
 
-                s_renderer->program_create_fn(handle, shaders, num);
+                POLY_FUNC(s_renderer, create_program)(handle, shaders, num);
 
                 walrus_free(shaders);
             } break;
@@ -468,7 +470,7 @@ static void render_exec_command(CommandBuffer* buffer)
                 Walrus_ProgramHandle handle;
                 command_buffer_read(buffer, Walrus_ProgramHandle, &handle);
 
-                s_renderer->program_destroy_fn(handle);
+                POLY_FUNC(s_renderer, destroy_program)(handle);
             } break;
             case COMMAND_CREATE_TEXTURE: {
                 Walrus_TextureHandle handle;
@@ -478,7 +480,7 @@ static void render_exec_command(CommandBuffer* buffer)
                 void* data;
                 command_buffer_read(buffer, void*, &data);
 
-                s_renderer->texture_create_fn(handle, &info, data);
+                POLY_FUNC(s_renderer, create_texture)(handle, &info, data);
 
                 if (data) {
                     walrus_free(data);
@@ -488,7 +490,7 @@ static void render_exec_command(CommandBuffer* buffer)
                 Walrus_TextureHandle handle;
                 command_buffer_read(buffer, Walrus_TextureHandle, &handle);
 
-                s_renderer->texture_destroy_fn(handle);
+                POLY_FUNC(s_renderer, destroy_texture)(handle);
             } break;
             case COMMAND_RESIZE_TEXTURE: {
                 Walrus_TextureHandle handle;
@@ -504,7 +506,7 @@ static void render_exec_command(CommandBuffer* buffer)
                 u8 num_layers;
                 command_buffer_read(buffer, u8, &num_layers);
 
-                s_renderer->texture_resize_fn(handle, width, height, depth, num_mipmaps, num_layers);
+                POLY_FUNC(s_renderer, resize_texture)(handle, width, height, depth, num_mipmaps, num_layers);
             } break;
             case COMMAND_CREATE_UNIFORM: {
                 Walrus_UniformHandle handle;
@@ -515,13 +517,13 @@ static void render_exec_command(CommandBuffer* buffer)
                 command_buffer_read(buffer, u8, &len);
                 char const* name = command_buffer_skip_data(buffer, len);
 
-                s_renderer->uniform_create_fn(handle, name, size);
+                POLY_FUNC(s_renderer, create_uniform)(handle, name, size);
             } break;
             case COMMAND_DESTROY_UNIFORM: {
                 Walrus_UniformHandle handle;
                 command_buffer_read(buffer, Walrus_UniformHandle, &handle);
 
-                s_renderer->uniform_destroy_fn(handle);
+                POLY_FUNC(s_renderer, destroy_uniform)(handle);
             } break;
             case COMMAND_RESIZE_UNIFORM: {
                 Walrus_UniformHandle handle;
@@ -529,7 +531,7 @@ static void render_exec_command(CommandBuffer* buffer)
                 u32 size;
                 command_buffer_read(buffer, u32, &size);
 
-                s_renderer->uniform_resize_fn(handle, size);
+                POLY_FUNC(s_renderer, resize_uniform)(handle, size);
             } break;
             case COMMAND_CREATE_FRAMEBUFFER: {
                 Walrus_FramebufferHandle handle;
@@ -539,7 +541,7 @@ static void render_exec_command(CommandBuffer* buffer)
                 u8 num;
                 command_buffer_read(buffer, u8, &num);
 
-                s_renderer->framebuffer_create_fn(handle, attachments, num);
+                POLY_FUNC(s_renderer, create_framebuffer)(handle, attachments, num);
 
                 if (attachments) {
                     walrus_free(attachments);
@@ -549,7 +551,7 @@ static void render_exec_command(CommandBuffer* buffer)
                 Walrus_FramebufferHandle handle;
                 command_buffer_read(buffer, Walrus_FramebufferHandle, &handle);
 
-                s_renderer->framebuffer_destroy_fn(handle);
+                POLY_FUNC(s_renderer, destroy_framebuffer)(handle);
             } break;
         }
     } while (!end);
@@ -791,7 +793,7 @@ Walrus_RenderResult walrus_rhi_render_frame(i32 ms)
         render_exec_command(&s_ctx->render_frame->cmd_pre);
         {
             if (s_ctx->initialized) {
-                s_renderer->submit_fn(s_ctx->render_frame);
+                POLY_FUNC(s_renderer, submit)(s_ctx->render_frame);
             }
         }
         render_exec_command(&s_ctx->render_frame->cmd_post);

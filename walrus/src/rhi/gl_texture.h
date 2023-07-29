@@ -1,4 +1,4 @@
-#include "gl_context.h"
+#include "gl_renderer.h"
 
 void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo const *info, void const *data);
 

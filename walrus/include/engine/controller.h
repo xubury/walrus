@@ -14,6 +14,7 @@ typedef void (*Walrus_ControllerInitCallback)(Walrus_Controller *controller);
 typedef void (*Walrus_ControllerShutdownCallback)(Walrus_Controller *controller);
 
 struct Walrus_ControllerEvent {
+    Walrus_InputMap  *map;
     ecs_entity_t      entity;
     Walrus_Transform *transform;
     f32               delta_time;

@@ -102,24 +102,24 @@ void gl_shader_create(Walrus_ShaderType type, Walrus_ShaderHandle handle, char c
         walrus_assert_msg(succ, "Shader compile error: %s\n%s", log, source);
         walrus_free(log);
     }
-    gl_ctx->shaders[handle.id] = shader;
+    gl_renderer->shaders[handle.id] = shader;
 }
 
 void gl_shader_destroy(Walrus_ShaderHandle handle)
 {
-    glDeleteShader(gl_ctx->shaders[handle.id]);
-    gl_ctx->shaders[handle.id] = 0;
+    glDeleteShader(gl_renderer->shaders[handle.id]);
+    gl_renderer->shaders[handle.id] = 0;
 }
 
 void gl_program_create(Walrus_ProgramHandle handle, Walrus_ShaderHandle *shaders, u32 num)
 {
     GLuint     id         = glCreateProgram();
-    GlProgram *prog       = &gl_ctx->programs[handle.id];
+    GlProgram *prog       = &gl_renderer->programs[handle.id];
     prog->id              = id;
     prog->buffer          = NULL;
     prog->num_predefineds = 0;
     for (u32 i = 0; i < num; ++i) {
-        glAttachShader(id, gl_ctx->shaders[shaders[i].id]);
+        glAttachShader(id, gl_renderer->shaders[shaders[i].id]);
     }
 
     glLinkProgram(id);
@@ -207,12 +207,12 @@ void gl_program_create(Walrus_ProgramHandle handle, Walrus_ShaderHandle *shaders
                 prog->predefineds[prog->num_predefineds].type = predefined_type;
                 ++prog->num_predefineds;
             }
-            else if (walrus_hash_table_contains(gl_ctx->uniform_registry, name)) {
+            else if (walrus_hash_table_contains(gl_renderer->uniform_registry, name)) {
                 if (prog->buffer == NULL) {
                     prog->buffer = uniform_buffer_create(1024);
                 }
                 Walrus_UniformHandle uni_handle;
-                uni_handle.id = walrus_ptr_to_val(walrus_hash_table_lookup(gl_ctx->uniform_registry, name));
+                uni_handle.id = walrus_ptr_to_val(walrus_hash_table_lookup(gl_renderer->uniform_registry, name));
                 uniform_buffer_write_uniform_handle(prog->buffer, type, loc, uni_handle, num);
             }
             else {
@@ -227,7 +227,7 @@ void gl_program_create(Walrus_ProgramHandle handle, Walrus_ShaderHandle *shaders
 
 void gl_program_destroy(Walrus_ProgramHandle handle)
 {
-    GlProgram *prog = &gl_ctx->programs[handle.id];
+    GlProgram *prog = &gl_renderer->programs[handle.id];
     glDeleteProgram(prog->id);
     prog->id = 0;
 

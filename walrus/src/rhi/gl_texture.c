@@ -123,7 +123,7 @@ void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo con
     bool const msaa_sample    = info->flags & WR_RHI_TEXTURE_MSAA_SAMPLE;
     u32        msaa_quality   = ((info->flags & WR_RHI_TEXTURE_RT_MSAA_MASK) >> WR_RHI_TEXTURE_RT_MSAA_SHIFT);
     msaa_quality              = walrus_u32satsub(msaa_quality, 1);
-    msaa_quality              = walrus_min(msaa_quality == 0 ? 0 : 1 << msaa_quality, gl_ctx->max_msaa);
+    msaa_quality              = walrus_min(msaa_quality == 0 ? 0 : 1 << msaa_quality, gl_renderer->max_msaa);
     bool const srgb           = info->flags & WR_RHI_TEXTURE_SRGB;
     bool const render_target  = info->flags & WR_RHI_TEXTURE_RT_MASK;
     bool const write_only     = info->flags & WR_RHI_TEXTURE_RT_WRITE_ONLY;
@@ -216,28 +216,28 @@ void gl_texture_create(Walrus_TextureHandle handle, Walrus_TextureCreateInfo con
     }
     glBindTexture(target, 0);
 
-    gl_ctx->textures[handle.id].id          = id;
-    gl_ctx->textures[handle.id].rbo         = rbo;
-    gl_ctx->textures[handle.id].target      = target;
-    gl_ctx->textures[handle.id].width       = info->width;
-    gl_ctx->textures[handle.id].height      = info->height;
-    gl_ctx->textures[handle.id].format      = info->format;
-    gl_ctx->textures[handle.id].flags       = info->flags;
-    gl_ctx->textures[handle.id].num_mipmaps = info->num_mipmaps;
-    gl_ctx->textures[handle.id].gl          = gl_format;
+    gl_renderer->textures[handle.id].id          = id;
+    gl_renderer->textures[handle.id].rbo         = rbo;
+    gl_renderer->textures[handle.id].target      = target;
+    gl_renderer->textures[handle.id].width       = info->width;
+    gl_renderer->textures[handle.id].height      = info->height;
+    gl_renderer->textures[handle.id].format      = info->format;
+    gl_renderer->textures[handle.id].flags       = info->flags;
+    gl_renderer->textures[handle.id].num_mipmaps = info->num_mipmaps;
+    gl_renderer->textures[handle.id].gl          = gl_format;
 }
 
 void gl_texture_destroy(Walrus_TextureHandle handle)
 {
-    glDeleteTextures(1, &gl_ctx->textures[handle.id].id);
-    glDeleteRenderbuffers(1, &gl_ctx->textures[handle.id].rbo);
-    gl_ctx->textures[handle.id].id  = 0;
-    gl_ctx->textures[handle.id].rbo = 0;
+    glDeleteTextures(1, &gl_renderer->textures[handle.id].id);
+    glDeleteRenderbuffers(1, &gl_renderer->textures[handle.id].rbo);
+    gl_renderer->textures[handle.id].id  = 0;
+    gl_renderer->textures[handle.id].rbo = 0;
 }
 
 void gl_texture_resize(Walrus_TextureHandle handle, u32 width, u32 height, u32 depth, u8 num_mipmaps, u8 num_layers)
 {
-    GlTexture               *tex  = &gl_ctx->textures[handle.id];
+    GlTexture               *tex  = &gl_renderer->textures[handle.id];
     Walrus_TextureCreateInfo info = {0};
     info.width                    = width;
     info.height                   = height;

@@ -125,7 +125,7 @@ static void render(ImDrawData *data)
         walrus_rhi_set_view_clear(s_ctx->view_id, WR_RHI_CLEAR_NONE, 0, 0, 0);
         walrus_rhi_set_view_rect(s_ctx->view_id, 0, 0, width, height);
         mat4 proj;
-        glm_ortho(x, x + width, y + height, y, 0, 1000, proj);
+        glm_ortho(x, x + width, y + height, y, -1, 1, proj);
         walrus_rhi_set_view_transform(s_ctx->view_id, GLM_MAT4_IDENTITY, proj);
         walrus_rhi_set_view_mode(s_ctx->view_id, WR_RHI_VIEWMODE_SEQUENTIAL);
     }

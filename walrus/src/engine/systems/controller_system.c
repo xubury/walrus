@@ -9,12 +9,11 @@ static void controller_tick(ecs_iter_t *it)
     Walrus_Transform  *transforms  = ecs_field(it, Walrus_Transform, 2);
 
     for (i32 i = 0; i < it->count; ++i) {
-        Walrus_ControllerEvent event = {.entity     = it->entities[i],
+        Walrus_ControllerEvent event = {.map        = &controllers[i].map,
+                                        .entity     = it->entities[i],
                                         .transform  = &transforms[i],
                                         .delta_time = it->delta_time,
                                         .userdata   = controllers[i].userdata};
-
-        walrus_input_map_tick(&controllers[i].map, controllers[i].userdata);
         controllers[i].tick(&event);
     }
 }

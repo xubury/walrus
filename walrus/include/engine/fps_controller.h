@@ -7,10 +7,8 @@
 
 typedef struct {
     vec3 smooth_translation;
-    vec3 translation;
 
     vec2 smooth_rotation;
-    vec2 rotation;
 
     f32  speed;
     vec2 rotate_speed;

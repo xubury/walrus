@@ -2,65 +2,51 @@
 
 #include <core/hash.h>
 #include <core/semaphore.h>
+#include <core/cpoly.h>
 
 #include "frame.h"
 #include "uniform_buffer.h"
 
-typedef void (*RhiSubmitFn)(RenderFrame *frame);
-
-typedef void (*RhiCreateShaderFn)(Walrus_ShaderType type, Walrus_ShaderHandle handle, char const *source);
-typedef void (*RhiDestroyShaderFn)(Walrus_ShaderHandle handle);
-typedef void (*RhiCreateProgramFn)(Walrus_ProgramHandle handle, Walrus_ShaderHandle *shaders, u32 num);
-typedef void (*RhiDestroyProgramFn)(Walrus_ProgramHandle handle);
-
-typedef void (*RhiCreateUniformFn)(Walrus_UniformHandle handle, const char *name, u32 size);
-typedef void (*RhiDestroyUniformFn)(Walrus_UniformHandle handle);
-typedef void (*RhiResizeUniformFn)(Walrus_UniformHandle handle, u32 size);
-typedef void (*RhiUpdateUniformFn)(Walrus_UniformHandle handle, u32 offset, u32 size, void const *data);
-
-typedef void (*RhiCreateVertexLayoutFn)(Walrus_LayoutHandle handle, Walrus_VertexLayout const *layout);
-typedef void (*RhiDestroyVertexLayoutFn)(Walrus_LayoutHandle handle);
-
-typedef void (*RhiCreateBufferFn)(Walrus_BufferHandle handle, void const *data, u64 size, u16 flags);
-typedef void (*RhiDestroyBufferFn)(Walrus_BufferHandle handle);
-typedef void (*RhiUpdateBufferFn)(Walrus_BufferHandle handle, u64 offset, u64 size, void const *data);
-
-typedef void (*RhiCreateTextureFn)(Walrus_TextureHandle handle, Walrus_TextureCreateInfo const *info, void const *data);
-typedef void (*RhiDestroyTextureFn)(Walrus_TextureHandle handle);
-typedef void (*RhiResizeTextureFn)(Walrus_TextureHandle handle, u32 width, u32 height, u32 depth, u8 num_mipmaps,
-                                   u8 num_layers);
-
-typedef void (*RhiCreateFramebuffer)(Walrus_FramebufferHandle handle, Walrus_Attachment *attachments, u8 num);
-typedef void (*RhiDestroyFramebuffer)(Walrus_FramebufferHandle handle);
-
 typedef struct {
-    RhiSubmitFn submit_fn;
+    POLY_TABLE(Renderer, POLY_INTERFACE(init), POLY_INTERFACE(shutdown), POLY_INTERFACE(submit),
+               POLY_INTERFACE(create_shader), POLY_INTERFACE(destroy_shader), POLY_INTERFACE(create_program),
+               POLY_INTERFACE(destroy_program), POLY_INTERFACE(create_uniform), POLY_INTERFACE(destroy_uniform),
+               POLY_INTERFACE(resize_uniform), POLY_INTERFACE(update_uniform), POLY_INTERFACE(create_vertex_layout),
+               POLY_INTERFACE(destroy_vertex_layout), POLY_INTERFACE(create_buffer), POLY_INTERFACE(destroy_buffer),
+               POLY_INTERFACE(update_buffer), POLY_INTERFACE(create_texture), POLY_INTERFACE(destroy_texture),
+               POLY_INTERFACE(resize_texture), POLY_INTERFACE(create_framebuffer), POLY_INTERFACE(destroy_framebuffer))
+} Renderer;
 
-    RhiCreateShaderFn  shader_create_fn;
-    RhiDestroyShaderFn shader_destroy_fn;
+POLY_PROTOTYPE(void, init, Renderer *renderer, Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *caps)
+POLY_PROTOTYPE(void, shutdown, void)
 
-    RhiCreateProgramFn  program_create_fn;
-    RhiDestroyProgramFn program_destroy_fn;
+POLY_PROTOTYPE(void, submit, RenderFrame *frame)
 
-    RhiCreateUniformFn  uniform_create_fn;
-    RhiDestroyUniformFn uniform_destroy_fn;
-    RhiResizeUniformFn  uniform_resize_fn;
-    RhiUpdateUniformFn  uniform_update_fn;
+POLY_PROTOTYPE(void, create_shader, Walrus_ShaderType type, Walrus_ShaderHandle handle, char const *source)
+POLY_PROTOTYPE(void, destroy_shader, Walrus_ShaderHandle handle)
 
-    RhiCreateVertexLayoutFn  vertex_layout_create_fn;
-    RhiDestroyVertexLayoutFn vertex_layout_destroy_fn;
+POLY_PROTOTYPE(void, create_program, Walrus_ProgramHandle handle, Walrus_ShaderHandle *shaders, u32 num)
+POLY_PROTOTYPE(void, destroy_program, Walrus_ProgramHandle handle)
 
-    RhiCreateBufferFn  buffer_create_fn;
-    RhiDestroyBufferFn buffer_destroy_fn;
-    RhiUpdateBufferFn  buffer_update_fn;
+POLY_PROTOTYPE(void, create_uniform, Walrus_UniformHandle handle, const char *name, u32 size)
+POLY_PROTOTYPE(void, destroy_uniform, Walrus_UniformHandle handle)
+POLY_PROTOTYPE(void, resize_uniform, Walrus_UniformHandle handle, u32 size)
+POLY_PROTOTYPE(void, update_uniform, Walrus_UniformHandle handle, u32 offset, u32 size, void const *data)
 
-    RhiCreateTextureFn  texture_create_fn;
-    RhiDestroyTextureFn texture_destroy_fn;
-    RhiResizeTextureFn  texture_resize_fn;
+POLY_PROTOTYPE(void, create_vertex_layout, Walrus_LayoutHandle handle, Walrus_VertexLayout const *layout)
+POLY_PROTOTYPE(void, destroy_vertex_layout, Walrus_LayoutHandle handle)
 
-    RhiCreateFramebuffer  framebuffer_create_fn;
-    RhiDestroyFramebuffer framebuffer_destroy_fn;
-} RhiRenderer;
+POLY_PROTOTYPE(void, create_buffer, Walrus_BufferHandle handle, void const *data, u64 size, u16 flags)
+POLY_PROTOTYPE(void, destroy_buffer, Walrus_BufferHandle handle)
+POLY_PROTOTYPE(void, update_buffer, Walrus_BufferHandle handle, u64 offset, u64 size, void const *data)
+
+POLY_PROTOTYPE(void, create_texture, Walrus_TextureHandle handle, Walrus_TextureCreateInfo const *info,
+               void const *data)
+POLY_PROTOTYPE(void, destroy_texture, Walrus_TextureHandle handle)
+POLY_PROTOTYPE(void, resize_texture, Walrus_TextureHandle handle, u32 width, u32 height, u32 depth, u8 num_mipmaps,
+               u8 num_layers)
+POLY_PROTOTYPE(void, create_framebuffer, Walrus_FramebufferHandle handle, Walrus_Attachment *attachments, u8 num)
+POLY_PROTOTYPE(void, destroy_framebuffer, Walrus_FramebufferHandle handle)
 
 typedef struct {
     char              *name;
@@ -173,10 +159,6 @@ void renderer_uniform_updates(UniformBuffer *uniform, u32 begin, u32 end);
 u8 get_predefined_type(char const *name);
 
 char const *get_glsl_header(void);
-
-void gl_backend_init(Walrus_RhiCreateInfo const *info, Walrus_RhiCapabilities *caps, RhiRenderer *renderer);
-
-void gl_backend_shutdown(void);
 
 WR_INLINE u64 pack_stencil(u64 fstencil, u64 bstencil)
 {

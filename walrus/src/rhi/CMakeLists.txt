@@ -3,7 +3,7 @@ add_library(
   command_buffer.c
   frame.c
   rhi.c
-  gl_context.c
+  gl_renderer.c
   gl_framebuffer.c
   gl_shader.c
   gl_texture.c

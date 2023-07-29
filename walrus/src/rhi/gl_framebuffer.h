@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gl_context.h"
+#include "gl_renderer.h"
 
 void gl_framebuffer_create(Walrus_FramebufferHandle handle, Walrus_Attachment *attachments, u8 num);
 
