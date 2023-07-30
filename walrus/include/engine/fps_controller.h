@@ -17,8 +17,4 @@ typedef struct {
     mat3 ground_transform;
 } Walrus_FpsController;
 
-void walrus_fps_controller_init(Walrus_Controller *controller);
-
-void walrus_fps_controller_tick(Walrus_ControllerEvent *event);
-
-void walrus_fps_controller_shutdown(Walrus_Controller *controller);
+POLY_DECLARE_DERIVED(Walrus_Controller, Walrus_FpsController, walrus_fps_controller)

@@ -9,12 +9,12 @@ static void controller_tick(ecs_iter_t *it)
     Walrus_Transform  *transforms  = ecs_field(it, Walrus_Transform, 2);
 
     for (i32 i = 0; i < it->count; ++i) {
-        Walrus_ControllerEvent event = {.map        = &controllers[i].map,
-                                        .entity     = it->entities[i],
-                                        .transform  = &transforms[i],
-                                        .delta_time = it->delta_time,
-                                        .userdata   = controllers[i].userdata};
-        controllers[i].tick(&event);
+        Walrus_ControllerEvent event = {
+            .entity     = it->entities[i],
+            .transform  = &transforms[i],
+            .delta_time = it->delta_time,
+        };
+        POLY_FUNC(&controllers[i], tick)(&controllers[i], &event);
     }
 }
 
@@ -23,8 +23,8 @@ static void on_controller_add(ecs_iter_t *it)
     Walrus_Controller *controller = ecs_field(it, Walrus_Controller, 1);
 
     walrus_input_map_init(&controller->map);
-    if (controller->init) {
-        controller->init(controller);
+    if (POLY_FUNC(controller, init)) {
+        POLY_FUNC(controller, init)(controller);
     }
 }
 
@@ -32,8 +32,8 @@ static void on_controller_remove(ecs_iter_t *it)
 {
     Walrus_Controller *controller = ecs_field(it, Walrus_Controller, 1);
 
-    if (controller->shutdown) {
-        controller->shutdown(controller);
+    if (POLY_FUNC(controller, shutdown)) {
+        POLY_FUNC(controller, shutdown)(controller);
     }
     walrus_input_map_shutdown(&controller->map);
 }

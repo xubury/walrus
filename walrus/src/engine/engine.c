@@ -204,8 +204,8 @@ static void event_process(void)
                 break;
         }
         walrus_imgui_process_event(&e);
-        if (app->event) {
-            app->event(app, &e);
+        if (POLY_FUNC(app, on_app_event)) {
+            POLY_FUNC(app, on_app_event)(app, &e);
         }
     }
 }
@@ -234,25 +234,26 @@ static void engine_frame(void)
 
     input_timer += sec_elapesd;
 
+    void (*tick)(Walrus_App *, f32) = POLY_FUNC(app, on_app_tick);
     while (sec_elapesd > max_spf) {
         sec_elapesd -= max_spf;
-        if (app->tick) {
-            app->tick(app, max_spf);
+        if (tick) {
+            tick(app, max_spf);
         }
         ecs_progress(ecs, max_spf);
     }
 
     if (sec_elapesd > 0) {
-        if (app->tick) {
-            app->tick(app, sec_elapesd);
+        if (tick) {
+            tick(app, sec_elapesd);
         }
         ecs_progress(ecs, sec_elapesd);
     }
 
     walrus_render_system_render();
     walrus_editor_system_render();
-    if (app->render) {
-        app->render(app);
+    if (POLY_FUNC(app, on_app_render)) {
+        POLY_FUNC(app, on_app_render)(app);
     }
 
     if (input_timer > 1.0 / 60.0) {
@@ -384,7 +385,7 @@ void walrus_engine_shutdown(void)
 
 static Walrus_AppError app_init(Walrus_App *app)
 {
-    Walrus_AppError err = app->init(app);
+    Walrus_AppError err = POLY_FUNC(app, on_app_init)(app);
     if (err == WR_APP_SUCCESS) {
         s_engine->quit = false;
         s_engine->app  = app;
@@ -395,8 +396,8 @@ static Walrus_AppError app_init(Walrus_App *app)
 static void app_shutdown(void)
 {
     Walrus_App *app = s_engine->app;
-    if (app->shutdown) {
-        app->shutdown(app);
+    if (POLY_FUNC(app, on_app_shutdown)) {
+        POLY_FUNC(app, on_app_shutdown)(app);
     }
     s_engine->app = NULL;
 }
