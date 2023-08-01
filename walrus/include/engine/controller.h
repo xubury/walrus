@@ -17,9 +17,10 @@ struct Walrus_ControllerEvent {
 
 struct Walrus_Controller {
     Walrus_InputMap map;
-    POLY_TABLE(Walrus_Controller, POLY_INTERFACE(init), POLY_INTERFACE(shutdown), POLY_INTERFACE(tick))
+    POLY_TABLE(Walrus_Controller, POLY_INTERFACE(controller_init), POLY_INTERFACE(controller_shutdown),
+               POLY_INTERFACE(controller_tick))
 };
 
-POLY_PROTOTYPE(void, shutdown, Walrus_Controller *controller)
-POLY_PROTOTYPE(void, init, Walrus_Controller *controller)
-POLY_PROTOTYPE(void, tick, Walrus_Controller *controller, Walrus_ControllerEvent *event)
+POLY_PROTOTYPE(void, controller_init, Walrus_Controller *controller)
+POLY_PROTOTYPE(void, controller_shutdown, Walrus_Controller *controller)
+POLY_PROTOTYPE(void, controller_tick, Walrus_Controller *controller, Walrus_ControllerEvent *event)

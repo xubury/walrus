@@ -3,7 +3,6 @@
 #include <core/type.h>
 #include <core/transform.h>
 #include <engine/controller.h>
-#include <engine/input_map.h>
 
 typedef struct {
     vec3 smooth_translation;

@@ -18,20 +18,22 @@
 
 #define POLY_IMPL(name, impl) [POLY_INTERFACE(name)] = POLY_FUNC_PTR(name)(impl)
 
+typedef void (*PolyFreeFunc)(void *);
+
 typedef struct {
     char const *const type;
     void *const      *interfaces;
 } POLY_TYPE(table);
 
-#define POLY_DECLARE_DERIVED(base, derived, ctor) extern base ctor(derived *ptr);
-#define POLY_DEFINE_DERIVED(base, derived, ctor, ...)                                         \
-    base ctor(derived *ptr)                                                                   \
-    {                                                                                         \
-        static void *interfaces[POLY_TYPE(base)] = {0};                                       \
-        void        *tmp[]                       = {__VA_ARGS__};                             \
-        memcpy(interfaces, tmp, sizeof(tmp));                                                 \
-        static POLY_TYPE(table) const tbl = {.type = #derived, .interfaces = &interfaces[0]}; \
-        return (base){.POLY_VAR(self) = ptr, .POLY_VAR(table) = &tbl};                        \
+#define POLY_DECLARE_DERIVED(base, derived, ctor) extern base ctor(derived *ptr, PolyFreeFunc _dtor);
+#define POLY_DEFINE_DERIVED(base, derived, ctor, ...)                                          \
+    base ctor(derived *ptr, PolyFreeFunc dtor)                                                 \
+    {                                                                                          \
+        static void *interfaces[POLY_TYPE(base)] = {0};                                        \
+        void        *tmp[]                       = {__VA_ARGS__};                              \
+        memcpy(interfaces, tmp, sizeof(tmp));                                                  \
+        static POLY_TYPE(table) const tbl = {.type = #derived, .interfaces = &interfaces[0]};  \
+        return (base){.POLY_VAR(self) = ptr, .POLY_VAR(dtor) = dtor, .POLY_VAR(table) = &tbl}; \
     }
 
 #define POLY_TABLE(base, ...)               \
@@ -39,6 +41,7 @@ typedef struct {
         __VA_ARGS__,                        \
         POLY_TYPE(base)                     \
     };                                      \
+    PolyFreeFunc            POLY_VAR(dtor); \
     void                   *POLY_VAR(self); \
     POLY_TYPE(table) const *POLY_VAR(table);
 
@@ -48,3 +51,9 @@ typedef struct {
 
 #define poly_safe_cast(base, derived) \
     (strcmp((base)->POLY_VAR(table)->type, #derived) == 0 ? (derived *)(base)->POLY_VAR(self) : 0)
+
+#define poly_free(base)                                                 \
+    {                                                                   \
+        if ((base)->_poly_dtor) (base)->_poly_dtor((base)->_poly_self); \
+        (base)->_poly_self = NULL;                                      \
+    }

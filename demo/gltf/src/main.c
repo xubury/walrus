@@ -22,28 +22,28 @@ static void hello_world_ui(ecs_world_t *ecs, ecs_entity_t e)
     static i32 lod = 0;
     igInputInt("LOD", &lod, 1, 1, 0);
 }
-typedef struct {
-    Walrus_FpsController fc;
-} MyApp;
 
-Walrus_AppError on_init(Walrus_App *app)
+typedef i32 MyApp;
+
+static Walrus_AppError on_init(Walrus_App *app)
 {
-    Walrus_FpsController *fc = &poly_cast(app, MyApp)->fc;
+    walrus_unused(app);
 
     ecs_world_t *ecs = walrus_engine_vars()->ecs;
 
     ecs_entity_t camera = ecs_new_id(ecs);
     ecs_set(ecs, camera, Walrus_Transform, {.rot = {0, 0, 0, 1}, .trans = {0, 2, 5}, .scale = {1, 1, 1}});
 
-    *fc                 = (Walrus_FpsController){.speed = 10, .rotate_speed = {3, 3}, .smoothness = 20};
-    Walrus_Controller c = walrus_fps_controller(fc);
+    Walrus_FpsController *fps = walrus_malloc(sizeof(Walrus_FpsController));
+    *fps                      = (Walrus_FpsController){.speed = 10, .rotate_speed = {3, 3}, .smoothness = 20};
+    Walrus_Controller c       = walrus_fps_controller(fps, walrus_free);
+
     ecs_set_ptr(ecs, camera, Walrus_Controller, &c);
 
     ecs_set(ecs, camera, Walrus_Camera,
             {.fov = glm_rad(45.0), .aspect = 1440.0 / 900, .near_z = 0.01, .far_z = 1000.0});
     ecs_set(ecs, camera, Walrus_Renderer,
             {.x = 0, .y = 0, .width = 1440, .height = 900, .active = true, .framebuffer = {WR_INVALID_HANDLE}});
-    /* ecs_set(ecs, camera, Walrus_EditorWindow, {.name = "213"}); */
 
     walrus_model_system_load_from_file("shibahu", "assets/gltf/shibahu/scene.gltf");
     walrus_model_system_load_from_file("cubes", "assets/gltf/EmissiveStrengthTest.gltf");
@@ -65,7 +65,7 @@ Walrus_AppError on_init(Walrus_App *app)
     return WR_APP_SUCCESS;
 }
 
-void on_event(Walrus_App *app, Walrus_Event *e)
+static void on_event(Walrus_App *app, Walrus_Event *e)
 {
     walrus_unused(app);
 
@@ -81,9 +81,13 @@ POLY_DEFINE_DERIVED(Walrus_App, MyApp, my_app_create, POLY_IMPL(on_app_init, on_
 
 int main(void)
 {
-    MyApp      myApp;
-    Walrus_App app = my_app_create(&myApp);
+    MyApp my_app;
+
+    Walrus_App app = my_app_create(&my_app, NULL);
     walrus_engine_init_run("gltf", 1440, 900, &app);
+
+    // Just in case
+    poly_free(&app);
 
     return 0;
 }

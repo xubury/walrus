@@ -75,5 +75,12 @@ static void fps_controller_tick(Walrus_Controller *controller, Walrus_Controller
     }
 }
 
+static void fps_controller_shutdown(Walrus_Controller *controller)
+{
+    walrus_input_clear(&controller->map, "FpsMovement");
+    walrus_input_clear(&controller->map, "FpsRotation");
+}
+
 POLY_DEFINE_DERIVED(Walrus_Controller, Walrus_FpsController, walrus_fps_controller,
-                    POLY_IMPL(init, fps_controller_init), POLY_IMPL(tick, fps_controller_tick))
+                    POLY_IMPL(controller_init, fps_controller_init), POLY_IMPL(controller_tick, fps_controller_tick),
+                    POLY_IMPL(controller_shutdown, fps_controller_shutdown))

@@ -225,7 +225,7 @@ void renderer_create(Walrus_RhiCreateInfo const* info)
 
     if (info->flags & WR_RHI_FLAG_OPENGL) {
         static GlRenderer gl_renderer = {0};
-        *s_renderer = gl_create(&gl_renderer);
+        *s_renderer = gl_create(&gl_renderer, NULL);
     }
     else {
         walrus_assert_msg(false, "No render backend specifed");
@@ -237,6 +237,8 @@ void renderer_create(Walrus_RhiCreateInfo const* info)
 void renderer_destroy(void)
 {
     POLY_FUNC(s_renderer, shutdown)();
+
+    poly_free(s_renderer);
 
     walrus_free(s_renderer);
 
