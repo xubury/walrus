@@ -29,7 +29,9 @@ static Walrus_AppError on_init(Walrus_App *app)
 {
     walrus_unused(app);
 
-    ecs_world_t *ecs = walrus_engine_vars()->ecs;
+    ecs_world_t   *ecs   = walrus_engine_vars()->ecs;
+    Walrus_System *model = walrus_engine_vars()->model;
+    walrus_assert(ecs == model->ecs);
 
     ecs_entity_t camera = ecs_new_id(ecs);
     ecs_set(ecs, camera, Walrus_Transform, {.rot = {0, 0, 0, 1}, .trans = {0, 2, 5}, .scale = {1, 1, 1}});
@@ -45,14 +47,15 @@ static Walrus_AppError on_init(Walrus_App *app)
     ecs_set(ecs, camera, Walrus_Renderer,
             {.x = 0, .y = 0, .width = 1440, .height = 900, .active = true, .framebuffer = {WR_INVALID_HANDLE}});
 
-    walrus_model_system_load_from_file("shibahu", "assets/gltf/shibahu/scene.gltf");
-    walrus_model_system_load_from_file("cubes", "assets/gltf/EmissiveStrengthTest.gltf");
+    walrus_model_system_load_from_file(model, "shibahu", "assets/gltf/shibahu/scene.gltf");
+    walrus_model_system_load_from_file(model, "cubes", "assets/gltf/EmissiveStrengthTest.gltf");
 
     ecs_entity_t character =
-        walrus_model_instantiate("shibahu", (vec3){-2, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1});
+        walrus_model_instantiate(model, "shibahu", (vec3){-2, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1});
     ecs_set(ecs, character, Walrus_Animator, {0});
     ecs_set(ecs, character, Walrus_TransformGuizmo, {.op = TRANSLATE, .mode = WORLD});
-    ecs_entity_t cubes = walrus_model_instantiate("cubes", (vec3){0, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1});
+    ecs_entity_t cubes =
+        walrus_model_instantiate(model, "cubes", (vec3){0, 0, 0}, (versor){0, 0, 0, 1}, (vec3){1, 1, 1});
     ecs_set(ecs, cubes, Walrus_TransformGuizmo, {.op = TRANSLATE, .mode = WORLD});
 
     ecs_entity_t window = ecs_set(ecs, 0, Walrus_EditorWindow, {.name = "hello world"});

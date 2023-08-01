@@ -1,8 +1,8 @@
 #include <engine/systems/editor_system.h>
-#include <engine/engine.h>
 #include <engine/systems/transform_system.h>
 #include <engine/systems/render_system.h>
 #include <engine/renderer.h>
+#include <rhi/rhi.h>
 
 ECS_COMPONENT_DECLARE(Walrus_TransformGuizmo);
 ECS_COMPONENT_DECLARE(Walrus_EditorWindow);
@@ -84,9 +84,9 @@ static void editor_window_ui(ecs_iter_t *it)
     }
 }
 
-void walrus_editor_system_init(void)
+static void editor_system_init(Walrus_System *sys)
 {
-    ecs_world_t *ecs = walrus_engine_vars()->ecs;
+    ecs_world_t *ecs = sys->ecs;
     ECS_COMPONENT_DEFINE(ecs, Walrus_TransformGuizmo);
     ECS_COMPONENT_DEFINE(ecs, Walrus_EditorWindow);
     ECS_COMPONENT_DEFINE(ecs, Walrus_EditorWidget);
@@ -97,9 +97,9 @@ void walrus_editor_system_init(void)
     ECS_SYSTEM_DEFINE(ecs, transform_guizmo_ui, 0, Walrus_Transform, Walrus_TransformGuizmo);
 }
 
-void walrus_editor_system_render(void)
+static void editor_system_render(Walrus_System *sys)
 {
-    ecs_world_t *ecs = walrus_engine_vars()->ecs;
+    ecs_world_t *ecs = sys->ecs;
 
     u32 width, height;
     walrus_rhi_get_resolution(&width, &height);
@@ -110,3 +110,6 @@ void walrus_editor_system_render(void)
 
     walrus_imgui_end_frame();
 }
+
+POLY_DEFINE_DERIVED(Walrus_System, EditorSystem, editor_system_create, POLY_IMPL(on_system_init, editor_system_init),
+                    POLY_IMPL(on_system_render, editor_system_render))

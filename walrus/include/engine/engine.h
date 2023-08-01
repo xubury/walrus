@@ -4,6 +4,7 @@
 #include <engine/app.h>
 #include <engine/window.h>
 #include <engine/input.h>
+#include <engine/systems/model_system.h>
 #include <rhi/rhi.h>
 
 #include <flecs.h>
@@ -24,6 +25,7 @@ typedef struct {
     Walrus_Window *window;
     Walrus_Input  *input;
     ecs_world_t   *ecs;
+    Walrus_System *model;
 } Walrus_EngineVars;
 
 typedef struct Walrus_Engine Walrus_Engine;

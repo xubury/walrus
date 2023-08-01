@@ -1,6 +1,7 @@
 #pragma once
 
-#include <engine/camera.h>
-#include <flecs.h>
+#include <engine/system.h>
 
-void walrus_camera_system_init(void);
+typedef void* CameraSystem;
+
+POLY_DECLARE_DERIVED(Walrus_System, CameraSystem, camera_system_create)

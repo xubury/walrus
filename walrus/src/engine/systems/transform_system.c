@@ -1,6 +1,7 @@
 #include <engine/systems/transform_system.h>
 #include <core/log.h>
-#include <engine/engine.h>
+#include <core/macro.h>
+#include <core/math.h>
 
 ECS_COMPONENT_DECLARE(Walrus_Transform);
 ECS_COMPONENT_DECLARE(Walrus_LocalTransform);
@@ -53,9 +54,9 @@ static void on_transform_add(ecs_iter_t *it)
     }
 }
 
-void walrus_transform_system_init(void)
+static void transform_system_init(Walrus_System *sys)
 {
-    ecs_world_t *ecs = walrus_engine_vars()->ecs;
+    ecs_world_t *ecs = sys->ecs;
     ECS_COMPONENT_DEFINE(ecs, Walrus_Transform);
     ECS_COMPONENT_DEFINE(ecs, Walrus_LocalTransform);
 
@@ -71,3 +72,6 @@ void walrus_transform_system_init(void)
                     },
                 .callback = transform_tick});
 }
+
+POLY_DEFINE_DERIVED(Walrus_System, TransformSystem, transform_system_create,
+                    POLY_IMPL(on_system_init, transform_system_init))

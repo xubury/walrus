@@ -1,6 +1,8 @@
 #pragma once
 
 #include <engine/editor.h>
+#include <engine/system.h>
 
-void walrus_editor_system_init(void);
-void walrus_editor_system_render(void);
+typedef void* EditorSystem;
+
+POLY_DECLARE_DERIVED(Walrus_System, EditorSystem, editor_system_create)

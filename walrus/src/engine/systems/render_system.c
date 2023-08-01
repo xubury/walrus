@@ -7,14 +7,12 @@
 #include <engine/systems/pipelines/hdr_pipeline.h>
 
 #include <engine/frame_graph.h>
-#include <engine/engine.h>
+#include <rhi/rhi.h>
 
 #include <core/macro.h>
 #include <core/memory.h>
 #include <core/assert.h>
 #include <core/math.h>
-
-static Walrus_FrameGraph s_render_graph;
 
 ECS_COMPONENT_DECLARE(Walrus_Renderer);
 ECS_COMPONENT_DECLARE(Walrus_RenderMesh);
@@ -30,13 +28,12 @@ ECS_SYSTEM_DECLARE(renderer_run);
 #define CULLING_PASS           "CullingPass"
 #define HDR_PASS               "HDRPass"
 
-static Walrus_FramebufferHandle s_backrt;
-
 static void on_model_add(ecs_iter_t *it)
 {
     Walrus_Transform *worlds = ecs_field(it, Walrus_Transform, 1);
     Walrus_ModelRef  *ref    = ecs_field(it, Walrus_ModelRef, 2);
     Walrus_Model     *model  = &ref->model;
+    RenderSystem     *render = it->ctx;
 
     ecs_entity_t  entity = it->entities[0];
     ecs_entity_t *skins  = walrus_new(ecs_entity_t, model->num_skins);
@@ -65,9 +62,6 @@ static void on_model_add(ecs_iter_t *it)
             for (u32 j = 0; j < node->mesh->num_primitives; ++j) {
                 Walrus_Material *material = node->mesh->primitives[j].material;
                 ecs_entity_t     mesh     = ecs_new_w_pair(it->world, EcsChildOf, entity);
-                if (material == NULL) {
-                    material = &walrus_model_system_get()->default_material;
-                }
                 if (node->skin) {
                     u32 skin_id = node->skin - &model->skins[0];
                     ecs_add_pair(it->world, mesh, EcsIsA, skins[skin_id]);
@@ -75,11 +69,10 @@ static void on_model_add(ecs_iter_t *it)
                 if (weight) {
                     ecs_add_pair(it->world, mesh, EcsIsA, weight);
                 }
+
                 ecs_set(it->world, mesh, Walrus_RenderMesh, {.mesh = &node->mesh->primitives[j], .culled = false});
-                ecs_set(it->world, mesh, Walrus_Material,
-                        {.alpha_mode   = material->alpha_mode,
-                         .double_sided = material->double_sided,
-                         .properties   = material->properties});
+                ecs_set_ptr(it->world, mesh, Walrus_Material, material ? material : &render->default_material);
+
                 ecs_set(it->world, mesh, Walrus_Transform,
                         {.trans = {0, 0, 0}, .rot = {0, 0, 0, 1}, .scale = {1, 1, 1}});
                 ecs_set(it->world, mesh, Walrus_LocalTransform,
@@ -155,6 +148,7 @@ static void transform_bound(mat4 const m, vec3 const min, vec3 const max, vec3 r
 
 static void renderer_run(ecs_iter_t *it)
 {
+    RenderSystem    *render    = it->param;
     Walrus_Renderer *renderers = ecs_field(it, Walrus_Renderer, 1);
     Walrus_Camera   *cameras   = ecs_field(it, Walrus_Camera, 2);
 
@@ -164,13 +158,13 @@ static void renderer_run(ecs_iter_t *it)
         }
         u16 view_slot = 0;
 
-        walrus_fg_write(&s_render_graph, "ColorBuffer", walrus_rhi_get_texture(s_backrt, 0).id);
-        walrus_fg_write(&s_render_graph, "DepthBuffer", walrus_rhi_get_texture(s_backrt, 1).id);
-        walrus_fg_write(&s_render_graph, "BackRT", s_backrt.id);
-        walrus_fg_write_ptr(&s_render_graph, "Renderer", &renderers[i]);
-        walrus_fg_write_ptr(&s_render_graph, "Camera", &cameras[i]);
-        walrus_fg_write_ptr(&s_render_graph, "ViewSlot", &view_slot);
-        walrus_fg_execute(&s_render_graph, HDR_PASS);
+        walrus_fg_write(&render->render_graph, "ColorBuffer", walrus_rhi_get_texture(render->backrt, 0).id);
+        walrus_fg_write(&render->render_graph, "DepthBuffer", walrus_rhi_get_texture(render->backrt, 1).id);
+        walrus_fg_write(&render->render_graph, "BackRT", render->backrt.id);
+        walrus_fg_write_ptr(&render->render_graph, "Renderer", &renderers[i]);
+        walrus_fg_write_ptr(&render->render_graph, "Camera", &cameras[i]);
+        walrus_fg_write_ptr(&render->render_graph, "ViewSlot", &view_slot);
+        walrus_fg_execute(&render->render_graph, HDR_PASS);
         /* walrus_rhi_set_debug(WR_RHI_DEBUG_STATS); */
     }
     walrus_rhi_touch(0);
@@ -230,9 +224,10 @@ static void skin_update(ecs_iter_t *it)
     }
 }
 
-void walrus_render_system_init(void)
+static void render_system_init(Walrus_System *sys)
 {
-    ecs_world_t *ecs = walrus_engine_vars()->ecs;
+    RenderSystem *render = poly_cast(sys, RenderSystem);
+    ecs_world_t  *ecs    = sys->ecs;
     ECS_COMPONENT_DEFINE(ecs, Walrus_Renderer);
     ECS_COMPONENT_DEFINE(ecs, Walrus_RenderMesh);
     ECS_COMPONENT_DEFINE(ecs, Walrus_Material);
@@ -244,6 +239,7 @@ void walrus_render_system_init(void)
                           .events       = {EcsOnSet},
                           .entity       = ecs_entity(ecs, {0}),
                           .callback     = on_model_add,
+                          .ctx          = render,
                           .filter.terms = {{.id = ecs_id(Walrus_Transform)},
                                            {.id = ecs_id(Walrus_ModelRef)},
                                            {.id = ecs_id(Walrus_ModelRef), .src.flags = EcsSelf, .oper = EcsNot}}});
@@ -291,35 +287,44 @@ void walrus_render_system_init(void)
         NULL);
     attachments[1].access = WR_RHI_ACCESS_WRITE;
 
-    s_backrt = walrus_rhi_create_framebuffer(attachments, walrus_count_of(attachments));
+    render->backrt = walrus_rhi_create_framebuffer(attachments, walrus_count_of(attachments));
 
-    walrus_fg_init(&s_render_graph);
+    walrus_fg_init(&render->render_graph);
 
-    walrus_fg_write(&s_render_graph, "ColorBuffer", walrus_rhi_get_texture(s_backrt, 0).id);
-    walrus_fg_write(&s_render_graph, "DepthBuffer", walrus_rhi_get_texture(s_backrt, 1).id);
-    walrus_fg_write(&s_render_graph, "BackRT", s_backrt.id);
+    walrus_fg_write(&render->render_graph, "ColorBuffer", walrus_rhi_get_texture(render->backrt, 0).id);
+    walrus_fg_write(&render->render_graph, "DepthBuffer", walrus_rhi_get_texture(render->backrt, 1).id);
+    walrus_fg_write(&render->render_graph, "BackRT", render->backrt.id);
 
-    Walrus_FramePipeline *culling_pipeline  = walrus_culling_pipeline_add(&s_render_graph, CULLING_PASS);
-    Walrus_FramePipeline *deferred_pipeline = walrus_deferred_pipeline_add(&s_render_graph, DEFERRED_LIGHTING_PASS);
-    Walrus_FramePipeline *hdr_pipeline      = walrus_hdr_pipeline_add(&s_render_graph, HDR_PASS);
+    Walrus_FramePipeline *culling_pipeline = walrus_culling_pipeline_add(&render->render_graph, CULLING_PASS);
+    Walrus_FramePipeline *deferred_pipeline =
+        walrus_deferred_pipeline_add(&render->render_graph, DEFERRED_LIGHTING_PASS);
+    Walrus_FramePipeline *hdr_pipeline = walrus_hdr_pipeline_add(&render->render_graph, HDR_PASS);
 
     walrus_fg_connect_pipeline(culling_pipeline, deferred_pipeline);
     walrus_fg_connect_pipeline(deferred_pipeline, hdr_pipeline);
 
-    walrus_fg_compile(&s_render_graph);
+    walrus_fg_compile(&render->render_graph);
+
+    walrus_model_material_init_default(&render->default_material);
 }
 
-void walrus_render_system_shutdown(void)
+static void render_system_shutdown(Walrus_System *sys)
 {
-    walrus_fg_shutdown(&s_render_graph);
+    RenderSystem *render = poly_cast(sys, RenderSystem);
+    walrus_fg_shutdown(&render->render_graph);
     walrus_renderer_shutdown();
 }
 
-void walrus_render_system_render(void)
+static void render_system_render(Walrus_System *sys)
 {
-    ecs_world_t *ecs = walrus_engine_vars()->ecs;
+    ecs_world_t  *ecs    = sys->ecs;
+    RenderSystem *render = poly_cast(sys, RenderSystem);
 
     ecs_run(ecs, ecs_id(weight_update), 0, NULL);
     ecs_run(ecs, ecs_id(skin_update), 0, NULL);
-    ecs_run(ecs, ecs_id(renderer_run), 0, NULL);
+    ecs_run(ecs, ecs_id(renderer_run), 0, render);
 }
+
+POLY_DEFINE_DERIVED(Walrus_System, RenderSystem, render_system_create, POLY_IMPL(on_system_init, render_system_init),
+                    POLY_IMPL(on_system_shutdown, render_system_shutdown),
+                    POLY_IMPL(on_system_render, render_system_render))

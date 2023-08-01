@@ -262,10 +262,10 @@ static void model_reset(Walrus_Model *model)
 
 void walrus_model_material_init_default(Walrus_Material *material)
 {
-    material->double_sided = true;
-    material->alpha_mode   = WR_ALPHA_MODE_OPAQUE;
-
     walrus_material_init(material);
+
+    material->double_sided = false;
+    material->alpha_mode   = WR_ALPHA_MODE_OPAQUE;
 
     walrus_material_set_float(material, s_property_names[WR_MESH_ALPHA_CUTOFF], 0);
 

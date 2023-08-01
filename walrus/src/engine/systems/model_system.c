@@ -1,6 +1,5 @@
 #include <engine/systems/model_system.h>
 #include <engine/component.h>
-#include <engine/engine.h>
 #include <engine/model.h>
 #include <core/hash.h>
 #include <core/string.h>
@@ -9,15 +8,6 @@
 #include <core/assert.h>
 
 ECS_COMPONENT_DECLARE(Walrus_ModelRef);
-
-static Walrus_ModelSystem s_system;
-
-void model_destroy(void *ptr)
-{
-    ecs_world_t *ecs = walrus_engine_vars()->ecs;
-    ecs_entity_t e   = walrus_ptr_to_val(ptr);
-    ecs_delete(ecs, e);
-}
 
 static void on_model_add(ecs_iter_t *it)
 {
@@ -42,9 +32,12 @@ static void on_model_remove(ecs_iter_t *it)
     }
 }
 
-void walrus_model_system_init(void)
+static void model_system_init(Walrus_System *sys)
 {
-    ecs_world_t *ecs = walrus_engine_vars()->ecs;
+    ModelSystem *model_sys = poly_cast(sys, ModelSystem);
+
+    ecs_world_t *ecs = sys->ecs;
+
     ECS_COMPONENT_DEFINE(ecs, Walrus_ModelRef);
 
     ecs_observer_init(ecs, &(ecs_observer_desc_t const){.events       = {EcsOnSet},
@@ -56,37 +49,27 @@ void walrus_model_system_init(void)
                                                         .callback     = on_model_remove,
                                                         .filter.terms = {{.id = ecs_id(Walrus_ModelRef)}}});
 
-    s_system.model_table = walrus_hash_table_create_full(walrus_str_hash, walrus_str_equal, NULL, model_destroy);
-
-    walrus_model_material_init_default(&s_system.default_material);
+    model_sys->table = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
 }
 
-void walrus_model_system_shutdown(void)
+static void model_system_shutdown(Walrus_System *sys)
 {
-    walrus_material_shutdown(&s_system.default_material);
-    walrus_hash_table_destroy(s_system.model_table);
+    ModelSystem *model_sys = poly_cast(sys, ModelSystem);
+    walrus_hash_table_destroy(model_sys->table);
 }
 
-Walrus_ModelSystem *walrus_model_system_get(void)
+void walrus_model_system_load_from_file(Walrus_System *sys, char const *name, char const *filename)
 {
-    return &s_system;
-}
-
-void walrus_model_system_load_from_file(char const *name, char const *filename)
-{
-    ecs_entity_t e;
-    ecs_world_t *ecs = walrus_engine_vars()->ecs;
-    if (walrus_hash_table_contains(s_system.model_table, name)) {
-        e = walrus_ptr_to_val(walrus_hash_table_lookup(s_system.model_table, name));
-    }
-    else {
-        e = ecs_set(
+    ModelSystem *model_sys = poly_cast(sys, ModelSystem);
+    if (!walrus_hash_table_contains(model_sys->table, name)) {
+        ecs_world_t *ecs = sys->ecs;
+        ecs_entity_t e   = ecs_set(
             ecs, 0, Walrus_ModelRef,
             {.name = walrus_str_dup(name), .path = walrus_str_dup(filename), .ref_count = walrus_malloc0(sizeof(i32))});
 
         Walrus_ModelRef *ref = ecs_get_mut(ecs, e, Walrus_ModelRef);
         if (walrus_model_load_from_file(&ref->model, filename) == WR_MODEL_SUCCESS) {
-            walrus_hash_table_insert(s_system.model_table, ref->name, walrus_val_to_ptr(e));
+            walrus_hash_table_insert(model_sys->table, ref->name, walrus_val_to_ptr(e));
         }
         else {
             ecs_delete(ecs, e);
@@ -94,10 +77,15 @@ void walrus_model_system_load_from_file(char const *name, char const *filename)
     }
 }
 
-bool walrus_model_system_unload(char const *name)
+bool walrus_model_system_unload(Walrus_System *sys, char const *name)
 {
-    if (walrus_hash_table_contains(s_system.model_table, name)) {
-        walrus_hash_table_remove(s_system.model_table, name);
+    ModelSystem *model_sys = poly_cast(sys, ModelSystem);
+    if (walrus_hash_table_contains(model_sys->table, name)) {
+        ecs_entity_t e   = walrus_ptr_to_val(walrus_hash_table_lookup(model_sys->table, name));
+        ecs_world_t *ecs = sys->ecs;
+        ecs_delete(ecs, e);
+
+        walrus_hash_table_remove(model_sys->table, name);
 
         return true;
     }
@@ -105,11 +93,13 @@ bool walrus_model_system_unload(char const *name)
     return false;
 }
 
-ecs_entity_t walrus_model_instantiate(char const *name, vec3 const trans, versor const rot, vec3 const scale)
+ecs_entity_t walrus_model_instantiate(Walrus_System *sys, char const *name, vec3 const trans, versor const rot,
+                                      vec3 const scale)
 {
-    ecs_world_t *ecs = walrus_engine_vars()->ecs;
-    if (walrus_hash_table_contains(s_system.model_table, name)) {
-        ecs_entity_t base_model = walrus_ptr_to_val(walrus_hash_table_lookup(s_system.model_table, name));
+    ModelSystem *model_sys = poly_cast(sys, ModelSystem);
+    ecs_world_t *ecs       = sys->ecs;
+    if (walrus_hash_table_contains(model_sys->table, name)) {
+        ecs_entity_t base_model = walrus_ptr_to_val(walrus_hash_table_lookup(model_sys->table, name));
         ecs_entity_t e          = ecs_new_w_pair(ecs, EcsIsA, base_model);
         ecs_set(ecs, e, Walrus_Transform,
                 {.trans = {trans[0], trans[1], trans[2]},
@@ -120,3 +110,6 @@ ecs_entity_t walrus_model_instantiate(char const *name, vec3 const trans, versor
     }
     return 0;
 }
+
+POLY_DEFINE_DERIVED(Walrus_System, ModelSystem, model_system_create, POLY_IMPL(on_system_init, model_system_init),
+                    POLY_IMPL(on_system_shutdown, model_system_shutdown))

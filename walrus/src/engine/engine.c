@@ -4,6 +4,7 @@
 #include <engine/shader_library.h>
 #include <engine/thread_pool.h>
 #include <engine/imgui.h>
+#include <engine/system.h>
 #include <engine/systems/transform_system.h>
 #include <engine/systems/controller_system.h>
 #include <engine/systems/camera_system.h>
@@ -21,18 +22,20 @@
 #include <core/memory.h>
 #include <core/thread.h>
 #include <core/mutex.h>
+#include <core/string.h>
 
 #include "window_private.h"
 
 struct Walrus_Engine {
     Walrus_EngineOption opt;
     Walrus_Mutex       *log_mutex;
-    Walrus_Thread      *render;
+    Walrus_Thread      *render_th;
     Walrus_App         *app;
     FILE               *log_file;
     Walrus_Window       window;
     Walrus_Input        input;
     ecs_world_t        *ecs;
+    Walrus_Array       *systems;
     bool                quit;
 };
 
@@ -111,8 +114,8 @@ static Walrus_EngineError register_service(void)
     }
 
     if (!opt->single_thread) {
-        s_engine->render = walrus_thread_create();
-        walrus_thread_init(s_engine->render, render_thread_fn, NULL, 0);
+        s_engine->render_th = walrus_thread_create();
+        walrus_thread_init(s_engine->render_th, render_thread_fn, NULL, 0);
     }
 
     Walrus_RhiCreateInfo info;
@@ -135,11 +138,15 @@ static Walrus_EngineError register_service(void)
 
     s_engine->ecs = ecs_init();
 
+    s_engine->systems = walrus_array_create(sizeof(Walrus_System), 0);
+
     return WR_ENGINE_SUCCESS;
 }
 
 static void release_service(void)
 {
+    walrus_array_destroy(s_engine->systems);
+
     ecs_fini(s_engine->ecs);
 
     walrus_imgui_shutdown();
@@ -150,8 +157,8 @@ static void release_service(void)
 
     walrus_rhi_shutdown();
 
-    if (s_engine->render != NULL) {
-        walrus_thread_destroy(s_engine->render);
+    if (s_engine->render_th != NULL) {
+        walrus_thread_destroy(s_engine->render_th);
     }
 
     walrus_inputs_shutdown(&s_engine->input);
@@ -250,8 +257,13 @@ static void engine_frame(void)
         ecs_progress(ecs, sec_elapesd);
     }
 
-    walrus_render_system_render();
-    walrus_editor_system_render();
+    u32 len = walrus_array_len(s_engine->systems);
+    for (u32 i = 0; i < len; ++i) {
+        Walrus_System *sys = walrus_array_get(s_engine->systems, i);
+        if (POLY_FUNC(sys, on_system_render)) {
+            POLY_FUNC(sys, on_system_render)(sys);
+        }
+    }
     if (POLY_FUNC(app, on_app_render)) {
         POLY_FUNC(app, on_app_render)(app);
     }
@@ -321,19 +333,45 @@ Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height,
 
 static void systems_init(void)
 {
-    walrus_transform_system_init();
-    walrus_controller_system_init();
-    walrus_camera_system_init();
-    walrus_model_system_init();
-    walrus_render_system_init();
-    walrus_animator_system_init();
-    walrus_editor_system_init();
+    u32 len = walrus_array_len(s_engine->systems);
+    for (u32 i = 0; i < len; ++i) {
+        Walrus_System *sys = walrus_array_get(s_engine->systems, i);
+        if (POLY_FUNC(sys, on_system_init)) {
+            POLY_FUNC(sys, on_system_init)(sys);
+        }
+    }
 }
 
 static void systems_shutdown(void)
 {
-    walrus_render_system_shutdown();
-    walrus_model_system_shutdown();
+    u32 len = walrus_array_len(s_engine->systems);
+    for (i32 i = len - 1; i >= 0; --i) {
+        Walrus_System *sys = walrus_array_get(s_engine->systems, i);
+        if (POLY_FUNC(sys, on_system_shutdown)) {
+            POLY_FUNC(sys, on_system_shutdown)(sys);
+        }
+        poly_free(sys);
+    }
+}
+
+static void append_system(Walrus_System sys, char const *name)
+{
+    sys.ecs = s_engine->ecs;
+    memcpy(sys.name, name, strlen(name));
+
+    walrus_array_append(s_engine->systems, &sys);
+}
+
+static Walrus_System *find_system(char const *name)
+{
+    u32 len = walrus_array_len(s_engine->systems);
+    for (u32 i = 0; i < len; ++i) {
+        Walrus_System *sys = walrus_array_get(s_engine->systems, i);
+        if (strcmp(name, sys->name) == 0) {
+            return sys;
+        }
+    }
+    return NULL;
 }
 
 Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
@@ -349,9 +387,9 @@ Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
     opt->resolution.width  = walrus_max(opt->resolution.width, 1);
     opt->resolution.height = walrus_max(opt->resolution.height, 1);
 
-    s_engine->app    = NULL;
-    s_engine->render = NULL;
-    s_engine->quit   = true;
+    s_engine->app       = NULL;
+    s_engine->render_th = NULL;
+    s_engine->quit      = true;
 
     Walrus_EngineError error = WR_ENGINE_SUCCESS;
 
@@ -359,7 +397,23 @@ Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
     if (error == WR_ENGINE_SUCCESS) {
         s_vars = (Walrus_EngineVars){.input = &s_engine->input, .window = &s_engine->window, .ecs = s_engine->ecs};
 
+        append_system(transform_system_create(NULL, NULL), "TransformSystem");
+
+        append_system(controller_system_create(NULL, NULL), "ControllerSystem");
+
+        append_system(camera_system_create(NULL, NULL), "CameraSystem");
+
+        append_system(model_system_create(walrus_malloc0(sizeof(ModelSystem)), walrus_free), "ModelSystem");
+
+        append_system(render_system_create(walrus_malloc0(sizeof(RenderSystem)), walrus_free), "RenderSystem");
+
+        append_system(animator_system_create(NULL, NULL), "AnimatorSystem");
+
+        append_system(editor_system_create(NULL, NULL), "EditorSystem");
+
         systems_init();
+
+        s_vars.model = find_system("ModelSystem");
     }
 
     return error;

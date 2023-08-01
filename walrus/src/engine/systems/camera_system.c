@@ -1,6 +1,5 @@
 #include <engine/systems/camera_system.h>
 #include <engine/camera.h>
-#include <engine/engine.h>
 
 ECS_COMPONENT_DECLARE(Walrus_Camera);
 
@@ -15,7 +14,7 @@ static void camera_tick(ecs_iter_t *it)
     }
 }
 
-void camera_on_add(ecs_iter_t *it)
+static void camera_on_add(ecs_iter_t *it)
 {
     Walrus_Camera    *camera    = ecs_field(it, Walrus_Camera, 1);
     Walrus_Transform *transform = ecs_field(it, Walrus_Transform, 2);
@@ -24,11 +23,13 @@ void camera_on_add(ecs_iter_t *it)
                        camera->far_z);
 }
 
-void walrus_camera_system_init(void)
+static void camera_system_init(Walrus_System *sys)
 {
-    ecs_world_t *ecs = walrus_engine_vars()->ecs;
+    ecs_world_t *ecs = sys->ecs;
     ECS_COMPONENT_DEFINE(ecs, Walrus_Camera);
 
     ECS_SYSTEM(ecs, camera_tick, EcsOnUpdate, Walrus_Camera, Walrus_Transform);
     ECS_OBSERVER(ecs, camera_on_add, EcsOnSet, Walrus_Camera, Walrus_Transform);
 }
+
+POLY_DEFINE_DERIVED(Walrus_System, CameraSystem, camera_system_create, POLY_IMPL(on_system_init, camera_system_init))

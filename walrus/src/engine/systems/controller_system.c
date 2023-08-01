@@ -1,6 +1,6 @@
 #include <engine/systems/controller_system.h>
-#include <engine/engine.h>
 #include <core/memory.h>
+#include <core/macro.h>
 
 ECS_COMPONENT_DECLARE(Walrus_Controller);
 
@@ -40,12 +40,15 @@ static void on_controller_remove(ecs_iter_t *it)
     poly_free(controller);
 }
 
-void walrus_controller_system_init(void)
+static void controller_system_init(Walrus_System *sys)
 {
-    ecs_world_t *ecs = walrus_engine_vars()->ecs;
+    ecs_world_t *ecs = sys->ecs;
     ECS_COMPONENT_DEFINE(ecs, Walrus_Controller);
 
     ECS_SYSTEM(ecs, controller_tick, EcsOnUpdate, Walrus_Controller, Walrus_Transform);
     ECS_OBSERVER(ecs, on_controller_add, EcsOnSet, Walrus_Controller, Walrus_Transform);
     ECS_OBSERVER(ecs, on_controller_remove, EcsOnRemove, Walrus_Controller);
 }
+
+POLY_DEFINE_DERIVED(Walrus_System, ControllerSystem, controller_system_create,
+                    POLY_IMPL(on_system_init, controller_system_init))

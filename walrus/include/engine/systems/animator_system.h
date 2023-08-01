@@ -1,6 +1,7 @@
 #pragma once
 
-#include <engine/animator.h>
-#include <flecs.h>
+#include <engine/system.h>
 
-void walrus_animator_system_init(void);
+typedef void* AnimatorSystem;
+
+POLY_DECLARE_DERIVED(Walrus_System, AnimatorSystem, animator_system_create)
