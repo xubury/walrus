@@ -702,7 +702,7 @@ void walrus_hash_table_foreach(Walrus_HashTable* table, Walrus_ForeachFunc func,
     for (u32 i = 0; i < table->size; ++i) {
         u32   node_hash   = table->hashes[i];
         void* node_key    = hash_table_fetch(table->keys, i, table->has_big_keys);
-        void* node_values = hash_table_fetch(table->values, i, table->has_big_keys);
+        void* node_values = hash_table_fetch(table->values, i, table->has_big_values);
 
         if (HASH_IS_REAL(node_hash)) {
             func(node_key, node_values, userdata);

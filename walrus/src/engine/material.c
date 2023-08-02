@@ -8,48 +8,78 @@
 
 #include <string.h>
 
-Walrus_MaterialProperty *property_create(char const *name, Walrus_MaterialPropertyType type)
+static u32 find_property_id(Walrus_Material *material)
 {
-    Walrus_MaterialProperty *p = walrus_new(Walrus_MaterialProperty, 1);
-    p->name                    = walrus_str_dup(name);
-    p->type                    = type;
-
-    Walrus_UniformType utype;
-    switch (p->type) {
-        case WR_MATERIAL_PROPERTY_BOOL:
-            utype = WR_RHI_UNIFORM_BOOL;
-            break;
-        case WR_MATERIAL_PROPERTY_FLOAT:
-            utype = WR_RHI_UNIFORM_FLOAT;
-            break;
-        case WR_MATERIAL_PROPERTY_VEC4:
-            utype = WR_RHI_UNIFORM_VEC4;
-            break;
-        case WR_MATERIAL_PROPERTY_TEXTURE2D:
-            utype = WR_RHI_UNIFORM_SAMPLER;
-            break;
+    for (u32 i = 0; i < walrus_count_of(material->properties); ++i) {
+        if (!material->properties[i].valid) {
+            return i;
+        }
     }
-    p->uni = walrus_rhi_create_uniform(name, utype, 1);
+    return -1;
+}
+
+static Walrus_MaterialProperty *property_get_or_create(Walrus_Material *material, char const *name,
+                                                       Walrus_MaterialPropertyType type)
+{
+    Walrus_MaterialProperty *p = NULL;
+    if (walrus_hash_table_contains(material->table, name)) {
+        u32 id = walrus_ptr_to_val(walrus_hash_table_lookup(material->table, name));
+        p      = &material->properties[id];
+        walrus_assert(p->valid);
+    }
+    else {
+        u32 id   = find_property_id(material);
+        p        = &material->properties[id];
+        p->valid = true;
+        p->name  = walrus_str_dup(name);
+        p->type  = type;
+
+        Walrus_UniformType utype;
+        switch (p->type) {
+            case WR_MATERIAL_PROPERTY_BOOL:
+                utype = WR_RHI_UNIFORM_BOOL;
+                break;
+            case WR_MATERIAL_PROPERTY_FLOAT:
+                utype = WR_RHI_UNIFORM_FLOAT;
+                break;
+            case WR_MATERIAL_PROPERTY_VEC4:
+                utype = WR_RHI_UNIFORM_VEC4;
+                break;
+            case WR_MATERIAL_PROPERTY_TEXTURE2D:
+                utype = WR_RHI_UNIFORM_SAMPLER;
+                break;
+        }
+        p->uni = walrus_rhi_create_uniform(name, utype, 1);
+
+        walrus_hash_table_insert(material->table, p->name, walrus_val_to_ptr(id));
+    }
 
     return p;
 }
 
-void property_destroy(void *data)
+static void property_destroy(Walrus_MaterialProperty *p)
 {
-    Walrus_MaterialProperty *p = data;
-    walrus_str_free(p->name);
-    walrus_rhi_destroy_uniform(p->uni);
-    walrus_free(p);
+    if (p->valid) {
+        p->valid = false;
+        walrus_str_free(p->name);
+        walrus_rhi_destroy_uniform(p->uni);
+    }
 }
 
 void walrus_material_init(Walrus_Material *material)
 {
-    material->properties = walrus_hash_table_create_full(walrus_str_hash, walrus_str_equal, NULL, property_destroy);
+    material->table = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
+    for (u32 i = 0; i < walrus_count_of(material->properties); ++i) {
+        material->properties[i].valid = false;
+    }
 }
 
 void walrus_material_shutdown(Walrus_Material *material)
 {
-    walrus_hash_table_destroy(material->properties);
+    for (u32 i = 0; i < walrus_count_of(material->properties); ++i) {
+        property_destroy(&material->properties[i]);
+    }
+    walrus_hash_table_destroy(material->table);
 }
 
 void walrus_material_set_texture(Walrus_Material *material, char const *name, Walrus_TextureHandle texture, bool srgb)
@@ -58,15 +88,8 @@ void walrus_material_set_texture(Walrus_Material *material, char const *name, Wa
         walrus_error("Invalid texture for material is set!");
         return;
     }
-    Walrus_MaterialProperty *p = NULL;
-    if (walrus_hash_table_contains(material->properties, name)) {
-        p = walrus_hash_table_lookup(material->properties, name);
-    }
-    else {
-        p = property_create(name, WR_MATERIAL_PROPERTY_TEXTURE2D);
-        walrus_hash_table_insert(material->properties, p->name, p);
-    }
-    p->texture = (Walrus_Texture){.handle = texture, .srgb = srgb};
+    Walrus_MaterialProperty *p = property_get_or_create(material, name, WR_MATERIAL_PROPERTY_TEXTURE2D);
+    p->texture                 = (Walrus_Texture){.handle = texture, .srgb = srgb};
 }
 
 static Walrus_TextureHandle black = {WR_INVALID_HANDLE};
@@ -101,83 +124,59 @@ void walrus_material_set_texture_color(Walrus_Material *material, char const *na
 
 void walrus_material_set_bool(Walrus_Material *material, char const *name, bool value)
 {
-    Walrus_MaterialProperty *p = NULL;
-    if (walrus_hash_table_contains(material->properties, name)) {
-        p = walrus_hash_table_lookup(material->properties, name);
-    }
-    else {
-        p = property_create(name, WR_MATERIAL_PROPERTY_BOOL);
-        walrus_hash_table_insert(material->properties, p->name, p);
-    }
-    p->boolean = value;
+    Walrus_MaterialProperty *p = property_get_or_create(material, name, WR_MATERIAL_PROPERTY_BOOL);
+    p->boolean                 = value;
 }
 
 void walrus_material_set_float(Walrus_Material *material, char const *name, f32 value)
 {
-    Walrus_MaterialProperty *p = NULL;
-    if (walrus_hash_table_contains(material->properties, name)) {
-        p = walrus_hash_table_lookup(material->properties, name);
-    }
-    else {
-        p = property_create(name, WR_MATERIAL_PROPERTY_FLOAT);
-        walrus_hash_table_insert(material->properties, p->name, p);
-    }
-    p->vector[0] = value;
+    Walrus_MaterialProperty *p = property_get_or_create(material, name, WR_MATERIAL_PROPERTY_FLOAT);
+    p->vector[0]               = value;
 }
 
 void walrus_material_set_vec3(Walrus_Material *material, char const *name, vec3 value)
 {
-    Walrus_MaterialProperty *p = NULL;
-    if (walrus_hash_table_contains(material->properties, name)) {
-        p = walrus_hash_table_lookup(material->properties, name);
-    }
-    else {
-        p = property_create(name, WR_MATERIAL_PROPERTY_VEC4);
-        walrus_hash_table_insert(material->properties, p->name, p);
-    }
+    Walrus_MaterialProperty *p = property_get_or_create(material, name, WR_MATERIAL_PROPERTY_VEC4);
     glm_vec3_copy(value, p->vector);
 }
 
 void walrus_material_set_vec4(Walrus_Material *material, char const *name, vec4 value)
 {
-    Walrus_MaterialProperty *p = NULL;
-    if (walrus_hash_table_contains(material->properties, name)) {
-        p = walrus_hash_table_lookup(material->properties, name);
-    }
-    else {
-        p = property_create(name, WR_MATERIAL_PROPERTY_VEC4);
-        walrus_hash_table_insert(material->properties, p->name, p);
-    }
+    Walrus_MaterialProperty *p = property_get_or_create(material, name, WR_MATERIAL_PROPERTY_VEC4);
     glm_vec4_copy(value, p->vector);
 }
+
+typedef struct {
+    u32              unit;
+    Walrus_Material *material;
+} SubmitData;
 
 static void submit_uniform(void const *key, void *value, void *userdata)
 {
     walrus_unused(key);
-    u32                     *unit = userdata;
-    Walrus_MaterialProperty *m    = value;
-    switch (m->type) {
+    SubmitData              *data = userdata;
+    u32                      id   = walrus_ptr_to_val(value);
+    Walrus_MaterialProperty *p    = &data->material->properties[id];
+    switch (p->type) {
         case WR_MATERIAL_PROPERTY_BOOL:
-            walrus_rhi_set_uniform(m->uni, 0, sizeof(bool), &m->boolean);
+            walrus_rhi_set_uniform(p->uni, 0, sizeof(bool), &p->boolean);
             break;
         case WR_MATERIAL_PROPERTY_FLOAT:
-            walrus_rhi_set_uniform(m->uni, 0, sizeof(f32), m->vector);
+            walrus_rhi_set_uniform(p->uni, 0, sizeof(f32), p->vector);
             break;
         case WR_MATERIAL_PROPERTY_VEC4:
-            walrus_rhi_set_uniform(m->uni, 0, sizeof(vec4), m->vector);
+            walrus_rhi_set_uniform(p->uni, 0, sizeof(vec4), p->vector);
             break;
         case WR_MATERIAL_PROPERTY_TEXTURE2D:
-            walrus_rhi_set_uniform(m->uni, 0, sizeof(u32), unit);
-            walrus_rhi_set_texture(*unit, m->texture.handle);
-            ++(*unit);
+            walrus_rhi_set_uniform(p->uni, 0, sizeof(u32), &data->unit);
+            walrus_rhi_set_texture(data->unit, p->texture.handle);
+            ++data->unit;
             break;
     }
 }
 
 void walrus_material_submit(Walrus_Material *material)
 {
-    u32 unit = 0;
-
     u64 flags = WR_RHI_STATE_DEFAULT;
 
     if (!material->double_sided) {
@@ -187,5 +186,6 @@ void walrus_material_submit(Walrus_Material *material)
         flags |= WR_RHI_STATE_BLEND_ALPHA;
     }
     walrus_rhi_set_state(flags, 0);
-    walrus_hash_table_foreach(material->properties, submit_uniform, &unit);
+    SubmitData data = {.unit = 0, .material = material};
+    walrus_hash_table_foreach(material->table, submit_uniform, &data);
 }

@@ -65,6 +65,17 @@ static Walrus_AppError on_init(Walrus_App *app)
     ecs_entity_t widget   = walrus_add_component_panel(ecs, window);
     ecs_add_pair(ecs, widget, EcsIsA, observer);
 
+    // TODO: serialize/deserialize test
+    {
+        Walrus_Transform const *t = ecs_get(ecs, character, Walrus_Transform);
+        walrus_trace("%f, %f, %f", t->trans[0], t->trans[1], t->trans[2]);
+        char const *expr = ecs_ptr_to_expr(ecs, ecs_id(Walrus_Transform), ecs_get(ecs, character, Walrus_Transform));
+        walrus_trace("serialize: %s", expr);
+        Walrus_Transform transform = {0};
+        ecs_parse_expr(ecs, expr, &ecs_value(Walrus_Transform, &transform), NULL);
+        walrus_trace("%f, %f, %f", transform.trans[0], transform.trans[1], transform.trans[2]);
+    }
+
     return WR_APP_SUCCESS;
 }
 

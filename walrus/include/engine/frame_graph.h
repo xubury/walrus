@@ -25,7 +25,6 @@ struct Walrus_FramePipeline {
     char *name;
 
     Walrus_List *command_list;
-    Walrus_List *start;
 
     Walrus_Array *prevs;
     Walrus_Array *nodes;

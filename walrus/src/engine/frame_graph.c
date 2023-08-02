@@ -107,15 +107,16 @@ void *walrus_fg_read_ptr(Walrus_FrameGraph const *graph, char const *name)
 
 static Walrus_List *insert_pipeline_to_list(Walrus_List *command_list, Walrus_FramePipeline *p)
 {
-    if (walrus_array_len(p->nodes) > 0) {
-        command_list = walrus_list_append(command_list, p);
-    }
     u32 len = walrus_array_len(p->prevs);
 
     for (u32 i = 0; i < len; ++i) {
         Walrus_FramePipeline **prev = walrus_array_get(p->prevs, i);
 
         command_list = insert_pipeline_to_list(command_list, *prev);
+    }
+
+    if (walrus_array_len(p->nodes) > 0) {
+        command_list = walrus_list_append(command_list, p);
     }
 
     return command_list;
@@ -129,7 +130,6 @@ static void construct_pipeline_command(void const *key, void *value, void *userd
 
     walrus_list_free(target->command_list);
     target->command_list = insert_pipeline_to_list(NULL, target);
-    target->start        = walrus_list_last(target->command_list);
 }
 
 void walrus_fg_compile(Walrus_FrameGraph *graph)
@@ -150,12 +150,12 @@ void walrus_fg_execute(Walrus_FrameGraph *graph, char const *name)
 {
     Walrus_FramePipeline *target = walrus_fg_lookup_pipeline(graph, name);
 
-    Walrus_List *p = target->start;
+    Walrus_List *p = target->command_list;
     walrus_assert(p != NULL);
 
     while (p != NULL) {
         Walrus_FramePipeline *cur = p->data;
         walrus_array_foreach(cur->nodes, foreach_node_execute, graph);
-        p = p->prev;
+        p = p->next;
     }
 }

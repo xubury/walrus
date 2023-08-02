@@ -71,6 +71,17 @@ static void transform_system_init(Walrus_System *sys)
                         {.id = ecs_id(Walrus_LocalTransform)},
                     },
                 .callback = transform_tick});
+
+    // TODO: serialize/deserialize test
+    ECS_COMPONENT(ecs, vec3);
+    ecs_struct(ecs, {.entity  = ecs_id(vec3),
+                     .members = {{.name = "x", .type = ecs_id(ecs_f32_t)},
+                                 {.name = "y", .type = ecs_id(ecs_f32_t)},
+                                 {.name = "z", .type = ecs_id(ecs_f32_t)}}});
+    ecs_struct(ecs, {.entity  = ecs_id(Walrus_Transform),
+                     .members = {
+                         {.name = "trans", .type = ecs_id(vec3)},
+                     }});
 }
 
 POLY_DEFINE_DERIVED(Walrus_System, TransformSystem, transform_system_create,

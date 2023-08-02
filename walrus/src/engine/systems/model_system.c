@@ -68,7 +68,7 @@ void walrus_model_system_load_from_file(Walrus_System *sys, char const *name, ch
             {.name = walrus_str_dup(name), .path = walrus_str_dup(filename), .ref_count = walrus_malloc0(sizeof(i32))});
 
         Walrus_ModelRef *ref = ecs_get_mut(ecs, e, Walrus_ModelRef);
-        if (walrus_model_load_from_file(&ref->model, filename) == WR_MODEL_SUCCESS) {
+        if (walrus_model_load_from_file(&ref->model, ref->path) == WR_MODEL_SUCCESS) {
             walrus_hash_table_insert(model_sys->table, ref->name, walrus_val_to_ptr(e));
         }
         else {

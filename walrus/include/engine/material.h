@@ -23,6 +23,7 @@ typedef struct {
 } Walrus_Texture;
 
 typedef struct {
+    bool                        valid;
     char                       *name;
     Walrus_MaterialPropertyType type;
     Walrus_UniformHandle        uni;
@@ -35,11 +36,11 @@ typedef struct {
 } Walrus_MaterialProperty;
 
 typedef struct {
-    bool             double_sided;
-    Walrus_AlphaMode alpha_mode;
+    bool                    double_sided;
+    Walrus_AlphaMode        alpha_mode;
+    Walrus_MaterialProperty properties[32];
 
-    Walrus_HashTable    *properties;
-    Walrus_ProgramHandle shader;
+    Walrus_HashTable *table;
 } Walrus_Material;
 
 void walrus_material_init(Walrus_Material *material);
