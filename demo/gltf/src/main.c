@@ -61,7 +61,7 @@ static Walrus_AppError on_init(Walrus_App *app)
     ecs_entity_t window = ecs_set(ecs, 0, Walrus_EditorWindow, {.name = "hello world"});
     ecs_set(ecs, ecs_new_w_pair(ecs, EcsChildOf, window), Walrus_EditorWidget, {.func = hello_world_ui});
 
-    ecs_entity_t observer = ecs_set(ecs, 0, Walrus_EntityObserver, {.entity = cubes});
+    ecs_entity_t observer = ecs_set(ecs, 0, Walrus_EntityObserver, {.entity = character});
     ecs_entity_t widget   = walrus_add_component_panel(ecs, window);
     ecs_add_pair(ecs, widget, EcsIsA, observer);
 

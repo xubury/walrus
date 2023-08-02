@@ -4,6 +4,8 @@
 #include <cglm/cglm.h>
 #include <rhi/type.h>
 
+#define WR_MATERIAL_MAX_PROPERTIES 32
+
 typedef enum {
     WR_MATERIAL_PROPERTY_BOOL,
     WR_MATERIAL_PROPERTY_FLOAT,
@@ -23,7 +25,6 @@ typedef struct {
 } Walrus_Texture;
 
 typedef struct {
-    bool                        valid;
     char                       *name;
     Walrus_MaterialPropertyType type;
     Walrus_UniformHandle        uni;
@@ -38,7 +39,8 @@ typedef struct {
 typedef struct {
     bool                    double_sided;
     Walrus_AlphaMode        alpha_mode;
-    Walrus_MaterialProperty properties[32];
+    u32                     num_properties;
+    Walrus_MaterialProperty properties[WR_MATERIAL_MAX_PROPERTIES];
 
     Walrus_HashTable *table;
 } Walrus_Material;
@@ -60,3 +62,5 @@ void walrus_material_set_bool(Walrus_Material *material, char const *name, bool 
 void walrus_material_set_float(Walrus_Material *material, char const *name, f32 value);
 void walrus_material_set_vec3(Walrus_Material *material, char const *name, vec3 value);
 void walrus_material_set_vec4(Walrus_Material *material, char const *name, vec4 value);
+
+bool walrus_material_remove(Walrus_Material *material, char const *name);
