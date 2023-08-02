@@ -58,3 +58,5 @@ Walrus_AppError walrus_engine_run(Walrus_App *app);
 Walrus_App *walrus_engine_exit(void);
 
 Walrus_EngineVars *walrus_engine_vars(void);
+
+void walrus_engine_add_system(Walrus_System *sys, char const *name);

@@ -38,9 +38,7 @@ void property_destroy(void *data)
 {
     Walrus_MaterialProperty *p = data;
     walrus_str_free(p->name);
-    if (p->type == WR_MATERIAL_PROPERTY_TEXTURE2D) {
-        walrus_rhi_destroy_texture(p->texture.handle);
-    }
+    walrus_rhi_destroy_uniform(p->uni);
     walrus_free(p);
 }
 

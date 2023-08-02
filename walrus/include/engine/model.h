@@ -137,6 +137,9 @@ typedef struct {
     Walrus_Material *materials;
     u32              num_materials;
 
+    Walrus_TextureHandle *textures;
+    u32                   num_textures;
+
     Walrus_ModelNode *nodes;
     u32               num_nodes;
 

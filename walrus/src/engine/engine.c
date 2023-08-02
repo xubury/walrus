@@ -354,12 +354,9 @@ static void systems_shutdown(void)
     }
 }
 
-static void append_system(Walrus_System sys, char const *name)
+static void add_system(Walrus_System sys, char const *name)
 {
-    sys.ecs = s_engine->ecs;
-    memcpy(sys.name, name, strlen(name));
-
-    walrus_array_append(s_engine->systems, &sys);
+    walrus_engine_add_system(&sys, name);
 }
 
 static Walrus_System *find_system(char const *name)
@@ -397,19 +394,19 @@ Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
     if (error == WR_ENGINE_SUCCESS) {
         s_vars = (Walrus_EngineVars){.input = &s_engine->input, .window = &s_engine->window, .ecs = s_engine->ecs};
 
-        append_system(transform_system_create(NULL, NULL), "TransformSystem");
+        add_system(transform_system_create(NULL, NULL), "TransformSystem");
 
-        append_system(controller_system_create(NULL, NULL), "ControllerSystem");
+        add_system(controller_system_create(NULL, NULL), "ControllerSystem");
 
-        append_system(camera_system_create(NULL, NULL), "CameraSystem");
+        add_system(camera_system_create(NULL, NULL), "CameraSystem");
 
-        append_system(model_system_create(walrus_malloc0(sizeof(ModelSystem)), walrus_free), "ModelSystem");
+        add_system(model_system_create(walrus_malloc0(sizeof(ModelSystem)), walrus_free), "ModelSystem");
 
-        append_system(render_system_create(walrus_malloc0(sizeof(RenderSystem)), walrus_free), "RenderSystem");
+        add_system(render_system_create(walrus_malloc0(sizeof(RenderSystem)), walrus_free), "RenderSystem");
 
-        append_system(animator_system_create(NULL, NULL), "AnimatorSystem");
+        add_system(animator_system_create(NULL, NULL), "AnimatorSystem");
 
-        append_system(editor_system_create(NULL, NULL), "EditorSystem");
+        add_system(editor_system_create(NULL, NULL), "EditorSystem");
 
         systems_init();
 
@@ -500,4 +497,11 @@ Walrus_App *walrus_engine_exit(void)
 Walrus_EngineVars *walrus_engine_vars(void)
 {
     return &s_vars;
+}
+
+void walrus_engine_add_system(Walrus_System *sys, char const *name)
+{
+    sys->ecs = s_engine->ecs;
+    strcpy(sys->name, name);
+    walrus_array_append(s_engine->systems, sys);
 }
