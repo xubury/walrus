@@ -15,7 +15,7 @@ static void animator_tick(ecs_iter_t *it)
     }
 }
 
-static void on_animator_model_add(ecs_iter_t *it)
+static void on_animator_model_set(ecs_iter_t *it)
 {
     Walrus_Animator *animator = ecs_field(it, Walrus_Animator, 1);
     Walrus_ModelRef *ref      = ecs_field(it, Walrus_ModelRef, 2);
@@ -25,7 +25,8 @@ static void on_animator_model_add(ecs_iter_t *it)
     walrus_animator_play(animator, 0);
 }
 
-static void on_animator_remove(ecs_iter_t *it)
+
+static void on_animator_unset(ecs_iter_t *it)
 {
     Walrus_Animator *animator = ecs_field(it, Walrus_Animator, 1);
     walrus_animator_shutdown(animator);
@@ -38,9 +39,8 @@ static void animator_system_init(Walrus_System *sys)
 
     ECS_SYSTEM(ecs, animator_tick, EcsOnUpdate, Walrus_Animator, Walrus_ModelRef);
 
-    ECS_OBSERVER(ecs, on_animator_model_add, EcsOnSet, Walrus_Animator, Walrus_ModelRef);
-    ECS_OBSERVER(ecs, on_animator_remove, EcsOnRemove, Walrus_Animator);
+    ECS_OBSERVER(ecs, on_animator_unset, EcsUnSet, Walrus_Animator);
+    ECS_OBSERVER(ecs, on_animator_model_set, EcsOnSet, Walrus_Animator, Walrus_ModelRef);
 }
 
-POLY_DEFINE_DERIVED(Walrus_System, AnimatorSystem, animator_system_create,
-                    POLY_IMPL(on_system_init, animator_system_init))
+POLY_DEFINE_DERIVED(Walrus_System, void, animator_system_create, POLY_IMPL(on_system_init, animator_system_init))

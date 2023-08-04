@@ -211,7 +211,8 @@ static void render_data_create(Walrus_FrameGraph *graph)
     s_data->forward_skin_shader = walrus_shader_library_load("forward_lighting_skin.shader");
     s_data->deferred_shader     = walrus_shader_library_load("deferred_lighting.shader");
 
-    u64 flags = (u64)(walrus_u32cnttz(walrus_rhi_get_mssa()) + 1) << WR_RHI_TEXTURE_RT_MSAA_SHIFT;
+    u64 flags =
+        (u64)(walrus_u32cnttz(walrus_rhi_get_mssa()) + 1) << WR_RHI_TEXTURE_RT_MSAA_SHIFT | WR_RHI_SAMPLER_UVW_CLAMP;
 
     {
         Walrus_Attachment  attachments[7] = {0};

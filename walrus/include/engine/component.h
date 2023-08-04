@@ -13,4 +13,7 @@ extern ECS_COMPONENT_DECLARE(Walrus_Camera);
 extern ECS_COMPONENT_DECLARE(Walrus_Controller);
 extern ECS_COMPONENT_DECLARE(Walrus_Transform);
 
+typedef Walrus_Transform Walrus_LocalTransform;
+extern ECS_COMPONENT_DECLARE(Walrus_LocalTransform);
+
 extern ECS_COMPONENT_DECLARE(Walrus_Renderer);

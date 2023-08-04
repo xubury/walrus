@@ -52,6 +52,7 @@ typedef struct {
 } Walrus_MeshPrimitive;
 
 typedef struct {
+    char                  name[256];
     Walrus_MeshPrimitive *primitives;
     u32                   num_primitives;
 

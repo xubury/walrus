@@ -20,6 +20,7 @@ typedef void (*Walrus_ImGuiWidgetDrawFunc)(ecs_world_t *world, ecs_entity_t e);
 
 typedef struct {
     Walrus_ImGuiWidgetDrawFunc func;
+    u32                        priority;
 } Walrus_EditorWidget;
 
 typedef struct {

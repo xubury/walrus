@@ -331,17 +331,6 @@ Walrus_AppError walrus_engine_init_run(char const *title, u32 width, u32 height,
     }
 }
 
-static void systems_init(void)
-{
-    u32 len = walrus_array_len(s_engine->systems);
-    for (u32 i = 0; i < len; ++i) {
-        Walrus_System *sys = walrus_array_get(s_engine->systems, i);
-        if (POLY_FUNC(sys, on_system_init)) {
-            POLY_FUNC(sys, on_system_init)(sys);
-        }
-    }
-}
-
 static void systems_shutdown(void)
 {
     u32 len = walrus_array_len(s_engine->systems);
@@ -353,11 +342,11 @@ static void systems_shutdown(void)
         poly_free(sys);
     }
 }
-
-static void add_system(Walrus_System sys, char const *name)
-{
-    walrus_engine_add_system(&sys, name);
-}
+#define add_system(name, func, ...)            \
+    {                                          \
+        Walrus_System sys = func(__VA_ARGS__); \
+        walrus_engine_add_system(&sys, name);  \
+    }
 
 static Walrus_System *find_system(char const *name)
 {
@@ -394,21 +383,19 @@ Walrus_EngineError walrus_engine_init(Walrus_EngineOption *opt)
     if (error == WR_ENGINE_SUCCESS) {
         s_vars = (Walrus_EngineVars){.input = &s_engine->input, .window = &s_engine->window, .ecs = s_engine->ecs};
 
-        add_system(transform_system_create(NULL, NULL), "TransformSystem");
+        add_system("TransformSystem", transform_system_create, NULL, NULL);
 
-        add_system(controller_system_create(NULL, NULL), "ControllerSystem");
+        add_system("ControllerSystem", controller_system_create, NULL, NULL);
 
-        add_system(camera_system_create(NULL, NULL), "CameraSystem");
+        add_system("CameraSystem", camera_system_create, NULL, NULL);
 
-        add_system(model_system_create(walrus_malloc0(sizeof(ModelSystem)), walrus_free), "ModelSystem");
+        add_system("ModelSystem", model_system_create, walrus_malloc0(sizeof(ModelSystem)), walrus_free);
 
-        add_system(render_system_create(walrus_malloc0(sizeof(RenderSystem)), walrus_free), "RenderSystem");
+        add_system("RenderSystem", render_system_create, walrus_malloc0(sizeof(RenderSystem)), walrus_free);
 
-        add_system(animator_system_create(NULL, NULL), "AnimatorSystem");
+        add_system("AnimatorSystem", animator_system_create, NULL, NULL);
 
-        add_system(editor_system_create(NULL, NULL), "EditorSystem");
-
-        systems_init();
+        add_system("EditorSystem", editor_system_create, NULL, NULL);
 
         s_vars.model = find_system("ModelSystem");
     }
@@ -504,4 +491,7 @@ void walrus_engine_add_system(Walrus_System *sys, char const *name)
     sys->ecs = s_engine->ecs;
     strcpy(sys->name, name);
     walrus_array_append(s_engine->systems, sys);
+    if (POLY_FUNC(sys, on_system_init)) {
+        POLY_FUNC(sys, on_system_init)(sys);
+    }
 }

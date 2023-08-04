@@ -2,6 +2,4 @@
 
 #include <engine/system.h>
 
-typedef void* AnimatorSystem;
-
-POLY_DECLARE_DERIVED(Walrus_System, AnimatorSystem, animator_system_create)
+POLY_DECLARE_DERIVED(Walrus_System, void, animator_system_create)

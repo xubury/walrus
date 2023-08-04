@@ -5,6 +5,4 @@
 
 #include <flecs.h>
 
-typedef void* ControllerSystem;
-
-POLY_DECLARE_DERIVED(Walrus_System, ControllerSystem, controller_system_create)
+POLY_DECLARE_DERIVED(Walrus_System, void, controller_system_create)

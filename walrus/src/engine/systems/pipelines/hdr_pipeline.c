@@ -77,12 +77,13 @@ static void render_data_create(void)
     s_data->hdr_shader  = walrus_shader_library_load("hdr.shader");
 
     Walrus_Attachment attachment = {0};
-    attachment.handle            = walrus_rhi_create_texture(
-        &(Walrus_TextureCreateInfo){
-                       .ratio = WR_RHI_RATIO_EQUAL, .format = WR_RHI_FORMAT_RGB8, .num_mipmaps = 1, .flags = 0},
-        NULL);
-    attachment.access  = WR_RHI_ACCESS_WRITE;
-    s_data->hdr_buffer = walrus_rhi_create_framebuffer(&attachment, 1);
+    attachment.handle            = walrus_rhi_create_texture(&(Walrus_TextureCreateInfo){.ratio       = WR_RHI_RATIO_EQUAL,
+                                                                                         .format      = WR_RHI_FORMAT_RGB8,
+                                                                                         .num_mipmaps = 1,
+                                                                                         .flags       = WR_RHI_SAMPLER_UVW_CLAMP},
+                                                             NULL);
+    attachment.access            = WR_RHI_ACCESS_WRITE;
+    s_data->hdr_buffer           = walrus_rhi_create_framebuffer(&attachment, 1);
 }
 
 static void render_data_free(void *userdata)

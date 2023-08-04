@@ -2,6 +2,7 @@
 
 #include <core/type.h>
 #include <core/cpoly.h>
+#include <core/array.h>
 
 #include <flecs.h>
 

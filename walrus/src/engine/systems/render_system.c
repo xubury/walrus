@@ -30,10 +30,10 @@ ECS_SYSTEM_DECLARE(renderer_run);
 
 static void on_model_add(ecs_iter_t *it)
 {
-    Walrus_Transform *worlds = ecs_field(it, Walrus_Transform, 1);
-    Walrus_ModelRef  *ref    = ecs_field(it, Walrus_ModelRef, 2);
-    Walrus_Model     *model  = &ref->model;
-    RenderSystem     *render = it->ctx;
+    Walrus_Transform *p_worlds = ecs_field(it, Walrus_Transform, 1);
+    Walrus_ModelRef  *ref      = ecs_field(it, Walrus_ModelRef, 2);
+    Walrus_Model     *model    = &ref->model;
+    RenderSystem     *render   = it->ctx;
 
     ecs_entity_t  entity = it->entities[0];
     ecs_entity_t *skins  = walrus_new(ecs_entity_t, model->num_skins);
@@ -48,7 +48,7 @@ static void on_model_add(ecs_iter_t *it)
     for (u32 i = 0; i < model->num_nodes; ++i) {
         Walrus_ModelNode *node = &model->nodes[i];
         if (node->mesh) {
-            Walrus_Transform const *transform = &node->world_transform;
+            Walrus_Transform const *world = &node->world_transform;
 
             ecs_entity_t weight = 0;
             if (node->mesh->num_weights > 0) {
@@ -62,6 +62,7 @@ static void on_model_add(ecs_iter_t *it)
             for (u32 j = 0; j < node->mesh->num_primitives; ++j) {
                 Walrus_Material *material = node->mesh->primitives[j].material;
                 ecs_entity_t     mesh     = ecs_new_w_pair(it->world, EcsChildOf, entity);
+                ecs_set_name(it->world, mesh, node->mesh->name);
                 if (node->skin) {
                     u32 skin_id = node->skin - &model->skins[0];
                     ecs_add_pair(it->world, mesh, EcsIsA, skins[skin_id]);
@@ -73,13 +74,8 @@ static void on_model_add(ecs_iter_t *it)
                 ecs_set(it->world, mesh, Walrus_RenderMesh, {.mesh = &node->mesh->primitives[j], .culled = false});
                 ecs_set_ptr(it->world, mesh, Walrus_Material, material ? material : &render->default_material);
 
-                ecs_set(it->world, mesh, Walrus_Transform,
-                        {.trans = {0, 0, 0}, .rot = {0, 0, 0, 1}, .scale = {1, 1, 1}});
-                ecs_set(it->world, mesh, Walrus_LocalTransform,
-                        {.trans = {transform->trans[0], transform->trans[1], transform->trans[2]},
-                         .rot   = {transform->rot[0], transform->rot[1], transform->rot[2], transform->rot[3]},
-                         .scale = {transform->scale[0], transform->scale[1], transform->scale[2]}});
-                walrus_transform_mul(&worlds[0], transform, ecs_get_mut(it->world, mesh, Walrus_Transform));
+                walrus_transform_mul(&p_worlds[0], world, ecs_get_mut(it->world, mesh, Walrus_Transform));
+                ecs_modified(it->world, mesh, Walrus_Transform);
             }
         }
     }
@@ -234,22 +230,18 @@ static void render_system_init(Walrus_System *sys)
     ECS_COMPONENT_DEFINE(ecs, Walrus_WeightResource);
     ECS_COMPONENT_DEFINE(ecs, Walrus_SkinResource);
 
-    ecs_observer_init(ecs,
-                      &(ecs_observer_desc_t const){
-                          .events       = {EcsOnSet},
-                          .entity       = ecs_entity(ecs, {0}),
-                          .callback     = on_model_add,
-                          .ctx          = render,
-                          .filter.terms = {{.id = ecs_id(Walrus_Transform)},
-                                           {.id = ecs_id(Walrus_ModelRef)},
-                                           {.id = ecs_id(Walrus_ModelRef), .src.flags = EcsSelf, .oper = EcsNot}}});
-    ecs_observer_init(ecs,
-                      &(ecs_observer_desc_t const){
-                          .events       = {EcsOnRemove},
-                          .entity       = ecs_entity(ecs, {0}),
-                          .callback     = on_model_remove,
-                          .filter.terms = {{.id = ecs_id(Walrus_ModelRef)},
-                                           {.id = ecs_id(Walrus_ModelRef), .src.flags = EcsSelf, .oper = EcsNot}}});
+    ecs_observer(ecs, {.events       = {EcsOnAdd},
+                       .entity       = ecs_entity(ecs, {0}),
+                       .callback     = on_model_add,
+                       .ctx          = render,
+                       .filter.terms = {{.id = ecs_id(Walrus_Transform)},
+                                        {.id = ecs_id(Walrus_ModelRef)},
+                                        {.id = ecs_id(Walrus_ModelRef), .src.flags = EcsSelf, .oper = EcsNot}}});
+    ecs_observer(ecs, {.events       = {EcsOnRemove},
+                       .entity       = ecs_entity(ecs, {0}),
+                       .callback     = on_model_remove,
+                       .filter.terms = {{.id = ecs_id(Walrus_ModelRef)},
+                                        {.id = ecs_id(Walrus_ModelRef), .src.flags = EcsSelf, .oper = EcsNot}}});
 
     ecs_id(skin_update)   = ecs_system(ecs, {
                                                 .entity = ecs_entity(ecs, {0}),
@@ -272,7 +264,8 @@ static void render_system_init(Walrus_System *sys)
 
     walrus_renderer_init();
 
-    u64 flags = (u64)(walrus_u32cnttz(walrus_rhi_get_mssa()) + 1) << WR_RHI_TEXTURE_RT_MSAA_SHIFT;
+    u64 flags =
+        (u64)(walrus_u32cnttz(walrus_rhi_get_mssa()) + 1) << WR_RHI_TEXTURE_RT_MSAA_SHIFT | WR_RHI_SAMPLER_UVW_CLAMP;
 
     Walrus_Attachment attachments[2] = {0};
 

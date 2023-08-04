@@ -32,4 +32,4 @@ static void camera_system_init(Walrus_System *sys)
     ECS_OBSERVER(ecs, camera_on_add, EcsOnSet, Walrus_Camera, Walrus_Transform);
 }
 
-POLY_DEFINE_DERIVED(Walrus_System, CameraSystem, camera_system_create, POLY_IMPL(on_system_init, camera_system_init))
+POLY_DEFINE_DERIVED(Walrus_System, void, camera_system_create, POLY_IMPL(on_system_init, camera_system_init))

@@ -9,7 +9,7 @@
 
 ECS_COMPONENT_DECLARE(Walrus_ModelRef);
 
-static void on_model_add(ecs_iter_t *it)
+static void on_model_set(ecs_iter_t *it)
 {
     Walrus_ModelRef *refs = ecs_field(it, Walrus_ModelRef, 1);
 
@@ -18,7 +18,7 @@ static void on_model_add(ecs_iter_t *it)
     }
 }
 
-static void on_model_remove(ecs_iter_t *it)
+static void on_model_unset(ecs_iter_t *it)
 {
     Walrus_ModelRef *refs = ecs_field(it, Walrus_ModelRef, 1);
 
@@ -42,11 +42,11 @@ static void model_system_init(Walrus_System *sys)
 
     ecs_observer_init(ecs, &(ecs_observer_desc_t const){.events       = {EcsOnSet},
                                                         .entity       = ecs_entity(ecs, {0}),
-                                                        .callback     = on_model_add,
+                                                        .callback     = on_model_set,
                                                         .filter.terms = {{.id = ecs_id(Walrus_ModelRef)}}});
-    ecs_observer_init(ecs, &(ecs_observer_desc_t const){.events       = {EcsOnRemove},
+    ecs_observer_init(ecs, &(ecs_observer_desc_t const){.events       = {EcsUnSet},
                                                         .entity       = ecs_entity(ecs, {0}),
-                                                        .callback     = on_model_remove,
+                                                        .callback     = on_model_unset,
                                                         .filter.terms = {{.id = ecs_id(Walrus_ModelRef)}}});
 
     model_sys->table = walrus_hash_table_create(walrus_str_hash, walrus_str_equal);
@@ -69,6 +69,7 @@ void walrus_model_system_load_from_file(Walrus_System *sys, char const *name, ch
 
         Walrus_ModelRef *ref = ecs_get_mut(ecs, e, Walrus_ModelRef);
         if (walrus_model_load_from_file(&ref->model, ref->path) == WR_MODEL_SUCCESS) {
+            ecs_modified(ecs, e, Walrus_ModelRef);
             walrus_hash_table_insert(model_sys->table, ref->name, walrus_val_to_ptr(e));
         }
         else {
@@ -100,11 +101,13 @@ ecs_entity_t walrus_model_instantiate(Walrus_System *sys, char const *name, vec3
     ecs_world_t *ecs       = sys->ecs;
     if (walrus_hash_table_contains(model_sys->table, name)) {
         ecs_entity_t base_model = walrus_ptr_to_val(walrus_hash_table_lookup(model_sys->table, name));
-        ecs_entity_t e          = ecs_new_w_pair(ecs, EcsIsA, base_model);
+
+        ecs_entity_t e = ecs_new_id(ecs);
         ecs_set(ecs, e, Walrus_Transform,
                 {.trans = {trans[0], trans[1], trans[2]},
                  .rot   = {rot[0], rot[1], rot[2], rot[3]},
                  .scale = {scale[0], scale[1], scale[2]}});
+        ecs_add_pair(ecs, e, EcsIsA, base_model);
 
         return e;
     }

@@ -1,5 +1,4 @@
 #include <engine/model.h>
-#include <engine/systems/model_system.h>
 #include <engine/thread_pool.h>
 #include <core/memory.h>
 #include <core/hash.h>
@@ -293,7 +292,8 @@ static void model_allocate(Walrus_Model *model, cgltf_data *gltf)
     model->meshes     = resource_new(Walrus_Mesh, model->num_meshes);
 
     for (u32 i = 0; i < model->num_meshes; ++i) {
-        cgltf_mesh *mesh                = &gltf->meshes[i];
+        cgltf_mesh *mesh = &gltf->meshes[i];
+
         model->meshes[i].num_primitives = mesh->primitives_count;
         model->meshes[i].primitives     = resource_new(Walrus_MeshPrimitive, mesh->primitives_count);
 
@@ -479,6 +479,9 @@ static void meshes_init(Walrus_Model *model, cgltf_data *gltf)
     for (u32 i = 0; i < gltf->meshes_count; ++i) {
         cgltf_mesh *mesh = &gltf->meshes[i];
         memcpy(model->meshes[i].weights, mesh->weights, sizeof(f32) * mesh->weights_count);
+        u32 len = walrus_min(sizeof(model->meshes[i].name) - 1, strlen(mesh->name));
+        strncpy(model->meshes[i].name, mesh->name, len);
+        model->meshes[i].name[len] = 0;
 
         for (u32 j = 0; j < mesh->primitives_count; ++j) {
             bool has_tangent = false;
