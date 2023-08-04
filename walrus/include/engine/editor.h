@@ -31,3 +31,5 @@ extern ECS_COMPONENT_DECLARE(Walrus_TransformGuizmo);
 extern ECS_COMPONENT_DECLARE(Walrus_EditorWindow);
 extern ECS_COMPONENT_DECLARE(Walrus_EditorWidget);
 extern ECS_COMPONENT_DECLARE(Walrus_EntityObserver);
+
+bool igVec3(char const *label, f32 *values, f32 reset_value, f32 column_width);

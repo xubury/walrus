@@ -25,9 +25,11 @@ static void hello_world_ui(ecs_world_t *ecs, ecs_entity_t e)
 
 static bool has_child(ecs_world_t *ecs, ecs_entity_t e)
 {
-    ecs_iter_t it = ecs_children(ecs, e);
-    ecs_children_next(&it);
-    return it.count > 0;
+    ecs_filter_t *f  = ecs_filter(ecs, {.terms = {{.id = ecs_id(Walrus_Transform)}, {.id = ecs_pair(EcsChildOf, e)}}});
+    ecs_iter_t    it = ecs_filter_iter(ecs, f);
+    bool has = ecs_filter_next(&it) && it.count > 0;
+    ecs_filter_fini(f);
+    return has;
 }
 
 static bool child_hierarchy_ui(ecs_world_t *ecs, Walrus_EntityObserver *ob, ecs_entity_t e)
@@ -44,7 +46,8 @@ static bool child_hierarchy_ui(ecs_world_t *ecs, Walrus_EntityObserver *ob, ecs_
     ImGuiTreeNodeFlags leaf_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
     while (ecs_filter_next(&it)) {
         for (i32 i = 0; i < it.count; ++i) {
-            ImGuiTreeNodeFlags flags = has_child(it.world, it.entities[i]) ? base_flags : leaf_flags;
+            bool               _has_child = has_child(it.world, it.entities[i]);
+            ImGuiTreeNodeFlags flags      = _has_child ? base_flags : leaf_flags;
             flags |=
                 (ob && ob->entity == it.entities[i]) ? ImGuiTreeNodeFlags_Selected : 0 | ImGuiTreeNodeFlags_OpenOnArrow;
             char const *name = ecs_get_name(it.world, it.entities[i]);
@@ -54,7 +57,9 @@ static bool child_hierarchy_ui(ecs_world_t *ecs, Walrus_EntityObserver *ob, ecs_
                 mod        = true;
             }
             if (opened) {
-                child_hierarchy_ui(ecs, ob, it.entities[i]);
+                if (_has_child) {
+                    child_hierarchy_ui(ecs, ob, it.entities[i]);
+                }
                 igTreePop();
             }
         }
@@ -84,7 +89,8 @@ static void scene_hierarchy_ui(ecs_world_t *ecs, ecs_entity_t e)
     ImGuiTreeNodeFlags leaf_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
     while (ecs_filter_next(&it)) {
         for (i32 i = 0; i < it.count; ++i) {
-            ImGuiTreeNodeFlags flags = has_child(it.world, it.entities[i]) ? base_flags : leaf_flags;
+            bool               _has_child = has_child(it.world, it.entities[i]);
+            ImGuiTreeNodeFlags flags      = _has_child ? base_flags : leaf_flags;
             flags |=
                 (ob && ob->entity == it.entities[i]) ? ImGuiTreeNodeFlags_Selected : 0 | ImGuiTreeNodeFlags_OpenOnArrow;
             char const *name = ecs_get_name(it.world, it.entities[i]);
@@ -94,7 +100,7 @@ static void scene_hierarchy_ui(ecs_world_t *ecs, ecs_entity_t e)
                 ecs_modified(ecs, base, Walrus_EntityObserver);
             }
             if (opened) {
-                if (child_hierarchy_ui(ecs, ob, it.entities[i])) {
+                if (_has_child && child_hierarchy_ui(ecs, ob, it.entities[i])) {
                     ecs_modified(ecs, base, Walrus_EntityObserver);
                 }
                 igTreePop();

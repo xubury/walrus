@@ -9,9 +9,9 @@ ECS_COMPONENT_DECLARE(Walrus_LocalTransform);
 
 static void update_children(ecs_world_t *ecs, ecs_entity_t e, Walrus_Transform *p_world)
 {
-    ecs_filter_t *f  = ecs_filter_init(ecs, &(ecs_filter_desc_t){.terms = {{.id = ecs_id(Walrus_LocalTransform)},
-                                                                           {.id = ecs_id(Walrus_Transform)},
-                                                                           {.id = ecs_pair(EcsChildOf, e)}}});
+    ecs_filter_t *f  = ecs_filter(ecs, {.terms = {{.id = ecs_id(Walrus_LocalTransform)},
+                                                  {.id = ecs_id(Walrus_Transform)},
+                                                  {.id = ecs_pair(EcsChildOf, e)}}});
     ecs_iter_t    it = ecs_filter_iter(ecs, f);
     while (ecs_filter_next(&it)) {
         Walrus_LocalTransform *locals = ecs_field(&it, Walrus_LocalTransform, 1);

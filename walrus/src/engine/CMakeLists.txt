@@ -20,6 +20,7 @@ add_library(
   app.c
   batch_renderer.c
   camera.c
+  editor.c
   engine.c
   event.c
   font.c
